@@ -74,4 +74,58 @@ function InventoryModel:removeFavourId(favourId: string): ()
 	end
 end
 
+-- Debug action descriptors for DebugActionBuilder.
+-- Pure data — no imports required. Builder prepends a Player arg for User scope.
+-- DebugTools arg types: "Player" | "string" | "number" | "boolean"
+InventoryModel.debugActions = {
+	{
+		name = "Inventory: Add Gold",
+		description = "Add gold to a player's inventory",
+		method = "addGold",
+		args = {
+			{ Type = "number", Name = "Amount", Default = 100 },
+		},
+	},
+	{
+		name = "Inventory: Spend Gold",
+		description = "Remove gold from a player's inventory",
+		method = "spendGold",
+		args = {
+			{ Type = "number", Name = "Amount", Default = 100 },
+		},
+	},
+	{
+		name = "Inventory: Add Treasure",
+		description = "Add treasure to a player's inventory",
+		method = "addTreasure",
+		args = {
+			{ Type = "number", Name = "Amount", Default = 100 },
+		},
+	},
+	{
+		name = "Inventory: Spend Treasure",
+		description = "Remove treasure from a player's inventory",
+		method = "spendTreasure",
+		args = {
+			{ Type = "number", Name = "Amount", Default = 100 },
+		},
+	},
+	{
+		name = "Inventory: Add FavourId",
+		description = "Add a favour ID to a player's inventory",
+		method = "addFavourId",
+		args = {
+			{ Type = "string", Name = "Favour ID" },
+		},
+	},
+	{
+		name = "Inventory: Remove FavourId",
+		description = "Remove a favour ID from a player's inventory",
+		method = "removeFavourId",
+		args = {
+			{ Type = "string", Name = "Favour ID" },
+		},
+	},
+}
+
 return InventoryModel

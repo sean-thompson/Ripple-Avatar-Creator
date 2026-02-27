@@ -94,4 +94,18 @@ function FavoursModel:setFavourType(favourType: string): ()
 	self:syncState()
 end
 
+-- Debug action descriptors for DebugActionBuilder.
+-- Pure data — no imports required. Builder prepends Player + "Model ID" args for UserEntity scope.
+-- DebugTools arg types: "Player" | "string" | "number" | "boolean"
+FavoursModel.debugActions = {
+	{
+		name = "Favours: Set Favour Type",
+		description = "Set the type of a specific favour for a player",
+		method = "setFavourType",
+		args = {
+			{ Type = "string", Name = "Favour Type" },
+		},
+	},
+}
+
 return FavoursModel

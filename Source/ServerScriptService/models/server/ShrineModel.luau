@@ -51,7 +51,7 @@ end
 -- DebugTools arg types: "Player" | "string" | "number" | "boolean"
 ShrineModel.debugActions = {
 	{
-		name = "Shrine: Donate",
+		name = "Donate",
 		description = "Donate treasure to the shrine on behalf of a player",
 		method = "donate",
 		args = {
@@ -60,7 +60,7 @@ ShrineModel.debugActions = {
 		},
 	},
 	{
-		name = "Shrine: Remove Treasure",
+		name = "Remove Treasure",
 		description = "Remove treasure from the shrine",
 		method = "removeTreasure",
 		args = {

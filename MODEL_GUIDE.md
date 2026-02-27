@@ -1208,7 +1208,7 @@ The builder prepends scope-specific args before `args` automatically:
 ```lua
 InventoryModel.debugActions = {
     {
-        name = "Inventory: Add Gold",
+        name = "Add Gold",
         description = "Add gold to a player's inventory",
         method = "addGold",
         args = {
@@ -1225,7 +1225,7 @@ InventoryModel.debugActions = {
 ```lua
 ShrineModel.debugActions = {
     {
-        name = "Shrine: Donate",
+        name = "Donate",
         description = "Donate treasure to the shrine",
         method = "donate",
         args = {
@@ -1243,7 +1243,7 @@ ShrineModel.debugActions = {
 ```lua
 FavoursModel.debugActions = {
     {
-        name = "Favours: Set Favour Type",
+        name = "Set Favour Type",
         description = "Set the type of a specific favour for a player",
         method = "setFavourType",
         args = {

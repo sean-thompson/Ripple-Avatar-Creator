@@ -99,7 +99,7 @@ end
 -- DebugTools arg types: "Player" | "string" | "number" | "boolean"
 FavoursModel.debugActions = {
 	{
-		name = "Favours: Set Favour Type",
+		name = "Set Favour Type",
 		description = "Set the type of a specific favour for a player",
 		method = "setFavourType",
 		args = {

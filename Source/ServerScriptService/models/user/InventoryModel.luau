@@ -79,7 +79,7 @@ end
 -- DebugTools arg types: "Player" | "string" | "number" | "boolean"
 InventoryModel.debugActions = {
 	{
-		name = "Inventory: Add Gold",
+		name = "Add Gold",
 		description = "Add gold to a player's inventory",
 		method = "addGold",
 		args = {
@@ -87,7 +87,7 @@ InventoryModel.debugActions = {
 		},
 	},
 	{
-		name = "Inventory: Spend Gold",
+		name = "Spend Gold",
 		description = "Remove gold from a player's inventory",
 		method = "spendGold",
 		args = {
@@ -95,7 +95,7 @@ InventoryModel.debugActions = {
 		},
 	},
 	{
-		name = "Inventory: Add Treasure",
+		name = "Add Treasure",
 		description = "Add treasure to a player's inventory",
 		method = "addTreasure",
 		args = {
@@ -103,7 +103,7 @@ InventoryModel.debugActions = {
 		},
 	},
 	{
-		name = "Inventory: Spend Treasure",
+		name = "Spend Treasure",
 		description = "Remove treasure from a player's inventory",
 		method = "spendTreasure",
 		args = {
@@ -111,7 +111,7 @@ InventoryModel.debugActions = {
 		},
 	},
 	{
-		name = "Inventory: Add FavourId",
+		name = "Add FavourId",
 		description = "Add a favour ID to a player's inventory",
 		method = "addFavourId",
 		args = {
@@ -119,7 +119,7 @@ InventoryModel.debugActions = {
 		},
 	},
 	{
-		name = "Inventory: Remove FavourId",
+		name = "Remove FavourId",
 		description = "Remove a favour ID from a player's inventory",
 		method = "removeFavourId",
 		args = {

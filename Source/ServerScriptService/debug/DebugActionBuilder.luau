@@ -36,6 +36,7 @@ type DebugActionDescriptor = {
 	name: string,
 	description: string?,
 	method: string,
+	modelIdLabel: string?,  -- UserEntity only: label for the injected modelId arg (default: "Model ID")
 	args: { DebugArgDescriptor }?,
 }
 
@@ -82,7 +83,7 @@ local function buildUserEntityAction(modelClass: any, descriptor: DebugActionDes
 	local methodArgs = descriptor.args or {}
 	local actionArgs: { any } = {
 		{ Type = "Player", Name = "Player" },
-		{ Type = "string", Name = "Model ID" },
+		{ Type = "string", Name = descriptor.modelIdLabel or "Model ID", Default = "" },
 	}
 
 	for _, arg in methodArgs do

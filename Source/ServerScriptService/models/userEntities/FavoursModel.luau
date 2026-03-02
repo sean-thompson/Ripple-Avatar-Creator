@@ -102,8 +102,9 @@ FavoursModel.debugActions = {
 		name = "Set Favour Type",
 		description = "Set the type of a specific favour for a player",
 		method = "setFavourType",
+		modelIdLabel = "Favour ID",
 		args = {
-			{ Type = "string", Name = "Favour Type" },
+			{ Type = "string", Name = "Favour Type", Default = "" },
 		},
 	},
 }

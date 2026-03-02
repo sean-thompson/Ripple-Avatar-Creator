@@ -55,7 +55,7 @@ ShrineModel.debugActions = {
 		description = "Donate treasure to the shrine on behalf of a player",
 		method = "donate",
 		args = {
-			{ Type = "string", Name = "Player User ID" },
+			{ Type = "string", Name = "Player User ID", Default = "" },
 			{ Type = "number", Name = "Amount", Default = 100 },
 		},
 	},

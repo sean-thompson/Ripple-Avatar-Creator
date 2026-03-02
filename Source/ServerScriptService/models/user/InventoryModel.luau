@@ -115,7 +115,7 @@ InventoryModel.debugActions = {
 		description = "Add a favour ID to a player's inventory",
 		method = "addFavourId",
 		args = {
-			{ Type = "string", Name = "Favour ID" },
+			{ Type = "string", Name = "Favour ID", Default = "" },
 		},
 	},
 	{
@@ -123,7 +123,7 @@ InventoryModel.debugActions = {
 		description = "Remove a favour ID from a player's inventory",
 		method = "removeFavourId",
 		args = {
-			{ Type = "string", Name = "Favour ID" },
+			{ Type = "string", Name = "Favour ID", Default = "" },
 		},
 	},
 }

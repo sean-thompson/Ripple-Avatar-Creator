@@ -30,6 +30,9 @@
         "ConfigTypes": {
           "$path": "Source/ReplicatedStorage/Config/ConfigTypes"
         }
+      },
+      "Packages": {
+        "$path": "Packages"
       }
     },
     "ServerScriptService": {

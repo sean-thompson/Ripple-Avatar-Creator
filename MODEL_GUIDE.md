@@ -1166,6 +1166,102 @@ export type MatchTimerData = {
 ✅ **Self-Documenting** - Types show what data models broadcast
 ✅ **Complete MVC Type Safety** - From model through view with zero runtime overhead
 
+## Exposing Methods to DebugTools
+
+Models can expose methods to the DebugTools panel by declaring a `debugActions` table on the class. `DebugActionBuilder` scans all model scope folders at startup and auto-generates DebugTools Actions from these descriptors — no manual registration needed.
+
+### Schema
+
+```lua
+-- Declared at the bottom of the model file, after all methods, before `return`.
+-- Pure data — no imports required.
+-- DebugTools arg types: "Player" | "string" | "number" | "boolean"
+YourModel.debugActions = {
+    {
+        name = "Category: Action Name",       -- shown in DebugTools panel
+        description = "What this action does", -- optional tooltip
+        method = "methodName",                 -- instance method name (string, not function ref)
+        args = {                               -- method args only — scope args are prepended by builder
+            { Type = "number", Name = "Amount", Default = 100 },
+            { Type = "string", Name = "Label" },
+        },
+    },
+    -- additional actions...
+}
+```
+
+### Scope-specific arg injection
+
+The builder prepends scope-specific args before `args` automatically:
+
+| Scope | Prepended args | Closure signature |
+|-------|---------------|-------------------|
+| `user` | `Player` | `(player, ...methodArgs)` → `model.get(userId):method(...)` |
+| `server` | *(none)* | `(...methodArgs)` → `model.get("SERVER"):method(...)` |
+| `userEntities` | `Player`, `string (Model ID)` | `(player, modelId, ...methodArgs)` → `model.get(userId, modelId):method(...)` |
+| `serverEntities` | *(skipped)* | No player-targeted actions applicable |
+
+### Examples
+
+**User-scoped model** (`models/user/`):
+
+```lua
+InventoryModel.debugActions = {
+    {
+        name = "Add Gold",
+        description = "Add gold to a player's inventory",
+        method = "addGold",
+        args = {
+            { Type = "number", Name = "Amount", Default = 100 },
+        },
+    },
+}
+-- Builder generates: DebugTools panel shows Player picker + Amount field.
+-- Closure: InventoryModel.get(tostring(player.UserId)):addGold(amount)
+```
+
+**Server-scoped model** (`models/server/`):
+
+```lua
+ShrineModel.debugActions = {
+    {
+        name = "Donate",
+        description = "Donate treasure to the shrine",
+        method = "donate",
+        args = {
+            { Type = "string", Name = "Player User ID" },
+            { Type = "number", Name = "Amount", Default = 100 },
+        },
+    },
+}
+-- Builder generates: DebugTools panel shows Player User ID + Amount fields.
+-- Closure: ShrineModel.get("SERVER"):donate(playerUserId, amount)
+```
+
+**UserEntity-scoped model** (`models/userEntities/`):
+
+```lua
+FavoursModel.debugActions = {
+    {
+        name = "Set Favour Type",
+        description = "Set the type of a specific favour for a player",
+        method = "setFavourType",
+        args = {
+            { Type = "string", Name = "Favour Type" },
+        },
+    },
+}
+-- Builder generates: DebugTools panel shows Player picker + Model ID + Favour Type fields.
+-- Closure: FavoursModel.get(tostring(player.UserId), modelId):setFavourType(favourType)
+```
+
+### Rules
+
+- Declare `debugActions` **at the bottom of the model file**, after all methods, before `return`
+- **Never import DebugTools** in a model file — descriptors are pure data
+- `args` lists only the method's own parameters; scope args (Player, modelId) are injected by the builder
+- Adding `debugActions` to a new model is sufficient — DebugRunner picks it up automatically on next run
+
 ## Next Steps
 
 After creating your model:

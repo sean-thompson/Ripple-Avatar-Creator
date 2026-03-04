@@ -660,13 +660,9 @@ local controller = YourController.new()
 -- Verify RemoteEvent was created
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local events = ReplicatedStorage:WaitForChild("Events")
-local intent = events:FindFirstChild("YourIntent")
+local intent = events:WaitForChild("YourIntent")
 
-if intent then
-	print("✓ RemoteEvent created successfully: " .. intent.Name)
-else
-	warn("✗ RemoteEvent not found")
-end
+print("✓ RemoteEvent created successfully: " .. intent.Name)
 ```
 
 ### Client-Side Test

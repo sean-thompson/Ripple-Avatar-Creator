@@ -795,15 +795,12 @@ inventoryStateChanged.OnClientEvent:Connect(function(data: StateEvents.Inventory
 
     -- Update all status bars
     for _, screenGui in CollectionService:GetTagged(TAG) do
-        local goldLabel = screenGui:FindFirstChild("GoldLabel", true) :: TextLabel
-        local treasureLabel = screenGui:FindFirstChild("TreasureLabel", true) :: TextLabel
+        local frame = screenGui:WaitForChild("Frame")
+        local goldLabel = frame:WaitForChild("GoldLabel") :: TextLabel
+        local treasureLabel = frame:WaitForChild("TreasureLabel") :: TextLabel
 
-        if goldLabel then
-            goldLabel.Text = "Gold: " .. tostring(data.gold)
-        end
-        if treasureLabel then
-            treasureLabel.Text = "Treasure: " .. tostring(data.treasure)
-        end
+        goldLabel.Text = "Gold: " .. tostring(data.gold)
+        treasureLabel.Text = "Treasure: " .. tostring(data.treasure)
     end
 end)
 

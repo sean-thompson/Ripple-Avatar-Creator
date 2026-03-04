@@ -52,8 +52,8 @@ local function updateUI(container: Frame, itemTemplate: Frame, favours: { [strin
 		end
 
 		-- Update labels
-		local typeLabel = itemFrame:FindFirstChild("TypeLabel") :: TextLabel?
-		local countLabel = itemFrame:FindFirstChild("CountLabel") :: TextLabel?
+		local typeLabel = itemFrame:WaitForChild("TypeLabel") :: TextLabel
+		local countLabel = itemFrame:WaitForChild("CountLabel") :: TextLabel
 
 		if typeLabel then
 			typeLabel.Text = favourType

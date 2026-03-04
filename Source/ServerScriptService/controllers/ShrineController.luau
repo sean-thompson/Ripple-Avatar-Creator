@@ -73,7 +73,7 @@ local function donate(inventory: any, shrine: any, player: Player)
 		local candleId = generateCandleId()
 		local character = player.Character
 		if character then
-			local rootPart = character:FindFirstChild("HumanoidRootPart")
+			local rootPart = character:WaitForChild("HumanoidRootPart")
 			if rootPart then
 				local pos = rootPart.Position
 				CandlesModel.create(candleId, tostring(player.UserId), pos.X, pos.Y, pos.Z)

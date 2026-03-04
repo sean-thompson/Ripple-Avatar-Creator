@@ -6,8 +6,8 @@
 	2. Game services (auto-discovered)
 ]]
 
-local frameworkFolder = script.Parent:FindFirstChild("framework")
-local gameFolder = script.Parent:FindFirstChild("game")
+local frameworkFolder = script.Parent:WaitForChild("framework")
+local gameFolder = script.Parent:WaitForChild("game")
 
 local ServiceRunner = {}
 

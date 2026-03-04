@@ -740,14 +740,9 @@ end)
 
 local function setupShopUI(shopUI: Instance)
     -- Find weapon buttons
-    local swordButton = shopUI:FindFirstChild("SwordButton", true) :: TextButton
-    local bowButton = shopUI:FindFirstChild("BowButton", true) :: TextButton
-    local staffButton = shopUI:FindFirstChild("StaffButton", true) :: TextButton
-
-    if not (swordButton and bowButton and staffButton) then
-        warn("WeaponShopView: Missing weapon buttons")
-        return
-    end
+    local swordButton = shopUI:WaitForChild("SwordButton") :: TextButton
+    local bowButton = shopUI:WaitForChild("BowButton") :: TextButton
+    local staffButton = shopUI:WaitForChild("StaffButton") :: TextButton
 
     -- Connect button clicks
     swordButton.Activated:Connect(function()
@@ -958,7 +953,8 @@ Source/
 
 ### DO:
 - Use `WaitForChild()` to wait for required objects to load
-- Check for existing objects first before waiting for signals
+- Prefer `WaitForChild()` over `FindFirstChild()` — a hang or error is better than a silent nil failure
+- Only use `FindFirstChild()` when the child's absence is a valid, intentional state (e.g. optional UI buttons, get-or-create patterns, internal diff algorithms)
 - Throw clear errors when requirements aren't met
 - Let the game break loudly if something is misconfigured
 
@@ -966,6 +962,7 @@ Source/
 - Add fallback values that hide missing or broken configurations
 - Silently continue when required objects don't exist
 - Use `warn()` and continue - use `error()` to stop execution
+- Use `FindFirstChild()` as a lazy substitute for `WaitForChild()` on required children
 
 **Why?** Configuration errors indicate broken dependencies. Hiding these with fallbacks makes bugs harder to find. Better to fail fast and fix the root cause.
 
@@ -1110,9 +1107,9 @@ Source/
    - Fix: User-scoped models initialize on PlayerAdded - ensure player has joined
    - Fix: Server-scoped models need manual get: `Model.get("SERVER")`
 
-3. **FindFirstChild returning nil**
-   - Check: Does the child exist with that exact name?
-   - Fix: Use WaitForChild if it should exist, or check for nil before using
+3. **WaitForChild timeout / infinite yield**
+   - Check: Does the child exist with that exact name in the correct location?
+   - Fix: Verify the instance hierarchy and ensure the child is being created server-side before the client tries to access it
 
 ### General Debugging Tips
 

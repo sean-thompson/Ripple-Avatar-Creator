@@ -22,6 +22,7 @@ end
 
 -- Phase 2: After models discovered
 function ServiceRunner.initSlashCommands()
+	if SlashCommandService then return end
 	SlashCommandService = require(frameworkFolder.SlashCommandService)
 	SlashCommandService:init()
 end

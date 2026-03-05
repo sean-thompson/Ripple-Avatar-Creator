@@ -11,7 +11,7 @@ AbstractModel.__index = AbstractModel
 
 local registries: { [string]: { [string]: AbstractModel } } = {}
 
-type ModelScope = "User" | "Server" | "UserEntity" | "ServerEntity"
+type ModelScope = "User" | "Server" | "UserEntity" | "ServerEntity" | "UserSession"
 
 export type AbstractModel = typeof(setmetatable({} :: {
 	ownerId: string,
@@ -35,9 +35,14 @@ function AbstractModel.new(modelName: string, ownerId: string, scope: ModelScope
 		error(scope .. "-scoped models require a modelId parameter")
 	end
 
-	-- Validate User/Server scopes don't have modelId
-	if (scope == "User" or scope == "Server") and modelId then
-		error("User and Server-scoped models cannot have a modelId parameter")
+	-- Validate User/Server/UserSession scopes don't have modelId
+	if (scope == "User" or scope == "Server" or scope == "UserSession") and modelId then
+		error("User, Server, and UserSession-scoped models cannot have a modelId parameter")
+	end
+
+	-- Validate UserSession scope uses a player UserId (not SERVER) as ownerId
+	if scope == "UserSession" and ownerId == "SERVER" then
+		error("UserSession-scoped models cannot use 'SERVER' as ownerId")
 	end
 
 	-- Validate ServerEntity scope uses "SERVER" as ownerId

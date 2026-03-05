@@ -17,7 +17,7 @@ type ModelClass = {
 	initAllServerEntities: (() -> ())?,
 }
 
-type ModelScope = "User" | "Server" | "UserEntity" | "ServerEntity"
+type ModelScope = "User" | "Server" | "UserEntity" | "ServerEntity" | "UserSession"
 
 type ModelInfo = {
 	class: ModelClass,
@@ -65,6 +65,12 @@ end
 local serverEntitiesFolder = modelsFolder:FindFirstChild("serverEntities")
 if serverEntitiesFolder then
 	discoverModelsInFolder(serverEntitiesFolder, "ServerEntity")
+end
+
+-- Discover UserSession-scoped models
+local userSessionFolder = modelsFolder:FindFirstChild("userSession")
+if userSessionFolder then
+	discoverModelsInFolder(userSessionFolder, "UserSession")
 end
 
 -- Register models with SlashCommandService and initialize it
@@ -143,6 +149,11 @@ Players.PlayerAdded:Connect(function(player: Player)
 			else
 				warn("UserEntity model " .. modelInfo.name .. " missing loadAllForOwner method")
 			end
+
+		-- Initialize UserSession-scoped models per player (no DataStore load)
+		elseif modelInfo.scope == "UserSession" then
+			local instance = modelInfo.class.get(ownerId)
+			instance:syncState(true)
 		end
 	end
 end)
@@ -157,9 +168,11 @@ local playerRemovingConnection = Players.PlayerRemoving:Connect(function(player:
 	-- Flush all pending writes for this player before cleanup
 	PersistenceService:flushPlayerWrites(ownerId)
 
-	-- Remove User and UserEntity scoped models (Server-scoped persist for server lifetime)
+	-- Remove User, UserSession, and UserEntity scoped models (Server-scoped persist for server lifetime)
 	for _, modelInfo in modelInfos do
 		if modelInfo.scope == "User" then
+			modelInfo.class.remove(ownerId)
+		elseif modelInfo.scope == "UserSession" then
 			modelInfo.class.remove(ownerId)
 		elseif modelInfo.scope == "UserEntity" then
 			-- Clean up all user entities for this owner

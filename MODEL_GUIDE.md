@@ -37,6 +37,17 @@ Server-scoped models are **per-server instance** and **ephemeral** (not saved):
 - **Use Cases**: Match state, server events, shared game state
 - **Example**: `ShrineModel` - shared by all players in the server
 
+### UserSession-Scoped Models (`models/userSession/`)
+
+UserSession-scoped models are **per-player** and **ephemeral** (never saved to DataStore):
+
+- **Lifecycle**: Created when player joins, destroyed when player leaves (resets every session)
+- **Persistence**: None — data is never saved to DataStore
+- **Sync**: Owner player only (for UI like mana bars, ammo counters, cooldown timers)
+- **Owner ID**: Player's UserId (e.g., "123456789")
+- **Use Cases**: Mana, ammo, cooldowns, combo counters, session-only buffs, temporary UI state
+- **Example**: `ManaModel` - each player's current mana, displayed on their HUD but not saved
+
 ### UserEntity-Scoped Models (`models/userEntities/`)
 
 UserEntity-scoped models are **per-player instances** and **persistent** (saved to DataStore):
@@ -64,6 +75,7 @@ ServerEntity-scoped models are **per-server instances** and **ephemeral** (not s
 | Scope | Location | Persistent | Per-Player | Multiple Instances | Sync Target | Use For |
 |-------|----------|------------|------------|-------------------|-------------|---------|
 | **User** | `models/user/` | ✅ Yes | ✅ Yes | ❌ One per player | Owner | Player inventory, progress, settings |
+| **UserSession** | `models/userSession/` | ❌ No | ✅ Yes | ❌ One per player | Owner | Mana, ammo, cooldowns, session UI state |
 | **Server** | `models/server/` | ❌ No | ❌ No | ❌ One for server | All | Match scores, timers, shared game state |
 | **UserEntity** | `models/userEntities/` | ✅ Yes | ✅ Yes | ✅ Many per player | Owner | Pets, bases, character slots, equipment |
 | **ServerEntity** | `models/serverEntities/` | ❌ No | ❌ No | ✅ Many for server | All | Drawbridges, gates, doors, world objects |
@@ -100,7 +112,7 @@ Use this decision tree to determine which scope your model needs:
 
 **Question 3: Should this data persist across server restarts and player sessions?**
 - **Yes** → **User-scoped** (place in `models/user/`)
-- **No** → User-scoped still appropriate if data is per-player but ephemeral
+- **No** → **UserSession-scoped** (place in `models/userSession/`)
 
 **Question 4: Is this data shared across all players in the server?**
 - **Yes** → Continue to Question 5
@@ -121,6 +133,13 @@ Use this decision tree to determine which scope your model needs:
 - Player settings and preferences
 - Character stats and levels
 - Owned cosmetics
+
+✅ **UserSession-scoped** (per-player, ephemeral, resets on rejoin):
+- Current mana / energy
+- Ammo counts
+- Active cooldown timers
+- Combo counters
+- Session-only buffs or status effects
 
 ✅ **Server-scoped** (shared, ephemeral, single instance):
 - Match timer for all players
@@ -144,9 +163,10 @@ Use this decision tree to determine which scope your model needs:
 
 Before creating your model, decide which scope it needs:
 
-- **User-Scoped**: Place in `src/server/models/user/YourModel.luau` and pass `"User"` to AbstractModel
-- **Server-Scoped**: Place in `src/server/models/server/YourModel.luau` and pass `"Server"` to AbstractModel
-- **UserEntity-Scoped**: Place in `src/server/models/userEntities/YourModel.luau` and pass `"UserEntity"` to AbstractModel
+- **User-Scoped**: Place in `Source/ServerScriptService/models/user/YourModel.luau` and pass `"User"` to AbstractModel
+- **UserSession-Scoped**: Place in `Source/ServerScriptService/models/userSession/YourModel.luau` and pass `"UserSession"` to AbstractModel
+- **Server-Scoped**: Place in `Source/ServerScriptService/models/server/YourModel.luau` and pass `"Server"` to AbstractModel
+- **UserEntity-Scoped**: Place in `Source/ServerScriptService/models/userEntities/YourModel.luau` and pass `"UserEntity"` to AbstractModel
 
 ### Step 3: Create Your Model File
 
@@ -235,6 +255,51 @@ end
 function YourModel:yourMethod(): ()
 	-- Implementation
 	self:syncState() -- Server-scoped models automatically sync to all
+end
+
+return YourModel
+```
+
+#### For UserSession-Scoped Models (`models/userSession/YourModel.luau`):
+
+```lua
+--!strict
+
+local AbstractModel = require(script.Parent.Parent.AbstractModel)
+
+local YourModel = {}
+YourModel.__index = YourModel
+setmetatable(YourModel, AbstractModel)
+
+export type YourModel = typeof(setmetatable({} :: {
+	-- Define your model's properties here
+	propertyName: propertyType,
+}, YourModel)) & AbstractModel.AbstractModel
+
+function YourModel.new(ownerId: string): YourModel
+	local self = AbstractModel.new("YourModel", ownerId, "UserSession") :: any
+	setmetatable(self, YourModel)
+
+	-- Initialize your properties
+	self.propertyName = defaultValue
+
+	return self :: YourModel
+end
+
+function YourModel.get(ownerId: string): YourModel
+	return AbstractModel.getOrCreate("YourModel", ownerId, function()
+		return YourModel.new(ownerId)
+	end) :: YourModel
+end
+
+function YourModel.remove(ownerId: string): ()
+	AbstractModel.removeInstance("YourModel", ownerId)
+end
+
+-- Add your model's methods here
+function YourModel:yourMethod(): ()
+	-- Implementation
+	self:syncState() -- Syncs to owner player only; never touches DataStore
 end
 
 return YourModel
@@ -389,14 +454,15 @@ return YourModel
 ```
 
 **Key Differences:**
-- Require path: `script.Parent.Parent.AbstractModel` (up two levels from `user/`, `server/`, `userEntities/`, or `serverEntities/`)
-- Scope parameter: `"User"` for user-scoped, `"Server"` for server-scoped, `"UserEntity"` for user-entity-scoped, `"ServerEntity"` for server-entity-scoped
+- Require path: `script.Parent.Parent.AbstractModel` (up two levels from `user/`, `userSession/`, `server/`, `userEntities/`, or `serverEntities/`)
+- Scope parameter: `"User"`, `"UserSession"`, `"Server"`, `"UserEntity"`, or `"ServerEntity"`
+- UserSession models are identical in structure to User models but never touch DataStore and reset on rejoin
 - UserEntity models require `modelId` parameter in constructor and all static methods
 - UserEntity models must implement `loadAllForOwner()` and `removeAllEntitiesForOwner()` static methods
 - ServerEntity models always use "SERVER" as ownerId with unique entityId
 - ServerEntity models must implement `initAllServerEntities()` static method
-- Access pattern: User uses player UserId, Server uses `"SERVER"`, UserEntity uses composite `ownerId_modelId`, ServerEntity uses `"SERVER"` + `entityId`
-- Default sync: UserEntity models default to owner-only (like User), can override to "all" with 5th parameter to `new()`
+- Access pattern: User/UserSession use player UserId, Server uses `"SERVER"`, UserEntity uses composite `ownerId_modelId`, ServerEntity uses `"SERVER"` + `entityId`
+- Default sync: UserEntity models default to owner-only (like User/UserSession), can override to "all" with 5th parameter to `new()`
 - ServerEntity models always sync to all players (no persistence)
 
 ### Step 3b: UserEntity ID Management Strategies

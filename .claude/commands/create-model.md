@@ -9,12 +9,14 @@ I'll guide you through creating a new Roblox model that follows this project's A
 ## Project Model Architecture
 
 - **All models extend AbstractModel**
-- **Three scopes**:
+- **Four scopes**:
   - `User`: Per-player, persistent (saved to DataStore). One instance per player. Example: InventoryModel
+  - `UserSession`: Per-player, ephemeral (never saved). One instance per player, resets each session. Example: ManaModel
   - `Server`: Shared, ephemeral (resets on restart). One instance for all players. Example: ShrineModel
   - `UserEntity`: Per-player, persistent (saved to DataStore). Multiple instances per player. Example: PetModel
 - **File locations**:
   - User models → `Source/ServerScriptService/models/user/`
+  - UserSession models → `Source/ServerScriptService/models/userSession/`
   - Server models → `Source/ServerScriptService/models/server/`
   - UserEntity models → `Source/ServerScriptService/models/userEntities/`
 - **Auto-discovery**: ModelRunner automatically discovers and initializes models (no manual registration needed)
@@ -43,9 +45,10 @@ What should your model be named?
 
 ### Step 2: Model Scope
 
-Does this model need to be **User-scoped**, **Server-scoped**, or **UserEntity-scoped**?
+Does this model need to be **User-scoped**, **UserSession-scoped**, **Server-scoped**, or **UserEntity-scoped**?
 
 - **User scope**: Per-player data that persists - one instance per player (like inventory, quest progress, player stats)
+- **UserSession scope**: Per-player data that doesn't persist - resets each session (like mana, ammo, cooldowns, combo counters)
 - **Server scope**: Shared data that all players see - one instance for server (like shrines, leaderboards, world state)
 - **UserEntity scope**: Per-player data that persists - multiple instances per player (like pets, bases, character slots)
 
@@ -99,8 +102,16 @@ When generating the model, I will:
 
 2. **Generate model file** at correct location:
    - User scope: `Source/ServerScriptService/models/user/{ModelName}.luau`
+   - UserSession scope: `Source/ServerScriptService/models/userSession/{ModelName}.luau`
    - Server scope: `Source/ServerScriptService/models/server/{ModelName}.luau`
    - UserEntity scope: `Source/ServerScriptService/models/userEntities/{ModelName}.luau`
+
+2b. **For UserSession models specifically**:
+   - Constructor takes only `ownerId: string` (no modelId)
+   - Register Network state the same way as User models (model syncs to client)
+   - No `loadAllForOwner` or `removeAllEntitiesForOwner` required
+   - Methods call `syncState()` — syncs to owner player but skips DataStore
+   - See MODEL_GUIDE.md UserSession template for complete pattern
 
 3. **For UserEntity models specifically**:
    - Constructor requires `modelId` parameter: `function Model.new(ownerId: string, modelId: string)`

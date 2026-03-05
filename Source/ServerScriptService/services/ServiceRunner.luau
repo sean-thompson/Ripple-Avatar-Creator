@@ -35,10 +35,6 @@ function ServiceRunner.registerControllers(controllerInfos)
 	SlashCommandService:registerControllers(controllerInfos)
 end
 
-function ServiceRunner.finalizeSlashCommands()
-	SlashCommandService:createTextChatCommands()
-end
-
 -- Phase 3: Auto-discover game services after models ready
 function ServiceRunner.initGameServices()
 	if not gameFolder then

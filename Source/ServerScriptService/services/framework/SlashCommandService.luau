@@ -38,6 +38,7 @@ local controllers: { [string]: { instance: any, remoteEvent: RemoteEvent, origin
 local commandRemote: RemoteEvent = nil
 local messageRemote: RemoteEvent = nil
 local groupId: number? = nil
+local commandsFinalized = false
 
 local function sendChatMessage(player: Player, message: string): ()
 	if not messageRemote then
@@ -813,6 +814,11 @@ end
 	Format: commandString = "targetname methodname args..."
 ]]
 local function handleCommand(player: Player, commandString: string): ()
+	if not commandsFinalized then
+		SlashCommandService:createTextChatCommands()
+		commandsFinalized = true
+	end
+
 	-- Check permissions
 	if not hasPermission(player) then
 		warn(`[SlashCommand] Player {player.Name} attempted to use slash command without permission (rank: {player:GetRankInGroup(groupId or 0)})`)

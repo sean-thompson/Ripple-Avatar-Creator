@@ -38,7 +38,8 @@ local controllers: { [string]: { instance: any, remoteEvent: RemoteEvent, origin
 local commandRemote: RemoteEvent = nil
 local messageRemote: RemoteEvent = nil
 local groupId: number? = nil
-local commandsFinalized = false
+local modelsRegistered = false
+local controllersRegistered = false
 
 local function sendChatMessage(player: Player, message: string): ()
 	if not messageRemote then
@@ -814,11 +815,6 @@ end
 	Format: commandString = "targetname methodname args..."
 ]]
 local function handleCommand(player: Player, commandString: string): ()
-	if not commandsFinalized then
-		SlashCommandService:createTextChatCommands()
-		commandsFinalized = true
-	end
-
 	-- Check permissions
 	if not hasPermission(player) then
 		warn(`[SlashCommand] Player {player.Name} attempted to use slash command without permission (rank: {player:GetRankInGroup(groupId or 0)})`)
@@ -883,6 +879,12 @@ local function handleCommand(player: Player, commandString: string): ()
 	end
 end
 
+local function tryFinalize()
+	if modelsRegistered and controllersRegistered then
+		SlashCommandService:createTextChatCommands()
+	end
+end
+
 --[[
 	Registers all models discovered by ModelRunner
 ]]
@@ -902,6 +904,8 @@ function SlashCommandService:registerModels(modelList: { { class: any, name: str
 			serverEntityModels[name:lower()] = { class = modelClass, modelName = name }
 		end
 	end
+	modelsRegistered = true
+	tryFinalize()
 end
 
 --[[
@@ -919,6 +923,8 @@ function SlashCommandService:registerControllers(controllerList: { { name: strin
 			originalName = name,
 		}
 	end
+	controllersRegistered = true
+	tryFinalize()
 end
 
 --[[

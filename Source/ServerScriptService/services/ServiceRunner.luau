@@ -28,10 +28,12 @@ function ServiceRunner.initSlashCommands()
 end
 
 function ServiceRunner.registerModels(modelInfos)
+	ServiceRunner.initSlashCommands()
 	SlashCommandService:registerModels(modelInfos)
 end
 
 function ServiceRunner.registerControllers(controllerInfos)
+	ServiceRunner.initSlashCommands()
 	SlashCommandService:registerControllers(controllerInfos)
 end
 

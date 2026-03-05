@@ -38,6 +38,8 @@ local controllers: { [string]: { instance: any, remoteEvent: RemoteEvent, origin
 local commandRemote: RemoteEvent = nil
 local messageRemote: RemoteEvent = nil
 local groupId: number? = nil
+local modelsRegistered = false
+local controllersRegistered = false
 
 local function sendChatMessage(player: Player, message: string): ()
 	if not messageRemote then
@@ -877,6 +879,12 @@ local function handleCommand(player: Player, commandString: string): ()
 	end
 end
 
+local function tryFinalize()
+	if modelsRegistered and controllersRegistered then
+		SlashCommandService:createTextChatCommands()
+	end
+end
+
 --[[
 	Registers all models discovered by ModelRunner
 ]]
@@ -896,6 +904,8 @@ function SlashCommandService:registerModels(modelList: { { class: any, name: str
 			serverEntityModels[name:lower()] = { class = modelClass, modelName = name }
 		end
 	end
+	modelsRegistered = true
+	tryFinalize()
 end
 
 --[[
@@ -913,6 +923,8 @@ function SlashCommandService:registerControllers(controllerList: { { name: strin
 			originalName = name,
 		}
 	end
+	controllersRegistered = true
+	tryFinalize()
 end
 
 --[[

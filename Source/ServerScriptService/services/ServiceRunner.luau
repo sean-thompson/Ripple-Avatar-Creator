@@ -22,20 +22,19 @@ end
 
 -- Phase 2: After models discovered
 function ServiceRunner.initSlashCommands()
+	if SlashCommandService then return end
 	SlashCommandService = require(frameworkFolder.SlashCommandService)
 	SlashCommandService:init()
 end
 
 function ServiceRunner.registerModels(modelInfos)
+	ServiceRunner.initSlashCommands()
 	SlashCommandService:registerModels(modelInfos)
 end
 
 function ServiceRunner.registerControllers(controllerInfos)
+	ServiceRunner.initSlashCommands()
 	SlashCommandService:registerControllers(controllerInfos)
-end
-
-function ServiceRunner.finalizeSlashCommands()
-	SlashCommandService:createTextChatCommands()
 end
 
 -- Phase 3: Auto-discover game services after models ready

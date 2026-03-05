@@ -130,10 +130,22 @@ local function startQueueProcessor()
 			if #writeQueue > 0 then
 				-- Warn if queue is getting large
 				if #writeQueue > QUEUE_WARNING_THRESHOLD then
+					local modelCounts: { [string]: number } = {}
+					for _, req in ipairs(writeQueue) do
+						modelCounts[req.modelName] = (modelCounts[req.modelName] or 0) + 1
+					end
+
+					local parts: { string } = {}
+					for modelName, count in pairs(modelCounts) do
+						table.insert(parts, string.format("%s×%d", modelName, count))
+					end
+					table.sort(parts)
+
 					warn(
 						string.format(
-							"[PersistenceService] Queue is large (%d items). Consider optimizing write frequency.",
-							#writeQueue
+							"[PersistenceService] Queue is large (%d items). Consider optimizing write frequency. Breakdown: %s",
+							#writeQueue,
+							table.concat(parts, ", ")
 						)
 					)
 				end

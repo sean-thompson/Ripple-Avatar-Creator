@@ -9,14 +9,20 @@ I'll guide you through creating a new Roblox model that follows this project's A
 ## Project Model Architecture
 
 - **All models extend AbstractModel**
-- **Three scopes**:
+- **Five scopes**:
   - `User`: Per-player, persistent (saved to DataStore). One instance per player. Example: InventoryModel
+  - `UserSession`: Per-player, ephemeral (never saved). One instance per player, resets each session. Example: ManaModel
   - `Server`: Shared, ephemeral (resets on restart). One instance for all players. Example: ShrineModel
   - `UserEntity`: Per-player, persistent (saved to DataStore). Multiple instances per player. Example: PetModel
+  - `ServerEntity`: Shared, ephemeral, multiple instances. Two variants:
+    - **Predefined**: Entity IDs known at startup (e.g., DrawbridgeModel — gates, doors, world objects)
+    - **Dynamic**: Entities created at runtime (e.g., CandlesModel — player-placed objects, spawned instances)
 - **File locations**:
   - User models → `Source/ServerScriptService/models/user/`
+  - UserSession models → `Source/ServerScriptService/models/userSession/`
   - Server models → `Source/ServerScriptService/models/server/`
   - UserEntity models → `Source/ServerScriptService/models/userEntities/`
+  - ServerEntity models → `Source/ServerScriptService/models/serverEntities/`
 - **Auto-discovery**: ModelRunner automatically discovers and initializes models (no manual registration needed)
 
 ## Reference Files
@@ -43,11 +49,15 @@ What should your model be named?
 
 ### Step 2: Model Scope
 
-Does this model need to be **User-scoped**, **Server-scoped**, or **UserEntity-scoped**?
+Does this model need to be **User-scoped**, **UserSession-scoped**, **Server-scoped**, **UserEntity-scoped**, or **ServerEntity-scoped**?
 
 - **User scope**: Per-player data that persists - one instance per player (like inventory, quest progress, player stats)
+- **UserSession scope**: Per-player data that doesn't persist - resets each session (like mana, ammo, cooldowns, combo counters)
 - **Server scope**: Shared data that all players see - one instance for server (like shrines, leaderboards, world state)
 - **UserEntity scope**: Per-player data that persists - multiple instances per player (like pets, bases, character slots)
+- **ServerEntity scope**: Shared, ephemeral, multiple instances. Ask whether entities are:
+  - **Predefined** — IDs known at server start (gates, drawbridges, world objects with fixed IDs)
+  - **Dynamic** — created at runtime by game logic (player-placed candles, spawned objects, session instances)
 
 ### Step 3: Properties
 
@@ -99,8 +109,25 @@ When generating the model, I will:
 
 2. **Generate model file** at correct location:
    - User scope: `Source/ServerScriptService/models/user/{ModelName}.luau`
+   - UserSession scope: `Source/ServerScriptService/models/userSession/{ModelName}.luau`
    - Server scope: `Source/ServerScriptService/models/server/{ModelName}.luau`
    - UserEntity scope: `Source/ServerScriptService/models/userEntities/{ModelName}.luau`
+   - ServerEntity scope: `Source/ServerScriptService/models/serverEntities/{ModelName}.luau`
+
+2b. **For UserSession models specifically**:
+   - Constructor takes only `ownerId: string` (no modelId)
+   - Register Network state the same way as User models (model syncs to client)
+   - No `loadAllForOwner` or `removeAllEntitiesForOwner` required
+   - Methods call `syncState()` — syncs to owner player but skips DataStore
+   - See MODEL_GUIDE.md UserSession template for complete pattern
+
+2c. **For ServerEntity models specifically**:
+   - Constructor takes `entityId: string`, always passes `"SERVER"` as ownerId
+   - `get(entityId)` and `remove(entityId)` use entityId (not ownerId)
+   - Must implement `initAllServerEntities()` static method (required by ModelRunner)
+   - **Predefined variant**: `initAllServerEntities()` creates all known entities upfront and calls `syncState()` on each
+   - **Dynamic variant**: `initAllServerEntities()` is a no-op; add a `create(entityId, ...)` static factory that sets properties and calls `syncState()`; add a `syncAll()` that handles the empty-collection edge case by broadcasting `{}` via Network directly when no entities remain
+   - See MODEL_GUIDE.md ServerEntity templates for both patterns
 
 3. **For UserEntity models specifically**:
    - Constructor requires `modelId` parameter: `function Model.new(ownerId: string, modelId: string)`

@@ -61,14 +61,23 @@ UserEntity-scoped models are **per-player instances** and **persistent** (saved 
 
 ### ServerEntity-Scoped Models (`models/serverEntities/`)
 
-ServerEntity-scoped models are **per-server instances** and **ephemeral** (not saved):
+ServerEntity-scoped models are **per-server instances** and **ephemeral** (not saved). There are two variants:
 
-- **Lifecycle**: Multiple instances per server, created on server start, persist until server shutdown
+**Predefined** — entity IDs are known at server start:
+- **Lifecycle**: Created once in `initAllServerEntities()` at server start, persist until shutdown
 - **Persistence**: None - data resets when server restarts
 - **Owner ID**: Fixed string "SERVER" with unique entityId (e.g., "SERVER_main_gate")
-- **Use Cases**: Drawbridges, gates, doors, world objects with shared state
-- **Example**: `DrawbridgeModel` - multiple drawbridges in the world (main_gate, north_drawbridge, etc.)
-- **ID Strategy**: Semantic strings recommended (e.g., "main_gate", "north_drawbridge") - no length limit
+- **Use Cases**: Drawbridges, gates, doors, world objects with fixed IDs
+- **Example**: `DrawbridgeModel` — entities like "main_gate", "north_drawbridge" defined upfront
+- **ID Strategy**: Semantic strings (e.g., "main_gate", "north_drawbridge")
+
+**Dynamic** — entities created at runtime by game logic:
+- **Lifecycle**: `initAllServerEntities()` is a no-op; entities created via a static `create()` factory method
+- **Persistence**: None - all instances lost on server restart
+- **Owner ID**: Fixed string "SERVER" with a runtime-generated entityId (e.g., a UUID)
+- **Use Cases**: Player-placed objects, spawned world items, runtime-created instances
+- **Example**: `CandlesModel` — candles placed by players during a session
+- **ID Strategy**: UUIDs or other runtime-generated unique IDs
 
 ### Choosing a Scope
 
@@ -78,7 +87,8 @@ ServerEntity-scoped models are **per-server instances** and **ephemeral** (not s
 | **UserSession** | `models/userSession/` | ❌ No | ✅ Yes | ❌ One per player | Owner | Mana, ammo, cooldowns, session UI state |
 | **Server** | `models/server/` | ❌ No | ❌ No | ❌ One for server | All | Match scores, timers, shared game state |
 | **UserEntity** | `models/userEntities/` | ✅ Yes | ✅ Yes | ✅ Many per player | Owner | Pets, bases, character slots, equipment |
-| **ServerEntity** | `models/serverEntities/` | ❌ No | ❌ No | ✅ Many for server | All | Drawbridges, gates, doors, world objects |
+| **ServerEntity (predefined)** | `models/serverEntities/` | ❌ No | ❌ No | ✅ Many for server | All | Drawbridges, gates, doors — fixed IDs at startup |
+| **ServerEntity (dynamic)** | `models/serverEntities/` | ❌ No | ❌ No | ✅ Many for server | All | Player-placed objects, spawned items — runtime IDs |
 
 ## Creating a New Model
 
@@ -148,11 +158,15 @@ Use this decision tree to determine which scope your model needs:
 - Server-wide events
 - Leaderboard for current session
 
-✅ **ServerEntity-scoped** (shared, ephemeral, multiple instances):
+✅ **ServerEntity-scoped, predefined** (shared, ephemeral, fixed set of instances):
 - Drawbridges ("main_gate", "north_drawbridge")
 - Gates and doors with open/closed state
-- World objects that can be interacted with
-- Environmental objects with shared state
+- World objects with known IDs at server start
+
+✅ **ServerEntity-scoped, dynamic** (shared, ephemeral, runtime-created instances):
+- Player-placed candles or objects
+- Spawned world items with session lifetimes
+- Any shared object whose ID is only known at runtime
 
 ❌ **Common mistakes:**
 - Making inventory Server-scoped (each player needs their own!)
@@ -453,6 +467,86 @@ end
 return YourModel
 ```
 
+#### For Dynamic ServerEntity-Scoped Models (`models/serverEntities/YourModel.luau`):
+
+Use this when entity IDs are not known at server start — they are created at runtime by game logic.
+
+```lua
+--!strict
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local AbstractModel = require(script.Parent.Parent.AbstractModel)
+
+local YourModel = {}
+YourModel.__index = YourModel
+setmetatable(YourModel, AbstractModel)
+
+export type YourModel = typeof(setmetatable({} :: {
+	-- Define your model's properties here
+	propertyName: propertyType,
+}, YourModel)) & AbstractModel.AbstractModel
+
+function YourModel.new(entityId: string): YourModel
+	local self = AbstractModel.new("YourModel", "SERVER", "ServerEntity", entityId) :: any
+	setmetatable(self, YourModel)
+
+	-- Initialize your properties
+	self.propertyName = defaultValue
+
+	return self :: YourModel
+end
+
+function YourModel.get(entityId: string): YourModel
+	return AbstractModel.getOrCreate("YourModel", "SERVER", function()
+		return YourModel.new(entityId)
+	end, entityId) :: YourModel
+end
+
+function YourModel.remove(entityId: string): ()
+	AbstractModel.removeServerEntity("YourModel", entityId)
+end
+
+-- Static factory: create a fully-initialized entity and sync to all clients
+function YourModel.create(entityId: string, propertyName: propertyType): YourModel
+	local entity = YourModel.get(entityId)
+	entity.propertyName = propertyName
+	entity:syncState()
+	return entity
+end
+
+-- Get all active instances
+function YourModel.getAll(): { [string]: YourModel }
+	return AbstractModel.getAllServerEntities("YourModel") :: any
+end
+
+-- Sync all instances to clients. Handles the empty-collection edge case:
+-- when the last entity is removed, no instance exists to call syncState() on,
+-- so we broadcast {} directly via Network.
+function YourModel.syncAll(): ()
+	local all = YourModel.getAll()
+	local anyEntity = next(all)
+	if anyEntity then
+		all[anyEntity]:syncState()
+	else
+		local Network = require(ReplicatedStorage.Network)
+		Network.State.Your:Set({})
+	end
+end
+
+-- REQUIRED: no-op for dynamic entities — nothing to initialize at server start
+function YourModel.initAllServerEntities(): ()
+end
+
+-- Add your model's methods here
+function YourModel:yourMethod(): ()
+	-- Implementation
+	self:syncState()
+end
+
+return YourModel
+```
+
 **Key Differences:**
 - Require path: `script.Parent.Parent.AbstractModel` (up two levels from `user/`, `userSession/`, `server/`, `userEntities/`, or `serverEntities/`)
 - Scope parameter: `"User"`, `"UserSession"`, `"Server"`, `"UserEntity"`, or `"ServerEntity"`
@@ -460,7 +554,9 @@ return YourModel
 - UserEntity models require `modelId` parameter in constructor and all static methods
 - UserEntity models must implement `loadAllForOwner()` and `removeAllEntitiesForOwner()` static methods
 - ServerEntity models always use "SERVER" as ownerId with unique entityId
-- ServerEntity models must implement `initAllServerEntities()` static method
+- ServerEntity models must implement `initAllServerEntities()` static method (no-op for dynamic variants)
+- **Predefined** ServerEntity: `initAllServerEntities()` creates all instances upfront; entity IDs are semantic strings
+- **Dynamic** ServerEntity: entities created at runtime via a `create()` factory; add `syncAll()` to handle empty-collection broadcasts; entity IDs are typically UUIDs
 - Access pattern: User/UserSession use player UserId, Server uses `"SERVER"`, UserEntity uses composite `ownerId_modelId`, ServerEntity uses `"SERVER"` + `entityId`
 - Default sync: UserEntity models default to owner-only (like User/UserSession), can override to "all" with 5th parameter to `new()`
 - ServerEntity models always sync to all players (no persistence)
@@ -816,6 +912,51 @@ end
 function DrawbridgeModel:toggle(): ()
 	self.isOpen = not self.isOpen
 	self:syncState() -- Broadcasts to all players
+end
+```
+
+### Example 4: CandlesModel (Dynamic ServerEntity-Scoped)
+
+`CandlesModel` demonstrates the **dynamic** ServerEntity variant where entities are created at runtime rather than predefined at startup:
+
+### Key Differences from Predefined ServerEntity:
+- `initAllServerEntities()` is a **no-op** — no entities exist at server start
+- A static `create()` factory method initializes all properties and syncs in one call
+- `syncAll()` handles the **empty-collection edge case**: when the last candle is removed, no instance remains to call `syncState()` on, so it broadcasts `{}` directly via Network
+- Entity IDs are generated at runtime (e.g., UUIDs from `HttpService:GenerateGUID()`)
+
+### Usage in Production:
+- Controllers call `CandlesModel.create(entityId, creator, x, y, z)` to add a new candle
+- Controllers call `CandlesModel.remove(entityId)` then `CandlesModel.syncAll()` to remove one
+- Client receives the full `{entityId -> state}` dictionary and renders all candles from it
+
+```lua
+-- Example CandlesModel in models/serverEntities/CandlesModel.luau
+function CandlesModel.create(entityId, creator, posX, posY, posZ)
+	local candle = CandlesModel.get(entityId)
+	candle.creator = creator
+	candle.positionX = posX
+	candle.positionY = posY
+	candle.positionZ = posZ
+	candle.createdTime = os.time()
+	candle:syncState()
+	return candle
+end
+
+function CandlesModel.syncAll(): ()
+	local all = CandlesModel.getAll()
+	local anyCandle = next(all)
+	if anyCandle then
+		all[anyCandle]:syncState() -- triggers aggregated broadcast for all entities
+	else
+		-- No candles remain — broadcast empty state directly
+		local Network = require(game:GetService("ReplicatedStorage").Network)
+		Network.State.Candles:Set({})
+	end
+end
+
+-- No-op: candles are created dynamically, not at server start
+function CandlesModel.initAllServerEntities(): ()
 end
 ```
 
@@ -1265,7 +1406,7 @@ The builder prepends scope-specific args before `args` automatically:
 | `user` | `Player` | `(player, ...methodArgs)` → `model.get(userId):method(...)` |
 | `server` | *(none)* | `(...methodArgs)` → `model.get("SERVER"):method(...)` |
 | `userEntities` | `Player`, `string (Model ID)` | `(player, modelId, ...methodArgs)` → `model.get(userId, modelId):method(...)` |
-| `serverEntities` | *(skipped)* | No player-targeted actions applicable |
+| `serverEntities` | *(skipped by default)* | No player-targeted actions; for dynamic entities, target by `entityId` string if needed |
 
 ### Examples
 

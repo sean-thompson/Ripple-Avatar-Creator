@@ -32,6 +32,9 @@ function CashMachineController:executeAction(player: Player, action: Network.Cas
 	end
 
 	local inventory = InventoryModel.get(tostring(player.UserId))
+	if not inventory then
+		return
+	end
 
 	self:dispatchAction(ACTIONS, action, player, inventory, amount, player)
 end

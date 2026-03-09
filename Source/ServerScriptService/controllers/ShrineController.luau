@@ -103,6 +103,9 @@ local ACTIONS = {
 
 function ShrineController:executeAction(player: Player, action: Network.ShrineAction)
 	local inventory = InventoryModel.get(tostring(player.UserId))
+	if not inventory then
+		return
+	end
 	local shrine = ShrineModel.get("SERVER")
 
 	self:dispatchAction(ACTIONS, action, player, inventory, shrine, player)

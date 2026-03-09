@@ -210,6 +210,24 @@ local function syncAllServerEntities(modelName: string, stateProperty: any): ()
 	stateProperty:Set(aggregatedStates)
 end
 
+-- Aggregate and sync all User-scoped states to all players, keyed by ownerId
+local function syncAllUsersToAll(modelName: string, stateProperty: any): ()
+	local registry = registries[modelName]
+	if not registry then
+		return
+	end
+
+	local aggregatedStates: { [string]: any } = {}
+
+	-- Collect all user states (User scope keys are plain ownerIds, no underscore prefix)
+	for ownerId, instance in registry do
+		aggregatedStates[ownerId] = (instance :: any):_extractState()
+	end
+
+	-- Broadcast the aggregated dictionary to all players
+	stateProperty:Set(aggregatedStates)
+end
+
 function AbstractModel:syncState(skipPersistence: boolean?): ()
 	-- Queue persistence for User and UserEntity scoped models (not Server or ServerEntity)
 	if not skipPersistence and (self._scope == "User" or self._scope == "UserEntity") then
@@ -238,9 +256,14 @@ function AbstractModel:syncState(skipPersistence: boolean?): ()
 			end
 		end
 	elseif syncScope == "all" then
-		-- Server-scoped models (or override): Broadcast to all
-		local state = self:_extractState()
-		self._stateProperty:Set(state)  -- Bolt global sync
+		if self._scope == "User" then
+			-- User-scoped model with all sync: Aggregate all users' states into a dictionary keyed by ownerId
+			syncAllUsersToAll(self._modelName, self._stateProperty)
+		else
+			-- Server-scoped models: Broadcast this instance's state to all
+			local state = self:_extractState()
+			self._stateProperty:Set(state)  -- Bolt global sync
+		end
 	end
 end
 

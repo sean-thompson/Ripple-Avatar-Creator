@@ -23,10 +23,10 @@ function InventoryModel.new(ownerId: string): InventoryModel
 	return self :: InventoryModel
 end
 
-function InventoryModel.get(ownerId: string): InventoryModel
-	return AbstractModel.getOrCreate("InventoryModel", ownerId, function()
+function InventoryModel.get(ownerId: string): InventoryModel?
+	return AbstractModel.getOrWait("InventoryModel", ownerId, function()
 		return InventoryModel.new(ownerId)
-	end) :: InventoryModel
+	end) :: InventoryModel?
 end
 
 function InventoryModel.remove(ownerId: string): ()

@@ -10,6 +10,8 @@ local AbstractModel = {}
 AbstractModel.__index = AbstractModel
 
 local registries: { [string]: { [string]: AbstractModel } } = {}
+local _loadedModels: { [string]: { [string]: boolean } } = {}
+local _waitThreads: { [string]: { [string]: { thread } } } = {}
 
 type ModelScope = "User" | "Server" | "UserEntity" | "ServerEntity" | "UserSession"
 
@@ -84,6 +86,66 @@ function AbstractModel.removeInstance(modelName: string, ownerId: string, modelI
 	if registries[modelName] then
 		local registryKey = if modelId then ownerId .. "_" .. modelId else ownerId
 		registries[modelName][registryKey] = nil
+	end
+
+	-- Signal waiting threads that player left (User scope only, no modelId)
+	if not modelId then
+		if _loadedModels[modelName] then
+			_loadedModels[modelName][ownerId] = nil
+		end
+		if _waitThreads[modelName] and _waitThreads[modelName][ownerId] then
+			local threads = _waitThreads[modelName][ownerId]
+			_waitThreads[modelName][ownerId] = nil
+			for _, thread in threads do
+				task.spawn(thread, false)
+			end
+		end
+	end
+end
+
+-- Yield until ModelRunner calls markLoaded for this model+owner, then return the instance.
+-- Returns nil if the player leaves before the model is loaded.
+function AbstractModel.getOrWait(modelName: string, ownerId: string, constructorFn: () -> AbstractModel): AbstractModel?
+	local instance = AbstractModel.getOrCreate(modelName, ownerId, constructorFn)
+
+	if _loadedModels[modelName] and _loadedModels[modelName][ownerId] then
+		return instance
+	end
+
+	-- If player is already gone, clean up and bail
+	local userId = tonumber(ownerId)
+	if userId and not Players:GetPlayerByUserId(userId) then
+		AbstractModel.removeInstance(modelName, ownerId)
+		return nil
+	end
+
+	if not _waitThreads[modelName] then
+		_waitThreads[modelName] = {}
+	end
+	if not _waitThreads[modelName][ownerId] then
+		_waitThreads[modelName][ownerId] = {}
+	end
+
+	local thread = coroutine.running()
+	table.insert(_waitThreads[modelName][ownerId], thread)
+
+	local loaded = coroutine.yield()
+	return if loaded then instance else nil
+end
+
+-- Called by ModelRunner after DataStore data is loaded and applied for a User-scoped model.
+function AbstractModel.markLoaded(modelName: string, ownerId: string): ()
+	if not _loadedModels[modelName] then
+		_loadedModels[modelName] = {}
+	end
+	_loadedModels[modelName][ownerId] = true
+
+	if _waitThreads[modelName] and _waitThreads[modelName][ownerId] then
+		local threads = _waitThreads[modelName][ownerId]
+		_waitThreads[modelName][ownerId] = nil
+		for _, thread in threads do
+			task.spawn(thread, true)
+		end
 	end
 end
 

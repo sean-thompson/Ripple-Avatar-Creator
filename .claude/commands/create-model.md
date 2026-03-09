@@ -114,6 +114,20 @@ When generating the model, I will:
    - UserEntity scope: `Source/ServerScriptService/models/userEntities/{ModelName}.luau`
    - ServerEntity scope: `Source/ServerScriptService/models/serverEntities/{ModelName}.luau`
 
+2a. **For User-scoped models specifically**:
+   - `.get()` must use `AbstractModel.getOrWait` (not `getOrCreate`) and return `{ModelName}?` (nullable)
+   - This yields until ModelRunner finishes loading DataStore data, then returns the real instance
+   - Returns `nil` if the player leaves before data loads — all callers must nil-check the result
+   - Template:
+     ```lua
+     function {ModelName}.get(ownerId: string): {ModelName}?
+         return AbstractModel.getOrWait("{ModelName}", ownerId, function()
+             return {ModelName}.new(ownerId)
+         end) :: {ModelName}?
+     end
+     ```
+   - Do NOT use `getOrWait` for UserSession, Server, UserEntity, or ServerEntity scopes — those use `getOrCreate` and return non-nullable
+
 2b. **For UserSession models specifically**:
    - Constructor takes only `ownerId: string` (no modelId)
    - Register Network state the same way as User models (model syncs to client)

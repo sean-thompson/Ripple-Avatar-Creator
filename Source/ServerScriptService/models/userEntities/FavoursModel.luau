@@ -42,6 +42,9 @@ function FavoursModel.loadAllForOwner(ownerId: string): boolean
 	-- Get the InventoryModel to access favourIds list
 	local InventoryModel = require(script.Parent.Parent.user.InventoryModel)
 	local inventory = InventoryModel.get(ownerId)
+	if not inventory then
+		return false
+	end
 
 	-- If favourIds doesn't exist, assume no favours yet
 	local favourIds = (inventory :: any).favourIds or {}

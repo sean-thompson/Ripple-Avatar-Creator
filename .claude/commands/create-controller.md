@@ -333,7 +333,12 @@ return {ControllerName}
 
 **User-Scoped Model**:
 ```lua
+-- User-scoped .get() yields until DataStore data is loaded, then returns the instance.
+-- Returns nil if the player leaves before loading completes — always nil-check.
 local {modelName} = {ModelName}.get(tostring(player.UserId))
+if not {modelName} then
+	return
+end
 ```
 
 **Server-Scoped Model**:
@@ -488,6 +493,7 @@ Before finalizing:
 - ✅ executeAction calls dispatchAction with correct arguments
 - ✅ Model imports match model names collected
 - ✅ Model acquisition uses correct scope (User vs Server)
+- ✅ User-scoped model `.get()` result is nil-checked before use (`if not model then return end`)
 - ✅ Type definition includes AbstractController intersection
 - ✅ --!strict pragma at top of file
 - ✅ Network.luau updates maintain alphabetical order
@@ -585,6 +591,9 @@ Documentation:
   - Controllers validate intents, Models enforce invariants
   - User-scoped models: player.UserId / Server-scoped: "SERVER"
   - Validation happens in controller, business logic in models
+  - User-scoped model .get() returns T? (nullable) — always nil-check before use
+    local model = YourModel.get(tostring(player.UserId))
+    if not model then return end  -- player left before data loaded
 ```
 
 ---

@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- Initialize PersistenceService before any models are used
+local AbstractModel = require(script.Parent.AbstractModel)
 local ServiceRunner = require(script.Parent.Parent.services.ServiceRunner)
 ServiceRunner.initPersistence()
 
@@ -12,6 +13,7 @@ local modelsFolder = script.Parent
 local models = {}
 
 type ModelClass = {
+	new: (ownerId: string) -> any,
 	get: (ownerId: string) -> any,
 	remove: (ownerId: string) -> (),
 	initAllServerEntities: (() -> ())?,
@@ -123,8 +125,11 @@ Players.PlayerAdded:Connect(function(player: Player)
 				return -- Stop processing this player
 			end
 
-			-- Get or create model instance for this player (with defaults)
-			local instance = modelInfo.class.get(ownerId)
+			-- Get or create model instance for this player (with defaults).
+			-- Use getOrCreate directly — ModelRunner is the data producer and must never yield.
+			local instance = AbstractModel.getOrCreate(modelInfo.name, ownerId, function()
+				return modelInfo.class.new(ownerId)
+			end)
 
 			-- Apply loaded data if it exists (overwrites defaults)
 			if loadedData then
@@ -134,6 +139,10 @@ Players.PlayerAdded:Connect(function(player: Player)
 			-- Sync initial state to client (skipPersistence=true since we just loaded)
 			-- This ensures Bolt RemoteProperty has correct value when client calls Observe()
 			instance:syncState(true)
+
+			-- Signal that this model's data is fully loaded. Any code that called
+			-- getOrWait() before this point will now be resumed with real data.
+			AbstractModel.markLoaded(modelInfo.name, ownerId)
 
 		-- Initialize UserEntity-scoped models per player
 		elseif modelInfo.scope == "UserEntity" then

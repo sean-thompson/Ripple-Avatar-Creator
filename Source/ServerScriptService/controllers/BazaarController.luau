@@ -29,6 +29,9 @@ local ACTIONS = {
 
 function BazaarController:executeAction(player: Player, action: Network.BazaarAction)
 	local inventory = InventoryModel.get(tostring(player.UserId))
+	if not inventory then
+		return
+	end
 	self:dispatchAction(ACTIONS, action, player, inventory, player)
 end
 

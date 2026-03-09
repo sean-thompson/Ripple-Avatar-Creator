@@ -437,15 +437,35 @@ The Bolt Observe() pattern eliminates common issues with the old RemoteEvent pat
 
 #### User Scope (e.g., InventoryModel)
 - One instance per player
-- State sent only to the owner
-- **Format**: Single state object
+- **Default** (`syncScope = "owner"`): State sent only to the owner as a single object
+- **Broadcast variant** (`syncScope = "all"`): All users' states aggregated into a dictionary keyed by `ownerId` and broadcast to all players
 
+**Default — owner-only (`syncScope = "owner"`):**
 ```lua
 inventoryState:Observe(function(data: Network.InventoryState)
 	-- data is a single object: { ownerId, gold, treasure, ... }
 	updateLabels(data.gold, data.treasure)
 end)
 ```
+
+**Broadcast variant — all players receive a dictionary (`syncScope = "all"`):**
+```lua
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+type PowerUpStateDictionary = { [string]: Network.PowerUpState }
+
+powerUpState:Observe(function(allPowerUps: PowerUpStateDictionary)
+	-- allPowerUps is { [ownerId] = { ownerId, power, ... } }
+	-- Index by local player's UserId to get your own state
+	local myState = allPowerUps[tostring(localPlayer.UserId)]
+	if myState then
+		updatePowerUpDisplay(myState.power)
+	end
+end)
+```
+
+> **Why a dictionary?** When `syncScope = "all"`, every player's sync would otherwise overwrite the previous player's data in the RemoteProperty. Aggregating into `{ [ownerId]: State }` preserves all players' states simultaneously.
 
 #### Server Scope (e.g., ShrineModel)
 - One instance for the entire server
@@ -509,12 +529,13 @@ end)
 
 #### Quick Reference Table
 
-| Scope | Recipients | State Format | Example |
-|-------|-----------|--------------|---------|
-| User | Owner only | Single object | InventoryModel |
-| Server | All players | Single object | ShrineModel |
-| UserEntity | Owner only | `{ [entityId]: State }` | FavoursModel |
-| ServerEntity | All players | `{ [entityId]: State }` | CandlesModel |
+| Scope | syncScope | Recipients | State Format | Example |
+|-------|-----------|-----------|--------------|---------|
+| User | `"owner"` (default) | Owner only | Single object | InventoryModel |
+| User | `"all"` (override) | All players | `{ [ownerId]: State }` | PowerUpModel |
+| Server | `"all"` (default) | All players | Single object | ShrineModel |
+| UserEntity | `"owner"` (default) | Owner only | `{ [entityId]: State }` | FavoursModel |
+| ServerEntity | `"all"` (default) | All players | `{ [entityId]: State }` | CandlesModel |
 
 **Common Mistakes with Entity-Scoped Models**:
 
@@ -523,6 +544,8 @@ end)
 2. **Only handling additions, not removals** - When entities can be removed (like candles expiring), your view must compare the incoming state with tracked entities and remove any that are no longer present. Either:
    - Clear and rebuild: `clearList()` then iterate (simple but may cause flicker)
    - Diff and update: Spawn new, remove missing (smoother for visual objects)
+
+3. **Treating User + `syncScope="all"` state as a single object** - If a User-scoped model uses `syncScope = "all"`, its property holds `{ [ownerId]: State }` — a dictionary keyed by ownerId, broadcast to all players. Index by the local player's UserId to get your own state. Do **not** cache state from `Observe()` into a separate per-player table — that duplicates what the RemoteProperty already provides.
 
 ## Best Practices
 

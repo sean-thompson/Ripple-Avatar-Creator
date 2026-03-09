@@ -401,9 +401,12 @@ function YourModel:yourMethod(): ()
 end
 
 -- Example: Method that broadcasts to all players (requires "all" syncScope in constructor)
+-- NOTE: For User-scoped models with syncScope="all", syncState() aggregates ALL users'
+-- states into { [ownerId]: State } before broadcasting. Clients receive the full
+-- dictionary and must index by the local player's UserId to get their own state.
 function YourModel:broadcastMethod(): ()
 	-- Only works if you passed "all" as syncScope to AbstractModel.new()
-	self:syncState() -- Will broadcast to all players
+	self:syncState() -- Will broadcast aggregated { [ownerId]: State } to all players
 end
 
 return YourModel

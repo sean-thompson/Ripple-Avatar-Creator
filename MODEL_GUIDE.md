@@ -97,7 +97,9 @@ ServerEntity-scoped models are **per-server instances** and **ephemeral** (not s
 All models inherit from `AbstractModel.luau` which provides:
 
 - **`new(modelName: string, ownerId: string, scope: ModelScope)`**: Constructor for creating new instances with model name, owner identifier, and scope
-- **`getOrCreate(modelName: string, ownerId: string, constructorFn: () -> AbstractModel)`**: Centralized registry management - gets existing instance or creates new one
+- **`getOrCreate(modelName, ownerId, constructorFn)`**: Centralized registry management - gets existing instance or creates new one. Never yields. Used by ModelRunner and non-User scopes.
+- **`getOrWait(modelName, ownerId, constructorFn) -> T?`**: Like `getOrCreate` but yields until ModelRunner calls `markLoaded` for this model+owner. Returns `nil` if the player leaves before data is loaded. **Used exclusively by User-scoped `.get()` methods.**
+- **`markLoaded(modelName, ownerId)`**: Called by ModelRunner after a User-scoped model's DataStore data is applied. Resumes any threads parked in `getOrWait`.
 - **`removeInstance(modelName: string, ownerId: string)`**: Centralized instance removal for cleanup
 - **`syncState(skipPersistence: boolean?)`**: Syncs model state to clients via Bolt RemoteProperty and triggers DataStore persistence (User-scoped only). Automatically detects scope for filtering.
 - **`ownerId: string`**: Property storing the unique identifier for the model owner
@@ -186,6 +188,10 @@ Before creating your model, decide which scope it needs:
 
 #### For User-Scoped Models (`models/user/YourModel.luau`):
 
+> **Note**: User-scoped `.get()` uses `getOrWait` and returns `YourModel?`. It yields until
+> ModelRunner finishes loading DataStore data for this player, then returns the populated instance.
+> It returns `nil` if the player leaves before loading completes. All callers must nil-check.
+
 ```lua
 --!strict
 
@@ -210,10 +216,12 @@ function YourModel.new(ownerId: string): YourModel
 	return self :: YourModel
 end
 
-function YourModel.get(ownerId: string): YourModel
-	return AbstractModel.getOrCreate("YourModel", ownerId, function()
+-- Returns nil if the player leaves before DataStore data is loaded.
+-- Always nil-check the result at the call site.
+function YourModel.get(ownerId: string): YourModel?
+	return AbstractModel.getOrWait("YourModel", ownerId, function()
 		return YourModel.new(ownerId)
-	end) :: YourModel
+	end) :: YourModel?
 end
 
 function YourModel.remove(ownerId: string): ()

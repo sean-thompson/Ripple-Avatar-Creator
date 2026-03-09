@@ -75,11 +75,12 @@ function YourController.new(): YourController
 		end
 
 		-- Get the model
-		-- For User-scoped models: get per-player instance
+		-- For User-scoped models: yields until DataStore data is loaded, returns nil if player left
 		local model = YourModel.get(tostring(player.UserId))
-		-- For Server-scoped models: get shared instance
+		if not model then return end  -- player left before data loaded
+		-- For Server-scoped models: get shared instance (non-nullable)
 		-- local model = YourModel.get("SERVER")
-		-- For UserEntity-scoped models: get/create per-entity instance
+		-- For UserEntity-scoped models: get/create per-entity instance (non-nullable)
 		-- IMPORTANT: Always use .get(), never .new() - .get() ensures registry registration
 		-- local entity = YourEntityModel.get(tostring(player.UserId), entityId)
 
@@ -708,9 +709,12 @@ Controllers interact with three types of model scopes:
 - One instance per player (e.g., InventoryModel, QuestModel)
 - Identified by `ownerId` (player.UserId as string)
 - Data persists per player
+- `.get()` returns `T?` (nullable) — yields until DataStore data is loaded, returns `nil` if player leaves first
 
 ```lua
+-- Always nil-check: returns nil if player left before their data finished loading
 local inventory = InventoryModel.get(tostring(player.UserId))
+if not inventory then return end
 ```
 
 **2. Server-Scoped Models** (`models/server/`)

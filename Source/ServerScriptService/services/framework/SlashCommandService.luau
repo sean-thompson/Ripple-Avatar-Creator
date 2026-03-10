@@ -16,6 +16,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TextChatService = game:GetService("TextChatService")
 
@@ -61,8 +62,12 @@ local function hasPermission(player: Player): boolean
 		return player:GetRankInGroup(groupId) >= MIN_RANK
 	end
 
-	warn(`[SlashCommandService] Game is not owned by a group. Allowing all players to use commands.`)
-	return true
+	-- Non-group game: allow Studio sessions or the game creator only
+	if RunService:IsStudio() or player.UserId == game.CreatorId then
+		return true
+	end
+
+	return false
 end
 
 local function parseArguments(argString: string): { any }

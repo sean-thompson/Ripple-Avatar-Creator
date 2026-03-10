@@ -119,6 +119,11 @@ Players.PlayerAdded:Connect(function(player: Player)
 			-- Load data from DataStore for this model
 			local success, loadedData = PersistenceService:loadModel(modelInfo.name, ownerId)
 
+			-- Guard: player may have disconnected during the DataStore yield
+			if not player.Parent then
+				return
+			end
+
 			-- If load failed, kick the player to prevent data loss
 			if not success then
 				player:Kick("Roblox servers are busy right now. Please rejoin to try again. Your progress is safe!")
@@ -150,6 +155,11 @@ Players.PlayerAdded:Connect(function(player: Player)
 			-- They should implement a static loadAllForOwner method
 			if modelInfo.class.loadAllForOwner then
 				local success = modelInfo.class.loadAllForOwner(ownerId)
+
+				-- Guard: player may have disconnected during the DataStore yield
+				if not player.Parent then
+					return
+				end
 
 				if not success then
 					player:Kick("Roblox servers are busy right now. Please rejoin to try again. Your progress is safe!")

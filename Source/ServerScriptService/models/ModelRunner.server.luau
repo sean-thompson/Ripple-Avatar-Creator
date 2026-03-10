@@ -97,8 +97,6 @@ for _, modelInfo in modelInfos do
 		if modelInfo.class.initAllServerEntities then
 			modelInfo.class.initAllServerEntities()
 			print("ModelRunner: Initialized ServerEntity-scoped model - " .. modelInfo.name)
-		else
-			warn("ServerEntity model " .. modelInfo.name .. " missing initAllServerEntities method")
 		end
 	end
 end

@@ -1,8 +1,8 @@
 --!strict
 
-local DataStoreService = game:GetService("DataStoreService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
+local DataStoreService = game:GetService('DataStoreService')
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
 
 local PersistenceService = {}
 
@@ -11,6 +11,7 @@ local BASE_TOKENS = 50 -- Base tokens available (safety margin from 60)
 local TOKENS_PER_PLAYER = 8 -- Additional tokens per player in the game
 local TOKEN_REGENERATION_RATE = 1 -- Tokens per second
 local MINIMUM_WAIT_BETWEEN_WRITES = 0.1 -- Wait even when tokens available
+local WRITE_DEBOUNCE_DELAY = 2 -- Seconds a key must be idle before being written
 local QUEUE_WARNING_THRESHOLD = 100 -- Warn if queue gets too large
 
 -- Types
@@ -150,10 +151,19 @@ local function startQueueProcessor()
 					)
 				end
 
-				-- Check if we have tokens available
-				if currentTokens > 0 then
-					-- Remove the first item from the queue
-					local request = table.remove(writeQueue, 1)
+				-- Find the first request that has been idle long enough (debounce)
+				local readyIndex: number? = nil
+				local nowMs = DateTime.now().UnixTimestampMillis
+				for i, req in ipairs(writeQueue) do
+					if (nowMs - req.timestamp) >= (WRITE_DEBOUNCE_DELAY * 1000) then
+						readyIndex = i
+						break
+					end
+				end
+
+				-- Check if we have a ready request and tokens available
+				if readyIndex and currentTokens > 0 then
+					local request = table.remove(writeQueue, readyIndex)
 
 					-- Consume a token
 					currentTokens = currentTokens - 1
@@ -164,8 +174,8 @@ local function startQueueProcessor()
 					-- Wait a bit even when we have tokens
 					task.wait(MINIMUM_WAIT_BETWEEN_WRITES)
 				else
-					-- No tokens available, wait 1 second
-					task.wait(1)
+					-- No ready requests or no tokens available
+					task.wait(currentTokens > 0 and 0.5 or 1)
 				end
 			else
 				-- No work to do, wait a bit before checking again

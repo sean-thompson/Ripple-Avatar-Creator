@@ -1,7 +1,7 @@
 ---
 description: Create a new Roblox controller with AbstractController pattern
 allowed-tools: Bash(find, cat, grep, ls), Read, Write, Edit, Glob
-model: claude-sonnet-4-5-20250929
+model: sonnet
 ---
 
 I'll guide you through creating a new Roblox controller that follows this project's AbstractController architecture.

@@ -26,6 +26,8 @@ end
 print("ControllerRunner: All " .. #controllerInfos .. " controller(s) initialized")
 
 -- Register controllers with SlashCommandService via ServiceRunner
+-- Ensure SlashCommandService is initialized (may race with ModelRunner)
 local ServiceRunner = require(script.Parent.Parent.services.ServiceRunner)
+ServiceRunner.initSlashCommands()
 ServiceRunner.registerControllers(controllerInfos)
 ServiceRunner.finalizeSlashCommands()

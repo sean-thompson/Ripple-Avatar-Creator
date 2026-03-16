@@ -33,8 +33,24 @@
       }
     },
     "ServerScriptService": {
-      "$path": "Source/ServerScriptService",
-      "$ignoreUnknownInstances": true
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "controllers": {
+        "$path": "Source/ServerScriptService/controllers"
+      },
+      "models": {
+        "$path": "Source/ServerScriptService/models"
+      },
+      "services": {
+        "$path": "Source/ServerScriptService/services"
+      },
+      "Config": {
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true,
+        "ConfigTypes": {
+          "$path": "Source/ServerScriptService/Config/ConfigTypes"
+        }
+      }
     }
   }
 }

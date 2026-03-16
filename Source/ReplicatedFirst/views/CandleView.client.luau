@@ -87,8 +87,8 @@ local function spawnCandle(entityId: string, data: Network.CandlesState)
 	spawnedCandles[entityId] = candle
 
 	-- Initialize animation state
-	local shaft = candle:FindFirstChild("Shaft") :: BasePart?
-	local wick = candle:FindFirstChild("Wick")
+	local shaft = candle:WaitForChild("Shaft") :: BasePart
+	local wick = candle:WaitForChild("Wick")
 
 	if shaft and wick then
 		candleAnimations[entityId] = {

@@ -6,8 +6,8 @@
 	2. Game services (auto-discovered)
 ]]
 
-local frameworkFolder = script.Parent:FindFirstChild("framework")
-local gameFolder = script.Parent:FindFirstChild("game")
+local frameworkFolder = script.Parent:WaitForChild("framework")
+local gameFolder = script.Parent:WaitForChild("game")
 
 local ServiceRunner = {}
 
@@ -33,23 +33,19 @@ end
 
 -- Phase 2: After models discovered (idempotent — safe to call from multiple scripts)
 function ServiceRunner.initSlashCommands()
-	if SlashCommandService then
-		return
-	end
+	if SlashCommandService then return end
 	SlashCommandService = require(frameworkFolder.SlashCommandService)
 	SlashCommandService:init()
 end
 
 function ServiceRunner.registerModels(modelInfos)
+	ServiceRunner.initSlashCommands()
 	SlashCommandService:registerModels(modelInfos)
 end
 
 function ServiceRunner.registerControllers(controllerInfos)
+	ServiceRunner.initSlashCommands()
 	SlashCommandService:registerControllers(controllerInfos)
-end
-
-function ServiceRunner.finalizeSlashCommands()
-	SlashCommandService:createTextChatCommands()
 end
 
 -- Phase 3: Auto-discover game services after models ready

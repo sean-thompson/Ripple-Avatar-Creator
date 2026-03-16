@@ -42,6 +42,9 @@ function FavoursModel.loadAllForOwner(ownerId: string): boolean
 	-- Get the InventoryModel to access favourIds list
 	local InventoryModel = require(script.Parent.Parent.user.InventoryModel)
 	local inventory = InventoryModel.get(ownerId)
+	if not inventory then
+		return false
+	end
 
 	-- If favourIds doesn't exist, assume no favours yet
 	local favourIds = (inventory :: any).favourIds or {}
@@ -93,5 +96,20 @@ function FavoursModel:setFavourType(favourType: string): ()
 	self.favourType = favourType
 	self:syncState()
 end
+
+-- Debug action descriptors for DebugActionBuilder.
+-- Pure data — no imports required. Builder prepends Player + "Model ID" args for UserEntity scope.
+-- DebugTools arg types: "Player" | "string" | "number" | "boolean"
+FavoursModel.debugActions = {
+	{
+		name = "Set Favour Type",
+		description = "Set the type of a specific favour for a player",
+		method = "setFavourType",
+		modelIdLabel = "Favour ID",
+		args = {
+			{ Type = "string", Name = "Favour Type", Default = "" },
+		},
+	},
+}
 
 return FavoursModel

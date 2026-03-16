@@ -67,11 +67,4 @@ function CandlesModel.syncAll(): ()
 	end
 end
 
--- Required: Initialize server entities on startup
--- For dynamically-created candles, this starts empty
-function CandlesModel.initAllServerEntities(): ()
-	-- Candles are created dynamically via CandlesModel.create()
-	-- No predefined entities to initialize
-end
-
 return CandlesModel

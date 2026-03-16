@@ -73,7 +73,7 @@ local function donate(inventory: any, shrine: any, player: Player)
 		local candleId = generateCandleId()
 		local character = player.Character
 		if character then
-			local rootPart = character:FindFirstChild("HumanoidRootPart")
+			local rootPart = character:WaitForChild("HumanoidRootPart")
 			if rootPart then
 				local pos = rootPart.Position
 				CandlesModel.create(candleId, tostring(player.UserId), pos.X, pos.Y, pos.Z)
@@ -103,6 +103,9 @@ local ACTIONS = {
 
 function ShrineController:executeAction(player: Player, action: Network.ShrineAction)
 	local inventory = InventoryModel.get(tostring(player.UserId))
+	if not inventory then
+		return
+	end
 	local shrine = ShrineModel.get("SERVER")
 
 	self:dispatchAction(ACTIONS, action, player, inventory, shrine, player)

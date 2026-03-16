@@ -7,3 +7,6 @@
 
 # VS Code / Tooling artifacts
 sourcemap.json
+
+# Wally package installs
+Packages/

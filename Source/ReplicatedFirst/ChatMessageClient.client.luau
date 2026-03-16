@@ -17,12 +17,7 @@ function ChatMessageClient.new(): ()
 	local Network = require(ReplicatedStorage:WaitForChild("Network"))
 
 	local textChannels = TextChatService:WaitForChild("TextChannels")
-	local generalChannel = textChannels:FindFirstChild("RBXGeneral")
-
-	if not generalChannel then
-		warn("[ChatMessageClient] Could not find RBXGeneral channel")
-		return
-	end
+	local generalChannel = textChannels:WaitForChild("RBXGeneral")
 
 	Network.State.SlashCommand:Observe(function(data: { message: string })
 		if data.message ~= "" then

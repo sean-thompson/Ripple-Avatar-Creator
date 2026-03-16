@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- Initialize PersistenceService before any models are used
+local AbstractModel = require(script.Parent.AbstractModel)
 local ServiceRunner = require(script.Parent.Parent.services.ServiceRunner)
 ServiceRunner.initPersistence()
 ServiceRunner.initAnalytics()
@@ -13,12 +14,13 @@ local modelsFolder = script.Parent
 local models = {}
 
 type ModelClass = {
+	new: (ownerId: string) -> any,
 	get: (ownerId: string) -> any,
 	remove: (ownerId: string) -> (),
 	initAllServerEntities: (() -> ())?,
 }
 
-type ModelScope = "User" | "Server" | "UserEntity" | "ServerEntity"
+type ModelScope = "User" | "Server" | "UserEntity" | "ServerEntity" | "UserSession"
 
 type ModelInfo = {
 	class: ModelClass,
@@ -68,6 +70,12 @@ if serverEntitiesFolder then
 	discoverModelsInFolder(serverEntitiesFolder, "ServerEntity")
 end
 
+-- Discover UserSession-scoped models
+local userSessionFolder = modelsFolder:FindFirstChild("userSession")
+if userSessionFolder then
+	discoverModelsInFolder(userSessionFolder, "UserSession")
+end
+
 -- Register models with SlashCommandService and initialize it
 ServiceRunner.initSlashCommands()
 ServiceRunner.registerModels(modelInfos)
@@ -90,8 +98,6 @@ for _, modelInfo in modelInfos do
 		if modelInfo.class.initAllServerEntities then
 			modelInfo.class.initAllServerEntities()
 			print("ModelRunner: Initialized ServerEntity-scoped model - " .. modelInfo.name)
-		else
-			warn("ServerEntity model " .. modelInfo.name .. " missing initAllServerEntities method")
 		end
 	end
 end
@@ -112,14 +118,22 @@ local function initializePlayer(player: Player)
 			-- Load data from DataStore for this model
 			local success, loadedData = PersistenceService:loadModel(modelInfo.name, ownerId)
 
+			-- Guard: player may have disconnected during the DataStore yield
+			if not player.Parent then
+				return
+			end
+
 			-- If load failed, kick the player to prevent data loss
 			if not success then
 				player:Kick("Roblox servers are busy right now. Please rejoin to try again. Your progress is safe!")
 				return -- Stop processing this player
 			end
 
-			-- Get or create model instance for this player (with defaults)
-			local instance = modelInfo.class.get(ownerId)
+			-- Get or create model instance for this player (with defaults).
+			-- Use getOrCreate directly — ModelRunner is the data producer and must never yield.
+			local instance = AbstractModel.getOrCreate(modelInfo.name, ownerId, function()
+				return modelInfo.class.new(ownerId)
+			end)
 
 			-- Apply loaded data if it exists (overwrites defaults)
 			if loadedData then
@@ -130,12 +144,21 @@ local function initializePlayer(player: Player)
 			-- This ensures Bolt RemoteProperty has correct value when client calls Observe()
 			instance:syncState(true)
 
+			-- Signal that this model's data is fully loaded. Any code that called
+			-- getOrWait() before this point will now be resumed with real data.
+			AbstractModel.markLoaded(modelInfo.name, ownerId)
+
 		-- Initialize UserEntity-scoped models per player
 		elseif modelInfo.scope == "UserEntity" then
 			-- UserEntity models need custom initialization per model type
 			-- They should implement a static loadAllForOwner method
 			if modelInfo.class.loadAllForOwner then
 				local success = modelInfo.class.loadAllForOwner(ownerId)
+
+				-- Guard: player may have disconnected during the DataStore yield
+				if not player.Parent then
+					return
+				end
 
 				if not success then
 					player:Kick("Roblox servers are busy right now. Please rejoin to try again. Your progress is safe!")
@@ -144,6 +167,11 @@ local function initializePlayer(player: Player)
 			else
 				warn("UserEntity model " .. modelInfo.name .. " missing loadAllForOwner method")
 			end
+
+		-- Initialize UserSession-scoped models per player (no DataStore load)
+		elseif modelInfo.scope == "UserSession" then
+			local instance = modelInfo.class.get(ownerId)
+			instance:syncState(true)
 		end
 	end
 
@@ -180,9 +208,11 @@ local playerRemovingConnection = Players.PlayerRemoving:Connect(function(player:
 	-- Flush all pending writes for this player before cleanup
 	PersistenceService:flushPlayerWrites(ownerId)
 
-	-- Remove User and UserEntity scoped models (Server-scoped persist for server lifetime)
+	-- Remove User, UserSession, and UserEntity scoped models (Server-scoped persist for server lifetime)
 	for _, modelInfo in modelInfos do
 		if modelInfo.scope == "User" then
+			modelInfo.class.remove(ownerId)
+		elseif modelInfo.scope == "UserSession" then
 			modelInfo.class.remove(ownerId)
 		elseif modelInfo.scope == "UserEntity" then
 			-- Clean up all user entities for this owner

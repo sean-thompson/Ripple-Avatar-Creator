@@ -16,6 +16,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TextChatService = game:GetService("TextChatService")
 
@@ -38,6 +39,8 @@ local controllers: { [string]: { instance: any, remoteEvent: RemoteEvent, origin
 local commandRemote: RemoteEvent = nil
 local messageRemote: RemoteEvent = nil
 local groupId: number? = nil
+local modelsRegistered = false
+local controllersRegistered = false
 
 local function sendChatMessage(player: Player, message: string): ()
 	if not messageRemote then
@@ -59,8 +62,12 @@ local function hasPermission(player: Player): boolean
 		return player:GetRankInGroup(groupId) >= MIN_RANK
 	end
 
-	warn(`[SlashCommandService] Game is not owned by a group. Allowing all players to use commands.`)
-	return true
+	-- Non-group game: allow Studio sessions or the game creator only
+	if RunService:IsStudio() or player.UserId == game.CreatorId then
+		return true
+	end
+
+	return false
 end
 
 local function parseArguments(argString: string): { any }
@@ -877,6 +884,12 @@ local function handleCommand(player: Player, commandString: string): ()
 	end
 end
 
+local function tryFinalize()
+	if modelsRegistered and controllersRegistered then
+		SlashCommandService:createTextChatCommands()
+	end
+end
+
 --[[
 	Registers all models discovered by ModelRunner
 ]]
@@ -896,6 +909,8 @@ function SlashCommandService:registerModels(modelList: { { class: any, name: str
 			serverEntityModels[name:lower()] = { class = modelClass, modelName = name }
 		end
 	end
+	modelsRegistered = true
+	tryFinalize()
 end
 
 --[[
@@ -913,6 +928,8 @@ function SlashCommandService:registerControllers(controllerList: { { name: strin
 			originalName = name,
 		}
 	end
+	controllersRegistered = true
+	tryFinalize()
 end
 
 --[[

@@ -1,8 +1,8 @@
 --!strict
 
-local DataStoreService = game:GetService("DataStoreService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
+local DataStoreService = game:GetService('DataStoreService')
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
 
 local PersistenceService = {}
 
@@ -11,6 +11,7 @@ local BASE_TOKENS = 50 -- Base tokens available (safety margin from 60)
 local TOKENS_PER_PLAYER = 8 -- Additional tokens per player in the game
 local TOKEN_REGENERATION_RATE = 1 -- Tokens per second
 local MINIMUM_WAIT_BETWEEN_WRITES = 0.1 -- Wait even when tokens available
+local WRITE_DEBOUNCE_DELAY = 2 -- Seconds a key must be idle before being written
 local QUEUE_WARNING_THRESHOLD = 100 -- Warn if queue gets too large
 
 -- Types
@@ -130,18 +131,39 @@ local function startQueueProcessor()
 			if #writeQueue > 0 then
 				-- Warn if queue is getting large
 				if #writeQueue > QUEUE_WARNING_THRESHOLD then
+					local modelCounts: { [string]: number } = {}
+					for _, req in ipairs(writeQueue) do
+						modelCounts[req.modelName] = (modelCounts[req.modelName] or 0) + 1
+					end
+
+					local parts: { string } = {}
+					for modelName, count in pairs(modelCounts) do
+						table.insert(parts, string.format("%s×%d", modelName, count))
+					end
+					table.sort(parts)
+
 					warn(
 						string.format(
-							"[PersistenceService] Queue is large (%d items). Consider optimizing write frequency.",
-							#writeQueue
+							"[PersistenceService] Queue is large (%d items). Consider optimizing write frequency. Breakdown: %s",
+							#writeQueue,
+							table.concat(parts, ", ")
 						)
 					)
 				end
 
-				-- Check if we have tokens available
-				if currentTokens > 0 then
-					-- Remove the first item from the queue
-					local request = table.remove(writeQueue, 1)
+				-- Find the first request that has been idle long enough (debounce)
+				local readyIndex: number? = nil
+				local nowMs = DateTime.now().UnixTimestampMillis
+				for i, req in ipairs(writeQueue) do
+					if (nowMs - req.timestamp) >= (WRITE_DEBOUNCE_DELAY * 1000) then
+						readyIndex = i
+						break
+					end
+				end
+
+				-- Check if we have a ready request and tokens available
+				if readyIndex and currentTokens > 0 then
+					local request = table.remove(writeQueue, readyIndex)
 
 					-- Consume a token
 					currentTokens = currentTokens - 1
@@ -152,8 +174,8 @@ local function startQueueProcessor()
 					-- Wait a bit even when we have tokens
 					task.wait(MINIMUM_WAIT_BETWEEN_WRITES)
 				else
-					-- No tokens available, wait 1 second
-					task.wait(1)
+					-- No ready requests or no tokens available
+					task.wait(currentTokens > 0 and 0.5 or 1)
 				end
 			else
 				-- No work to do, wait a bit before checking again
@@ -189,6 +211,9 @@ function PersistenceService.init()
 			GetAsync = function()
 				warn("[PersistenceService] Dummy GetAsync called - DataStore not available")
 				return nil -- Simulate new player with no saved data
+			end,
+			RemoveAsync = function()
+				warn("[PersistenceService] Dummy RemoveAsync called - DataStore not available")
 			end,
 		} :: any
 	end
@@ -275,24 +300,81 @@ function PersistenceService:loadModel(modelName: string, ownerId: string, modelI
 	end
 end
 
+-- Delete a model's data from DataStore
+-- Cancels any pending writes for the same key first to prevent resurrection
+function PersistenceService:deleteModel(modelName: string, ownerId: string, modelId: string?)
+	local key = modelName .. "_" .. ownerId
+	if modelId then
+		key = key .. "_" .. modelId
+	end
+
+	-- Cancel any pending writes for this key to prevent them overwriting the delete
+	local i = 1
+	local cancelledCount = 0
+	while i <= #writeQueue do
+		local request = writeQueue[i]
+		local requestKey = request.modelName .. "_" .. request.ownerId
+		if request.modelId then
+			requestKey = requestKey .. "_" .. request.modelId
+		end
+		if requestKey == key then
+			table.remove(writeQueue, i)
+			cancelledCount += 1
+		else
+			i += 1
+		end
+	end
+
+	if cancelledCount > 0 then
+		print(string.format("[PersistenceService] Cancelled %d pending write(s) for %s before delete", cancelledCount, key))
+	end
+
+	local success, err = pcall(function()
+		dataStore:RemoveAsync(key)
+	end)
+
+	if success then
+		print(string.format("[PersistenceService] ✓ Deleted %s", key))
+	else
+		warn(string.format("[PersistenceService] ✗ Failed to delete %s: %s", key, tostring(err)))
+	end
+end
+
 -- Queue a write request
 function PersistenceService:queueWrite(modelName: string, ownerId: string, modelInstance: any, modelId: string?)
 	-- Serialize the model data
 	local serializedData = serializeModelData(modelInstance)
 
-	-- Create the write request
+	-- Build key for dedup lookup
+	local key = modelName .. "_" .. ownerId
+	if modelId then
+		key = key .. "_" .. modelId
+	end
+
+	-- Coalesce: if a pending write for this key already exists, update it in-place
+	for _, existing in ipairs(writeQueue) do
+		local existingKey = existing.modelName .. "_" .. existing.ownerId
+		if existing.modelId then
+			existingKey = existingKey .. "_" .. existing.modelId
+		end
+		if existingKey == key then
+			existing.data = serializedData
+			existing.timestamp = DateTime.now().UnixTimestampMillis
+			return
+		end
+	end
+
+	-- No existing entry — append a new request
 	local request: WriteRequest = {
 		modelName = modelName,
 		ownerId = ownerId,
 		modelId = modelId,
 		data = serializedData,
-		timestamp = os.clock(),
+		timestamp = DateTime.now().UnixTimestampMillis,
 	}
 
-	-- Add to queue
 	table.insert(writeQueue, request)
 
-	-- Debug output
 	print(
 		string.format(
 			"[PersistenceService] Queued write for %s (owner: %s%s) - Queue size: %d, Tokens: %d",

@@ -195,6 +195,22 @@ Configs are static game data modules that hold tunable values:
 
 **[📖 See the Config Development Guide](CONFIG_GUIDE.md)** for step-by-step instructions on creating configs. The guide includes a complete example using `FavoursConfig`.
 
+### Claude Slash Commands
+
+Claude Code slash commands are available to scaffold all MVC components without writing boilerplate by hand. Commands live in [`.claude/commands/`](.claude/commands/).
+
+| Command | What it does |
+|---|---|
+| `/create-model` | Scaffolds a server-side `AbstractModel` file with scope, properties, and Network.luau wiring |
+| `/create-controller` | Scaffolds a server-side `AbstractController` file with actions, validation, and Network.luau wiring |
+| `/create-service` | Scaffolds a server-side service for background tasks (loop-based or event-driven) |
+| `/create-view` | Scaffolds a client-side `AbstractView` file with automatic pattern detection (A, B, C, or B+C) |
+| `/create-config` | Scaffolds a config types file and outputs the Studio config module |
+
+Run `/help-me` in Claude Code for a full description of each command.
+
+> **Maintenance:** If you add a new command to `.claude/commands/`, update `.claude/commands/help-me.md` to document it.
+
 ### Slash Commands (Admin/Debug Tool)
 
 Slash commands provide a quick way for high-rank users to execute model methods directly from chat:
@@ -740,14 +756,9 @@ end)
 
 local function setupShopUI(shopUI: Instance)
     -- Find weapon buttons
-    local swordButton = shopUI:FindFirstChild("SwordButton", true) :: TextButton
-    local bowButton = shopUI:FindFirstChild("BowButton", true) :: TextButton
-    local staffButton = shopUI:FindFirstChild("StaffButton", true) :: TextButton
-
-    if not (swordButton and bowButton and staffButton) then
-        warn("WeaponShopView: Missing weapon buttons")
-        return
-    end
+    local swordButton = shopUI:WaitForChild("SwordButton") :: TextButton
+    local bowButton = shopUI:WaitForChild("BowButton") :: TextButton
+    local staffButton = shopUI:WaitForChild("StaffButton") :: TextButton
 
     -- Connect button clicks
     swordButton.Activated:Connect(function()
@@ -958,7 +969,8 @@ Source/
 
 ### DO:
 - Use `WaitForChild()` to wait for required objects to load
-- Check for existing objects first before waiting for signals
+- Prefer `WaitForChild()` over `FindFirstChild()` — a hang or error is better than a silent nil failure
+- Only use `FindFirstChild()` when the child's absence is a valid, intentional state (e.g. optional UI buttons, get-or-create patterns, internal diff algorithms)
 - Throw clear errors when requirements aren't met
 - Let the game break loudly if something is misconfigured
 
@@ -966,6 +978,7 @@ Source/
 - Add fallback values that hide missing or broken configurations
 - Silently continue when required objects don't exist
 - Use `warn()` and continue - use `error()` to stop execution
+- Use `FindFirstChild()` as a lazy substitute for `WaitForChild()` on required children
 
 **Why?** Configuration errors indicate broken dependencies. Hiding these with fallbacks makes bugs harder to find. Better to fail fast and fix the root cause.
 
@@ -1110,9 +1123,9 @@ Source/
    - Fix: User-scoped models initialize on PlayerAdded - ensure player has joined
    - Fix: Server-scoped models need manual get: `Model.get("SERVER")`
 
-3. **FindFirstChild returning nil**
-   - Check: Does the child exist with that exact name?
-   - Fix: Use WaitForChild if it should exist, or check for nil before using
+3. **WaitForChild timeout / infinite yield**
+   - Check: Does the child exist with that exact name in the correct location?
+   - Fix: Verify the instance hierarchy and ensure the child is being created server-side before the client tries to access it
 
 ### General Debugging Tips
 

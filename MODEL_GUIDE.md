@@ -37,6 +37,17 @@ Server-scoped models are **per-server instance** and **ephemeral** (not saved):
 - **Use Cases**: Match state, server events, shared game state
 - **Example**: `ShrineModel` - shared by all players in the server
 
+### UserSession-Scoped Models (`models/userSession/`)
+
+UserSession-scoped models are **per-player** and **ephemeral** (never saved to DataStore):
+
+- **Lifecycle**: Created when player joins, destroyed when player leaves (resets every session)
+- **Persistence**: None — data is never saved to DataStore
+- **Sync**: Owner player only (for UI like mana bars, ammo counters, cooldown timers)
+- **Owner ID**: Player's UserId (e.g., "123456789")
+- **Use Cases**: Mana, ammo, cooldowns, combo counters, session-only buffs, temporary UI state
+- **Example**: `ManaModel` - each player's current mana, displayed on their HUD but not saved
+
 ### UserEntity-Scoped Models (`models/userEntities/`)
 
 UserEntity-scoped models are **per-player instances** and **persistent** (saved to DataStore):
@@ -50,23 +61,34 @@ UserEntity-scoped models are **per-player instances** and **persistent** (saved 
 
 ### ServerEntity-Scoped Models (`models/serverEntities/`)
 
-ServerEntity-scoped models are **per-server instances** and **ephemeral** (not saved):
+ServerEntity-scoped models are **per-server instances** and **ephemeral** (not saved). There are two variants:
 
-- **Lifecycle**: Multiple instances per server, created on server start, persist until server shutdown
+**Predefined** — entity IDs are known at server start:
+- **Lifecycle**: Created once in `initAllServerEntities()` at server start, persist until shutdown
 - **Persistence**: None - data resets when server restarts
 - **Owner ID**: Fixed string "SERVER" with unique entityId (e.g., "SERVER_main_gate")
-- **Use Cases**: Drawbridges, gates, doors, world objects with shared state
-- **Example**: `DrawbridgeModel` - multiple drawbridges in the world (main_gate, north_drawbridge, etc.)
-- **ID Strategy**: Semantic strings recommended (e.g., "main_gate", "north_drawbridge") - no length limit
+- **Use Cases**: Drawbridges, gates, doors, world objects with fixed IDs
+- **Example**: `DrawbridgeModel` — entities like "main_gate", "north_drawbridge" defined upfront
+- **ID Strategy**: Semantic strings (e.g., "main_gate", "north_drawbridge")
+
+**Dynamic** — entities created at runtime by game logic:
+- **Lifecycle**: `initAllServerEntities()` is a no-op; entities created via a static `create()` factory method
+- **Persistence**: None - all instances lost on server restart
+- **Owner ID**: Fixed string "SERVER" with a runtime-generated entityId (e.g., a UUID)
+- **Use Cases**: Player-placed objects, spawned world items, runtime-created instances
+- **Example**: `CandlesModel` — candles placed by players during a session
+- **ID Strategy**: UUIDs or other runtime-generated unique IDs
 
 ### Choosing a Scope
 
 | Scope | Location | Persistent | Per-Player | Multiple Instances | Sync Target | Use For |
 |-------|----------|------------|------------|-------------------|-------------|---------|
 | **User** | `models/user/` | ✅ Yes | ✅ Yes | ❌ One per player | Owner | Player inventory, progress, settings |
+| **UserSession** | `models/userSession/` | ❌ No | ✅ Yes | ❌ One per player | Owner | Mana, ammo, cooldowns, session UI state |
 | **Server** | `models/server/` | ❌ No | ❌ No | ❌ One for server | All | Match scores, timers, shared game state |
 | **UserEntity** | `models/userEntities/` | ✅ Yes | ✅ Yes | ✅ Many per player | Owner | Pets, bases, character slots, equipment |
-| **ServerEntity** | `models/serverEntities/` | ❌ No | ❌ No | ✅ Many for server | All | Drawbridges, gates, doors, world objects |
+| **ServerEntity (predefined)** | `models/serverEntities/` | ❌ No | ❌ No | ✅ Many for server | All | Drawbridges, gates, doors — fixed IDs at startup |
+| **ServerEntity (dynamic)** | `models/serverEntities/` | ❌ No | ❌ No | ✅ Many for server | All | Player-placed objects, spawned items — runtime IDs |
 
 ## Creating a New Model
 
@@ -75,7 +97,9 @@ ServerEntity-scoped models are **per-server instances** and **ephemeral** (not s
 All models inherit from `AbstractModel.luau` which provides:
 
 - **`new(modelName: string, ownerId: string, scope: ModelScope)`**: Constructor for creating new instances with model name, owner identifier, and scope
-- **`getOrCreate(modelName: string, ownerId: string, constructorFn: () -> AbstractModel)`**: Centralized registry management - gets existing instance or creates new one
+- **`getOrCreate(modelName, ownerId, constructorFn)`**: Centralized registry management - gets existing instance or creates new one. Never yields. Used by ModelRunner and non-User scopes.
+- **`getOrWait(modelName, ownerId, constructorFn) -> T?`**: Like `getOrCreate` but yields until ModelRunner calls `markLoaded` for this model+owner. Returns `nil` if the player leaves before data is loaded. **Used exclusively by User-scoped `.get()` methods.**
+- **`markLoaded(modelName, ownerId)`**: Called by ModelRunner after a User-scoped model's DataStore data is applied. Resumes any threads parked in `getOrWait`.
 - **`removeInstance(modelName: string, ownerId: string)`**: Centralized instance removal for cleanup
 - **`syncState(skipPersistence: boolean?)`**: Syncs model state to clients via Bolt RemoteProperty and triggers DataStore persistence (User-scoped only). Automatically detects scope for filtering.
 - **`ownerId: string`**: Property storing the unique identifier for the model owner
@@ -100,7 +124,7 @@ Use this decision tree to determine which scope your model needs:
 
 **Question 3: Should this data persist across server restarts and player sessions?**
 - **Yes** → **User-scoped** (place in `models/user/`)
-- **No** → User-scoped still appropriate if data is per-player but ephemeral
+- **No** → **UserSession-scoped** (place in `models/userSession/`)
 
 **Question 4: Is this data shared across all players in the server?**
 - **Yes** → Continue to Question 5
@@ -122,6 +146,13 @@ Use this decision tree to determine which scope your model needs:
 - Character stats and levels
 - Owned cosmetics
 
+✅ **UserSession-scoped** (per-player, ephemeral, resets on rejoin):
+- Current mana / energy
+- Ammo counts
+- Active cooldown timers
+- Combo counters
+- Session-only buffs or status effects
+
 ✅ **Server-scoped** (shared, ephemeral, single instance):
 - Match timer for all players
 - Shared shrine donations (ShrineModel example)
@@ -129,11 +160,15 @@ Use this decision tree to determine which scope your model needs:
 - Server-wide events
 - Leaderboard for current session
 
-✅ **ServerEntity-scoped** (shared, ephemeral, multiple instances):
+✅ **ServerEntity-scoped, predefined** (shared, ephemeral, fixed set of instances):
 - Drawbridges ("main_gate", "north_drawbridge")
 - Gates and doors with open/closed state
-- World objects that can be interacted with
-- Environmental objects with shared state
+- World objects with known IDs at server start
+
+✅ **ServerEntity-scoped, dynamic** (shared, ephemeral, runtime-created instances):
+- Player-placed candles or objects
+- Spawned world items with session lifetimes
+- Any shared object whose ID is only known at runtime
 
 ❌ **Common mistakes:**
 - Making inventory Server-scoped (each player needs their own!)
@@ -144,13 +179,18 @@ Use this decision tree to determine which scope your model needs:
 
 Before creating your model, decide which scope it needs:
 
-- **User-Scoped**: Place in `src/server/models/user/YourModel.luau` and pass `"User"` to AbstractModel
-- **Server-Scoped**: Place in `src/server/models/server/YourModel.luau` and pass `"Server"` to AbstractModel
-- **UserEntity-Scoped**: Place in `src/server/models/userEntities/YourModel.luau` and pass `"UserEntity"` to AbstractModel
+- **User-Scoped**: Place in `Source/ServerScriptService/models/user/YourModel.luau` and pass `"User"` to AbstractModel
+- **UserSession-Scoped**: Place in `Source/ServerScriptService/models/userSession/YourModel.luau` and pass `"UserSession"` to AbstractModel
+- **Server-Scoped**: Place in `Source/ServerScriptService/models/server/YourModel.luau` and pass `"Server"` to AbstractModel
+- **UserEntity-Scoped**: Place in `Source/ServerScriptService/models/userEntities/YourModel.luau` and pass `"UserEntity"` to AbstractModel
 
 ### Step 3: Create Your Model File
 
 #### For User-Scoped Models (`models/user/YourModel.luau`):
+
+> **Note**: User-scoped `.get()` uses `getOrWait` and returns `YourModel?`. It yields until
+> ModelRunner finishes loading DataStore data for this player, then returns the populated instance.
+> It returns `nil` if the player leaves before loading completes. All callers must nil-check.
 
 ```lua
 --!strict
@@ -176,10 +216,12 @@ function YourModel.new(ownerId: string): YourModel
 	return self :: YourModel
 end
 
-function YourModel.get(ownerId: string): YourModel
-	return AbstractModel.getOrCreate("YourModel", ownerId, function()
+-- Returns nil if the player leaves before DataStore data is loaded.
+-- Always nil-check the result at the call site.
+function YourModel.get(ownerId: string): YourModel?
+	return AbstractModel.getOrWait("YourModel", ownerId, function()
 		return YourModel.new(ownerId)
-	end) :: YourModel
+	end) :: YourModel?
 end
 
 function YourModel.remove(ownerId: string): ()
@@ -235,6 +277,51 @@ end
 function YourModel:yourMethod(): ()
 	-- Implementation
 	self:syncState() -- Server-scoped models automatically sync to all
+end
+
+return YourModel
+```
+
+#### For UserSession-Scoped Models (`models/userSession/YourModel.luau`):
+
+```lua
+--!strict
+
+local AbstractModel = require(script.Parent.Parent.AbstractModel)
+
+local YourModel = {}
+YourModel.__index = YourModel
+setmetatable(YourModel, AbstractModel)
+
+export type YourModel = typeof(setmetatable({} :: {
+	-- Define your model's properties here
+	propertyName: propertyType,
+}, YourModel)) & AbstractModel.AbstractModel
+
+function YourModel.new(ownerId: string): YourModel
+	local self = AbstractModel.new("YourModel", ownerId, "UserSession") :: any
+	setmetatable(self, YourModel)
+
+	-- Initialize your properties
+	self.propertyName = defaultValue
+
+	return self :: YourModel
+end
+
+function YourModel.get(ownerId: string): YourModel
+	return AbstractModel.getOrCreate("YourModel", ownerId, function()
+		return YourModel.new(ownerId)
+	end) :: YourModel
+end
+
+function YourModel.remove(ownerId: string): ()
+	AbstractModel.removeInstance("YourModel", ownerId)
+end
+
+-- Add your model's methods here
+function YourModel:yourMethod(): ()
+	-- Implementation
+	self:syncState() -- Syncs to owner player only; never touches DataStore
 end
 
 return YourModel
@@ -322,9 +409,12 @@ function YourModel:yourMethod(): ()
 end
 
 -- Example: Method that broadcasts to all players (requires "all" syncScope in constructor)
+-- NOTE: For User-scoped models with syncScope="all", syncState() aggregates ALL users'
+-- states into { [ownerId]: State } before broadcasting. Clients receive the full
+-- dictionary and must index by the local player's UserId to get their own state.
 function YourModel:broadcastMethod(): ()
 	-- Only works if you passed "all" as syncScope to AbstractModel.new()
-	self:syncState() -- Will broadcast to all players
+	self:syncState() -- Will broadcast aggregated { [ownerId]: State } to all players
 end
 
 return YourModel
@@ -388,15 +478,98 @@ end
 return YourModel
 ```
 
+#### For Dynamic ServerEntity-Scoped Models (`models/serverEntities/YourModel.luau`):
+
+Use this when entity IDs are not known at server start — they are created at runtime by game logic.
+
+```lua
+--!strict
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local AbstractModel = require(script.Parent.Parent.AbstractModel)
+
+local YourModel = {}
+YourModel.__index = YourModel
+setmetatable(YourModel, AbstractModel)
+
+export type YourModel = typeof(setmetatable({} :: {
+	-- Define your model's properties here
+	propertyName: propertyType,
+}, YourModel)) & AbstractModel.AbstractModel
+
+function YourModel.new(entityId: string): YourModel
+	local self = AbstractModel.new("YourModel", "SERVER", "ServerEntity", entityId) :: any
+	setmetatable(self, YourModel)
+
+	-- Initialize your properties
+	self.propertyName = defaultValue
+
+	return self :: YourModel
+end
+
+function YourModel.get(entityId: string): YourModel
+	return AbstractModel.getOrCreate("YourModel", "SERVER", function()
+		return YourModel.new(entityId)
+	end, entityId) :: YourModel
+end
+
+function YourModel.remove(entityId: string): ()
+	AbstractModel.removeServerEntity("YourModel", entityId)
+end
+
+-- Static factory: create a fully-initialized entity and sync to all clients
+function YourModel.create(entityId: string, propertyName: propertyType): YourModel
+	local entity = YourModel.get(entityId)
+	entity.propertyName = propertyName
+	entity:syncState()
+	return entity
+end
+
+-- Get all active instances
+function YourModel.getAll(): { [string]: YourModel }
+	return AbstractModel.getAllServerEntities("YourModel") :: any
+end
+
+-- Sync all instances to clients. Handles the empty-collection edge case:
+-- when the last entity is removed, no instance exists to call syncState() on,
+-- so we broadcast {} directly via Network.
+function YourModel.syncAll(): ()
+	local all = YourModel.getAll()
+	local anyEntity = next(all)
+	if anyEntity then
+		all[anyEntity]:syncState()
+	else
+		local Network = require(ReplicatedStorage.Network)
+		Network.State.Your:Set({})
+	end
+end
+
+-- REQUIRED: no-op for dynamic entities — nothing to initialize at server start
+function YourModel.initAllServerEntities(): ()
+end
+
+-- Add your model's methods here
+function YourModel:yourMethod(): ()
+	-- Implementation
+	self:syncState()
+end
+
+return YourModel
+```
+
 **Key Differences:**
-- Require path: `script.Parent.Parent.AbstractModel` (up two levels from `user/`, `server/`, `userEntities/`, or `serverEntities/`)
-- Scope parameter: `"User"` for user-scoped, `"Server"` for server-scoped, `"UserEntity"` for user-entity-scoped, `"ServerEntity"` for server-entity-scoped
+- Require path: `script.Parent.Parent.AbstractModel` (up two levels from `user/`, `userSession/`, `server/`, `userEntities/`, or `serverEntities/`)
+- Scope parameter: `"User"`, `"UserSession"`, `"Server"`, `"UserEntity"`, or `"ServerEntity"`
+- UserSession models are identical in structure to User models but never touch DataStore and reset on rejoin
 - UserEntity models require `modelId` parameter in constructor and all static methods
 - UserEntity models must implement `loadAllForOwner()` and `removeAllEntitiesForOwner()` static methods
 - ServerEntity models always use "SERVER" as ownerId with unique entityId
-- ServerEntity models must implement `initAllServerEntities()` static method
-- Access pattern: User uses player UserId, Server uses `"SERVER"`, UserEntity uses composite `ownerId_modelId`, ServerEntity uses `"SERVER"` + `entityId`
-- Default sync: UserEntity models default to owner-only (like User), can override to "all" with 5th parameter to `new()`
+- ServerEntity models must implement `initAllServerEntities()` static method (no-op for dynamic variants)
+- **Predefined** ServerEntity: `initAllServerEntities()` creates all instances upfront; entity IDs are semantic strings
+- **Dynamic** ServerEntity: entities created at runtime via a `create()` factory; add `syncAll()` to handle empty-collection broadcasts; entity IDs are typically UUIDs
+- Access pattern: User/UserSession use player UserId, Server uses `"SERVER"`, UserEntity uses composite `ownerId_modelId`, ServerEntity uses `"SERVER"` + `entityId`
+- Default sync: UserEntity models default to owner-only (like User/UserSession), can override to "all" with 5th parameter to `new()`
 - ServerEntity models always sync to all players (no persistence)
 
 ### Step 3b: UserEntity ID Management Strategies
@@ -750,6 +923,51 @@ end
 function DrawbridgeModel:toggle(): ()
 	self.isOpen = not self.isOpen
 	self:syncState() -- Broadcasts to all players
+end
+```
+
+### Example 4: CandlesModel (Dynamic ServerEntity-Scoped)
+
+`CandlesModel` demonstrates the **dynamic** ServerEntity variant where entities are created at runtime rather than predefined at startup:
+
+### Key Differences from Predefined ServerEntity:
+- `initAllServerEntities()` is a **no-op** — no entities exist at server start
+- A static `create()` factory method initializes all properties and syncs in one call
+- `syncAll()` handles the **empty-collection edge case**: when the last candle is removed, no instance remains to call `syncState()` on, so it broadcasts `{}` directly via Network
+- Entity IDs are generated at runtime (e.g., UUIDs from `HttpService:GenerateGUID()`)
+
+### Usage in Production:
+- Controllers call `CandlesModel.create(entityId, creator, x, y, z)` to add a new candle
+- Controllers call `CandlesModel.remove(entityId)` then `CandlesModel.syncAll()` to remove one
+- Client receives the full `{entityId -> state}` dictionary and renders all candles from it
+
+```lua
+-- Example CandlesModel in models/serverEntities/CandlesModel.luau
+function CandlesModel.create(entityId, creator, posX, posY, posZ)
+	local candle = CandlesModel.get(entityId)
+	candle.creator = creator
+	candle.positionX = posX
+	candle.positionY = posY
+	candle.positionZ = posZ
+	candle.createdTime = os.time()
+	candle:syncState()
+	return candle
+end
+
+function CandlesModel.syncAll(): ()
+	local all = CandlesModel.getAll()
+	local anyCandle = next(all)
+	if anyCandle then
+		all[anyCandle]:syncState() -- triggers aggregated broadcast for all entities
+	else
+		-- No candles remain — broadcast empty state directly
+		local Network = require(game:GetService("ReplicatedStorage").Network)
+		Network.State.Candles:Set({})
+	end
+end
+
+-- No-op: candles are created dynamically, not at server start
+function CandlesModel.initAllServerEntities(): ()
 end
 ```
 
@@ -1165,6 +1383,102 @@ export type MatchTimerData = {
 ✅ **Refactoring Safety** - Change once, errors guide you to all usages
 ✅ **Self-Documenting** - Types show what data models broadcast
 ✅ **Complete MVC Type Safety** - From model through view with zero runtime overhead
+
+## Exposing Methods to DebugTools
+
+Models can expose methods to the DebugTools panel by declaring a `debugActions` table on the class. `DebugActionBuilder` scans all model scope folders at startup and auto-generates DebugTools Actions from these descriptors — no manual registration needed.
+
+### Schema
+
+```lua
+-- Declared at the bottom of the model file, after all methods, before `return`.
+-- Pure data — no imports required.
+-- DebugTools arg types: "Player" | "string" | "number" | "boolean"
+YourModel.debugActions = {
+    {
+        name = "Category: Action Name",       -- shown in DebugTools panel
+        description = "What this action does", -- optional tooltip
+        method = "methodName",                 -- instance method name (string, not function ref)
+        args = {                               -- method args only — scope args are prepended by builder
+            { Type = "number", Name = "Amount", Default = 100 },
+            { Type = "string", Name = "Label" },
+        },
+    },
+    -- additional actions...
+}
+```
+
+### Scope-specific arg injection
+
+The builder prepends scope-specific args before `args` automatically:
+
+| Scope | Prepended args | Closure signature |
+|-------|---------------|-------------------|
+| `user` | `Player` | `(player, ...methodArgs)` → `model.get(userId):method(...)` |
+| `server` | *(none)* | `(...methodArgs)` → `model.get("SERVER"):method(...)` |
+| `userEntities` | `Player`, `string (Model ID)` | `(player, modelId, ...methodArgs)` → `model.get(userId, modelId):method(...)` |
+| `serverEntities` | *(skipped by default)* | No player-targeted actions; for dynamic entities, target by `entityId` string if needed |
+
+### Examples
+
+**User-scoped model** (`models/user/`):
+
+```lua
+InventoryModel.debugActions = {
+    {
+        name = "Add Gold",
+        description = "Add gold to a player's inventory",
+        method = "addGold",
+        args = {
+            { Type = "number", Name = "Amount", Default = 100 },
+        },
+    },
+}
+-- Builder generates: DebugTools panel shows Player picker + Amount field.
+-- Closure: InventoryModel.get(tostring(player.UserId)):addGold(amount)
+```
+
+**Server-scoped model** (`models/server/`):
+
+```lua
+ShrineModel.debugActions = {
+    {
+        name = "Donate",
+        description = "Donate treasure to the shrine",
+        method = "donate",
+        args = {
+            { Type = "string", Name = "Player User ID" },
+            { Type = "number", Name = "Amount", Default = 100 },
+        },
+    },
+}
+-- Builder generates: DebugTools panel shows Player User ID + Amount fields.
+-- Closure: ShrineModel.get("SERVER"):donate(playerUserId, amount)
+```
+
+**UserEntity-scoped model** (`models/userEntities/`):
+
+```lua
+FavoursModel.debugActions = {
+    {
+        name = "Set Favour Type",
+        description = "Set the type of a specific favour for a player",
+        method = "setFavourType",
+        args = {
+            { Type = "string", Name = "Favour Type" },
+        },
+    },
+}
+-- Builder generates: DebugTools panel shows Player picker + Model ID + Favour Type fields.
+-- Closure: FavoursModel.get(tostring(player.UserId), modelId):setFavourType(favourType)
+```
+
+### Rules
+
+- Declare `debugActions` **at the bottom of the model file**, after all methods, before `return`
+- **Never import DebugTools** in a model file — descriptors are pure data
+- `args` lists only the method's own parameters; scope args (Player, modelId) are injected by the builder
+- Adding `debugActions` to a new model is sufficient — DebugRunner picks it up automatically on next run
 
 ## Next Steps
 

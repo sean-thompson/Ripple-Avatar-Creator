@@ -33,26 +33,23 @@ function SlashCommandClient.new(): ()
 	local Network = require(ReplicatedStorage:WaitForChild("Network"))
 	commandRemote = Network.Intent.SlashCommand
 
-	local textCommands = TextChatService:FindFirstChild("TextChatCommands")
-	if textCommands then
-		for _, command in textCommands:GetChildren() do
-			if command:IsA("TextChatCommand") and command.Name:match("^custom_") then
-				command.Triggered:Connect(function(textSource, unfilteredText)
-					sendCommand(unfilteredText)
-				end)
-			end
-		end
+	local textCommands = TextChatService:WaitForChild("TextChatCommands")
 
-		textCommands.ChildAdded:Connect(function(command)
-			if command:IsA("TextChatCommand") and command.Name:match("^custom_") then
-				command.Triggered:Connect(function(textSource, unfilteredText)
-					sendCommand(unfilteredText)
-				end)
-			end
-		end)
-	else
-		warn("[SlashCommandClient] TextChatCommands not found - slash commands may not work")
+	for _, command in textCommands:GetChildren() do
+		if command:IsA("TextChatCommand") and command.Name:match("^custom_") then
+			command.Triggered:Connect(function(textSource, unfilteredText)
+				sendCommand(unfilteredText)
+			end)
+		end
 	end
+
+	textCommands.ChildAdded:Connect(function(command)
+		if command:IsA("TextChatCommand") and command.Name:match("^custom_") then
+			command.Triggered:Connect(function(textSource, unfilteredText)
+				sendCommand(unfilteredText)
+			end)
+		end
+	end)
 end
 
 SlashCommandClient.new()

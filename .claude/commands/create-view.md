@@ -1,7 +1,7 @@
 ---
 description: Create a new Roblox view with automatic pattern detection
 allowed-tools: Bash(find, cat, grep, ls), Read, Write, Edit, Glob
-model: claude-sonnet-4-5-20250929
+model: sonnet
 ---
 
 I'll guide you through creating a new Roblox view that follows this project's View architecture with automatic pattern detection (A, B, C, or B+C).
@@ -154,13 +154,16 @@ I will read Network.luau to validate this state exists and show you available op
 
 **What is the model's scope?**
 
-**IMPORTANT**: The state format depends on the model scope:
-- **User** (e.g., InventoryModel) → Single state object, sent to owner only
+**IMPORTANT**: The state format depends on the model scope AND its syncScope:
+- **User, syncScope="owner"** (default, e.g., InventoryModel) → Single state object, sent to owner only
+- **User, syncScope="all"** (e.g., PowerUpModel) → Dictionary `{ [ownerId]: State }`, broadcast to all players. Index by `tostring(localPlayer.UserId)` to get the local player's state.
 - **Server** (e.g., ShrineModel) → Single state object, broadcast to all
 - **UserEntity** (e.g., FavoursModel) → Dictionary `{ [entityId]: State }`, sent to owner only
 - **ServerEntity** (e.g., CandlesModel) → Dictionary `{ [entityId]: State }`, broadcast to all
 
 **Model scope** (User/Server/UserEntity/ServerEntity):
+
+**If User scope: Does it use syncScope="all"?** (Yes/No — check the model's constructor call to AbstractModel.new()):
 
 **Which properties from this state will you use?**
 
@@ -212,8 +215,8 @@ I'll display a comprehensive summary showing:
 - **Detected Pattern**: A, B, C, or B+C with explanation
 - Actions to send (if Pattern B)
 - States to observe (if Pattern C)
-  - **Model scope** (User/Server/UserEntity/ServerEntity)
-  - **State format** (single object vs dictionary)
+  - **Model scope** (User/Server/UserEntity/ServerEntity) and syncScope if User
+  - **State format** (single object vs dictionary, noting User+all sends `{ [ownerId]: State }`)
 - Immediate feedback (if Pattern A)
 - **Modal window status** (if ScreenGui)
 - Expected hierarchy with children
@@ -694,6 +697,12 @@ Next Steps:
    - Fix: Entity-scoped models send `{ [entityId]: State }` dictionary, not single object
    - Fix: Iterate the dictionary: `for entityId, data in allEntities do ... end`
 
+   ❌ "Observe fires but shows wrong player's data" (User + syncScope="all" models)
+   - Check: Does the model use `syncScope = "all"` in its AbstractModel.new() call?
+   - Fix: User+all models send `{ [ownerId]: State }` dictionary to ALL players
+   - Fix: Index by local player: `local myState = data[tostring(localPlayer.UserId)]`
+   - Do NOT maintain a separate per-player cache — the RemoteProperty holds the full dictionary
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Documentation:
@@ -711,8 +720,9 @@ Documentation:
   - Immediate feedback before server confirmation is good UX
   {If Pattern C:}
   - Observe() fires immediately with current state - no need to request
-  - Bolt handles per-player filtering for User-scoped models automatically
+  - Bolt handles per-player filtering for User-scoped models with syncScope="owner" automatically
   - Entity-scoped models (UserEntity/ServerEntity) send dictionaries, not single objects
+  - User-scoped models with syncScope="all" send `{ [ownerId]: State }` dictionary to all players — index by `tostring(localPlayer.UserId)` to get your own state
 ```
 
 ---

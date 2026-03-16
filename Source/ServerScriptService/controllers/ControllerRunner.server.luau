@@ -30,4 +30,3 @@ print("ControllerRunner: All " .. #controllerInfos .. " controller(s) initialize
 local ServiceRunner = require(script.Parent.Parent.services.ServiceRunner)
 ServiceRunner.initSlashCommands()
 ServiceRunner.registerControllers(controllerInfos)
-ServiceRunner.finalizeSlashCommands()

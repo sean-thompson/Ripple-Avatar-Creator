@@ -49,6 +49,7 @@ local config = nil :: any
 local eventQueue: { QueuedEvent } = {}
 local userPropertiesCache: { [string]: UserProperties } = {}
 local playerJoinTimes: { [string]: number } = {}
+local numericSessionId: number = 0
 local isRunning = false
 
 -- Public flag checked by AbstractController to avoid require overhead
@@ -65,6 +66,20 @@ end
 
 local function hashUserId(userId: number): string
 	return djb2Hash(config.hashSalt .. tostring(userId))
+end
+
+-- Convert JobId (UUID string) to a numeric session ID for GA4
+local function generateNumericSessionId(): number
+	local hash: number = 5381
+	local jobId = game.JobId
+	if jobId == "" then
+		-- Studio doesn't have a JobId; use a random number
+		return math.random(1, 2^31 - 1)
+	end
+	for i = 1, #jobId do
+		hash = ((hash * 33) + string.byte(jobId, i)) % (2 ^ 32)
+	end
+	return hash
 end
 
 -- Build the GA4 endpoint URL
@@ -173,8 +188,11 @@ local function queueEvent(player: Player, eventName: string, params: { [string]:
 	local clientId = hashUserId(player.UserId)
 
 	local eventParams: { [string]: any } = params and table.clone(params) or {}
-	eventParams.session_id = game.JobId
+	eventParams.session_id = tostring(numericSessionId)
 	eventParams.engagement_time_msec = 1
+	if config.debug then
+		eventParams.debug_mode = true
+	end
 
 	local event: GA4Event = {
 		name = eventName,
@@ -231,6 +249,7 @@ function AnalyticsService.init()
 	end
 
 	AnalyticsService.isEnabled = true
+	numericSessionId = generateNumericSessionId()
 
 	-- Flush all events on server shutdown
 	game:BindToClose(function()
@@ -296,8 +315,9 @@ function AnalyticsService:trackControllerAction(player: Player, controllerName: 
 	})
 end
 
--- Track player join
+-- Track player join (sends session_start first so GA4 creates a proper session)
 function AnalyticsService:trackPlayerJoin(player: Player)
+	queueEvent(player, "session_start", {})
 	queueEvent(player, "player_join", {})
 end
 

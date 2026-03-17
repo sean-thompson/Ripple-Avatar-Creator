@@ -322,9 +322,8 @@ function AnalyticsService:trackControllerAction(player: Player, controllerName: 
 	})
 end
 
--- Track player join (sends session_start first so GA4 creates a proper session)
+-- Track player join
 function AnalyticsService:trackPlayerJoin(player: Player)
-	queueEvent(player, "session_start", {})
 	queueEvent(player, "player_join", {})
 end
 

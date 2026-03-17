@@ -1,7 +1,6 @@
 ---
 description: Analyse GA4 analytics data from BigQuery — heatmaps, sessions, actions, insights
 allowed-tools: mcp__bigquery__query, Bash, Read, Write, Glob, AskUserQuestion
-model: sonnet
 ---
 
 I'll help you analyse your GA4 analytics data from BigQuery. This command guides you through querying and interpreting your game's analytics.

@@ -163,9 +163,9 @@ Services are server-side modules that run automatically to handle background tas
 - Handle periodic cleanup, scheduled updates, system operations
 - Two patterns: Loop-based (periodic tasks) and Event-driven (respond to events)
 - Organized into two categories:
-  - **Framework services** (`services/framework/`): Explicit initialization order (PersistenceService, SlashCommandService)
+  - **Framework services** (`services/framework/`): Explicit initialization order (PersistenceService, AnalyticsService, SlashCommandService)
   - **Game services** (`services/game/`): Auto-discovered by ServiceRunner - just add an `init()` function
-- Examples: PersistenceService (DataStore queue), CandleService (candle expiry), SlashCommandService (chat commands)
+- Examples: AnalyticsService (GA4 events), HeatmapService (spatial tracking), CandleService (candle expiry)
 
 **[📖 See the Services Guide](SERVICES_GUIDE.md)** for step-by-step instructions on creating services. The guide includes patterns, decision trees, and complete examples.
 
@@ -279,6 +279,26 @@ All UI and Workspace objects must be created directly in Roblox Studio:
 - This includes: Workspace parts/models/terrain, StarterGui, UI containers, Lighting, SoundService, other service configurations, any non-code instances
 - These instances are NOT synced via Rojo and will NOT be in version control
 - The `$ignoreUnknownInstances: true` configuration ensures Rojo won't delete Studio-created content
+
+## Analytics (GA4)
+
+This template includes built-in Google Analytics 4 integration via the Measurement Protocol. Controller actions and player lifecycle events are tracked automatically — new controllers get analytics coverage with zero additional code.
+
+### What's Tracked Automatically
+- **Controller actions**: Every `dispatchAction()` call generates a `controller_action` event with controller and action names
+- **Player join/leave**: Session start, player join, and player leave events with session duration
+- **Player demographics**: Locale, country, account age, and membership (non-personal, hashed user IDs)
+
+### Spatial Heatmap
+HeatmapService tracks where players spend time on a configurable 2D grid (X/Z). Two modes:
+- **Summary** (default): Accumulates dwell time per cell, flushes periodically. Production-safe.
+- **Transitions**: Fires events on cell boundary crossings. Captures player paths, best for playtesting.
+
+### Setup
+1. Create `AnalyticsConfig` ModuleScript in Studio at `ServerScriptService > Config`
+2. Fill in your GA4 `measurementId`, `apiSecret`, and `hashSalt`
+3. Enable HttpService in Game Settings > Security
+4. See [CONFIG_GUIDE.md](CONFIG_GUIDE.md) for the full config structure including heatmap settings
 
 ## Prerequisites
 

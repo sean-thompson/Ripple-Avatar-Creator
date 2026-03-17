@@ -34,6 +34,7 @@ All controllers inherit from `AbstractController.luau` which provides:
 - **`new(controllerName: string)`**: Constructor that creates the controller and gets its Bolt ReliableEvent from Network module
 - **`intentEvent: ReliableEvent`**: Bolt ReliableEvent obtained via Network.registerIntent() for client-server communication
 - **`dispatchAction(actionsTable, action, player, ...)`**: Validates and executes actions from an ACTIONS table, with automatic error handling
+- **Automatic analytics**: Every dispatched action is tracked as a `controller_action` GA4 event (if AnalyticsService is enabled)
 
 **Automatic Bolt Event Registration:**
 - All controller intents are eagerly registered in Network.luau at module load
@@ -1209,6 +1210,18 @@ end)
 **Types guide honest developers to write correct code. Runtime validation protects against malicious actors.**
 
 Don't rely on types alone for security - always validate untrusted input at runtime. The IntentActions pattern gives you both: excellent developer experience through types, and robust security through table-based validation.
+
+## Automatic Analytics Tracking
+
+When AnalyticsService is enabled, **every controller action is automatically tracked** in GA4. No code needed — AbstractController calls `AnalyticsService:trackControllerAction()` after each successful `dispatchAction()`.
+
+Each action generates a `controller_action` event with:
+- `controller_name` — e.g., "CashMachineController"
+- `action_name` — e.g., "Withdraw"
+
+This means every new controller you create automatically gets analytics coverage. You can see action frequency, popular features, and per-user behaviour in GA4 reports.
+
+For custom analytics beyond action tracking, call `AnalyticsService:trackEvent()` directly in your action handlers.
 
 ## Next Steps
 

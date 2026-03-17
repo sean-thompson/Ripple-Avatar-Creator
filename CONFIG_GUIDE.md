@@ -65,11 +65,41 @@ Created in Studio under ServerScriptService > Config. Protected from Rojo deleti
 
 #### Example: AnalyticsConfig
 
-The AnalyticsConfig is a server-side config because it contains a GA4 API secret:
+The AnalyticsConfig is a server-side config because it contains a GA4 API secret. It also includes heatmap tracking settings. Create it in Studio at `ServerScriptService > Config > AnalyticsConfig`:
 
 ```lua
-ServerScriptService.Config.AnalyticsConfig (ModuleScript in Studio)
+--!strict
+local ServerScriptService = game:GetService("ServerScriptService")
+local ConfigTypes = ServerScriptService:WaitForChild("Config"):WaitForChild("ConfigTypes")
+local AnalyticsConfigTypes = require(ConfigTypes:WaitForChild("AnalyticsConfigTypes"))
+
+type AnalyticsConfig = AnalyticsConfigTypes.AnalyticsConfig
+
+local config: AnalyticsConfig = {
+    enabled = true,
+    measurementId = "G-XXXXXXXXXX",
+    apiSecret = "your-api-secret",
+    hashSalt = "change-me-to-something-unique",
+    flushIntervalSeconds = 15,
+    maxBatchSize = 25,
+    debug = false,
+
+    heatmap = {
+        enabled = false,
+        trackingMode = "summary",
+        boundsMin = { -100, -100 },
+        boundsMax = { 100, 100 },
+        cellSize = 10,
+        sampleIntervalSeconds = 1,
+        flushIntervalSeconds = 120,
+        heartbeatIntervalSeconds = 60,
+    },
+}
+
+return config
 ```
+
+**Note:** HttpService must be enabled in Game Settings > Security for analytics to work.
 
 #### Accessing Server-Side Configs
 

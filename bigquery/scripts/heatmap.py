@@ -11,6 +11,8 @@ Options:
     --value-label TEXT  Label for the colour bar (default: "Player-Seconds")
     --grid-width N      Grid width in cells (auto-detected if omitted)
     --grid-height N     Grid height in cells (auto-detected if omitted)
+    --min-x N           Starting cell X index (default: 0)
+    --min-z N           Starting cell Z index (default: 0)
 """
 
 import json
@@ -30,6 +32,8 @@ def main():
     parser.add_argument('--value-label', default='Player-Seconds', help='Colour bar label')
     parser.add_argument('--grid-width', type=int, default=None, help='Grid width in cells')
     parser.add_argument('--grid-height', type=int, default=None, help='Grid height in cells')
+    parser.add_argument('--min-x', type=int, default=0, help='Starting cell X index')
+    parser.add_argument('--min-z', type=int, default=0, help='Starting cell Z index')
     args = parser.parse_args()
 
     # Read JSON from stdin
@@ -42,14 +46,22 @@ def main():
     # Extract cell coordinates and values
     cells = [(d['cell_x'], d['cell_z'], d['value']) for d in data]
 
-    # Determine grid bounds
-    min_x = min(c[0] for c in cells)
-    max_x = max(c[0] for c in cells)
-    min_z = min(c[1] for c in cells)
-    max_z = max(c[1] for c in cells)
+    # Determine grid bounds — use provided min or fall back to data min
+    min_x = args.min_x
+    min_z = args.min_z
 
-    width = args.grid_width or (max_x - min_x + 1)
-    height = args.grid_height or (max_z - min_z + 1)
+    # Determine grid size — use provided or compute from data
+    if args.grid_width:
+        width = args.grid_width
+    else:
+        max_x = max(c[0] for c in cells)
+        width = max_x - min_x + 1
+
+    if args.grid_height:
+        height = args.grid_height
+    else:
+        max_z = max(c[1] for c in cells)
+        height = max_z - min_z + 1
 
     # Build the grid (initialise with zeros)
     grid = np.zeros((height, width))

@@ -237,6 +237,8 @@ local function startSampleLoop()
 end
 
 -- Handle player leaving — flush their final dwell time
+-- In summary mode, also flush the accumulator while this player is still available
+-- as the event source (avoids losing data if they're the last player)
 local function onPlayerRemoving(player: Player)
 	local state = playerStates[player]
 	if not state then
@@ -248,6 +250,11 @@ local function onPlayerRemoving(player: Player)
 	if config.trackingMode == "summary" then
 		local key = cellKey(state.currentCellX, state.currentCellZ)
 		accumulateCell(key, now - state.cellEnteredTime, tostring(player.UserId))
+
+		-- If this is the last player, flush now while we still have someone to attribute events to
+		if #Players:GetPlayers() <= 1 then
+			flushSummary()
+		end
 	else
 		local dwell = now - state.cellEnteredTime
 		fireTransitionEvent(player, state.currentCellX, state.currentCellZ, dwell)

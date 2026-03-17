@@ -30,6 +30,7 @@ local AnalyticsService = {}
 type GA4Event = {
 	name: string,
 	params: { [string]: any },
+	timestamp_micros: number?,
 }
 
 type QueuedEvent = {
@@ -187,9 +188,14 @@ local function queueEvent(player: Player, eventName: string, params: { [string]:
 
 	local clientId = hashUserId(player.UserId)
 
+	local now = DateTime.now()
+	local timestampMs = now.UnixTimestampMillis
+	local timestampMicros = timestampMs * 1000
+
 	local eventParams: { [string]: any } = params and table.clone(params) or {}
 	eventParams.session_id = tostring(numericSessionId)
 	eventParams.engagement_time_msec = 1
+	eventParams.timestamp = timestampMs
 	if config.debug then
 		eventParams.debug_mode = true
 	end
@@ -197,6 +203,7 @@ local function queueEvent(player: Player, eventName: string, params: { [string]:
 	local event: GA4Event = {
 		name = eventName,
 		params = eventParams,
+		timestamp_micros = timestampMicros,
 	}
 
 	table.insert(eventQueue, {

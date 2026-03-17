@@ -157,16 +157,16 @@ ORDER BY event_date
 ```sql
 SELECT
   user_id,
-  TIMESTAMP_MICROS(event_timestamp) AS event_time,
+  TIMESTAMP_MILLIS((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'timestamp')) AS action_time,
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'controller_name') AS controller_name,
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'action_name') AS action_name
 FROM `PROJECT.DATASET.events_*`
 WHERE event_name = 'controller_action'
   AND _TABLE_SUFFIX BETWEEN 'DATE_START' AND 'DATE_END'
-ORDER BY user_id, event_timestamp
+ORDER BY user_id, action_time
 ```
 
-Analyse action sequences: first actions, common paths, actions before leaving.
+Note: Uses the `timestamp` param (captured at queue time) rather than `event_timestamp` (set at HTTP send time) for accurate action ordering. Analyse action sequences: first actions, common paths, actions before leaving.
 
 ### Demographics Query
 ```sql

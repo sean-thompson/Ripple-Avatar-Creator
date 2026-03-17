@@ -112,6 +112,18 @@ Scaffolds a config types file under `ReplicatedStorage/Config/ConfigTypes/`.
 
 ---
 
+### `/analytics`
+
+Analyse GA4 analytics data from BigQuery — heatmaps, sessions, actions, and insights.
+
+- **Requires:** BigQuery MCP server configured (see README Analytics section)
+- **Wizard covers:** Analysis type selection, date range, and result interpretation
+- **Analysis types:** Heatmap (spatial), action popularity, session metrics, player flow, demographics, holistic insights, custom queries
+- **Visualisation:** Can generate heatmap images via Python (auto-sets up venv on first use)
+- On first run, discovers your BigQuery dataset and creates flattened views for efficient querying.
+
+---
+
 ## Maintenance Note
 
 If you add a new command to `.claude/commands/`, update this file to document it.

@@ -354,9 +354,20 @@ function AnalyticsService:flushPlayer(player: Player)
 	local clientId = hashUserId(player.UserId)
 	flushEvents(clientId)
 
-	-- Clean up cached data
-	userPropertiesCache[clientId] = nil
-	playerJoinTimes[clientId] = nil
+	-- Only clean up cached data if no events remain queued for this client
+	-- (failed sends re-queue events and still need the cached properties)
+	local hasRemainingEvents = false
+	for _, queuedEvent in eventQueue do
+		if queuedEvent.clientId == clientId then
+			hasRemainingEvents = true
+			break
+		end
+	end
+
+	if not hasRemainingEvents then
+		userPropertiesCache[clientId] = nil
+		playerJoinTimes[clientId] = nil
+	end
 end
 
 -- Flush all queued events

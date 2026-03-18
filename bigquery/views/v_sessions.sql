@@ -15,4 +15,4 @@ SELECT
   (SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'account_age_days') AS account_age_days,
   (SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'membership') AS membership
 FROM `DATASET_PLACEHOLDER.events_*`
-WHERE event_name IN ('player_join', 'player_leave', 'session_start')
+WHERE event_name IN ('player_join', 'player_leave')

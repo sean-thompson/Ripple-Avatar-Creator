@@ -84,6 +84,7 @@ def main():
                    extent=[min_x - 0.5, min_x + width - 0.5,
                            min_z - 0.5, min_z + height - 0.5])
 
+    ax.invert_xaxis()
     ax.set_xlabel('Cell X')
     ax.set_ylabel('Cell Z')
     ax.set_title(args.title)

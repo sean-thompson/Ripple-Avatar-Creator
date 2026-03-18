@@ -106,7 +106,14 @@ end
 ServiceRunner.initGameServices()
 
 -- Player initialization logic (extracted so it can handle already-present players too)
+local initializedPlayers: { [number]: true } = {}
+
 local function initializePlayer(player: Player)
+	if initializedPlayers[player.UserId] then
+		return
+	end
+	initializedPlayers[player.UserId] = true
+
 	local ownerId = tostring(player.UserId)
 	print("ModelRunner: Initializing models for player " .. player.Name)
 
@@ -193,6 +200,7 @@ end
 
 -- Handle player cleanup
 local playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
+	initializedPlayers[player.UserId] = nil
 	local ownerId = tostring(player.UserId)
 	print("ModelRunner: Cleaning up models for player " .. player.Name)
 

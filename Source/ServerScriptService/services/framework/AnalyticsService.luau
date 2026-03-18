@@ -93,7 +93,7 @@ local function getEndpointUrl(): string
 end
 
 -- Send a batch of events to GA4 for a single client
-local function sendBatch(clientId: string, events: { GA4Event }, userProperties: UserProperties?)
+local function sendBatch(clientId: string, events: { GA4Event }, userProperties: UserProperties?): boolean
 	local body = HttpService:JSONEncode({
 		client_id = clientId,
 		user_id = clientId,
@@ -112,6 +112,8 @@ local function sendBatch(clientId: string, events: { GA4Event }, userProperties:
 	else
 		warn(string.format("[AnalyticsService] Failed to send batch: %s", tostring(err)))
 	end
+
+	return success
 end
 
 -- Flush all queued events, grouped by clientId and chunked into batches
@@ -156,7 +158,12 @@ local function flushEvents(filterClientId: string?)
 			for j = i, math.min(i + config.maxBatchSize - 1, #events) do
 				table.insert(batch, events[j])
 			end
-			sendBatch(clientId, batch, userProps)
+			local ok = sendBatch(clientId, batch, userProps)
+			if not ok then
+				for _, event in batch do
+					table.insert(eventQueue, { clientId = clientId, event = event })
+				end
+			end
 		end
 	end
 

@@ -190,6 +190,7 @@ local function sampleTick()
 			-- Update state if cell changed
 			state.currentCellX = cellX
 			state.currentCellZ = cellZ
+			state.cellEnteredTime = now
 		else
 			-- Transitions mode
 			if cellX ~= state.currentCellX or cellZ ~= state.currentCellZ then

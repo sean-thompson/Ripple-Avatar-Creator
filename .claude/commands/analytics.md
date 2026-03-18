@@ -202,3 +202,7 @@ The user describes what they want in natural language. Write SQL using the same 
 - When showing numbers, include context (e.g., "847 player-seconds in cell (3,5) — that's 3x the average")
 - For insights, go beyond raw numbers — identify patterns, anomalies, and make recommendations
 - If a query returns no data, suggest the user check their date range or whether the relevant events are being tracked
+- **Always measure standard deviation alongside any mean.** Whenever you compute an average (session length, action counts per user, player-seconds per cell, etc.), also query STDDEV in the same pass. Then act on what the SD reveals:
+  - If SD is low relative to the mean → the mean is trustworthy, report it confidently
+  - If SD is high relative to the mean → flag the spread, consider reporting median/mode instead, and if the data exists to explain *why* (e.g., outlier sessions, demographic splits, time-of-day effects), dig into that
+  - This applies across all analysis types, not just sessions — heatmap cell values, action counts, demographics breakdowns, etc.

@@ -13,6 +13,7 @@ local ServiceRunner = {}
 
 local PersistenceService = nil
 local SlashCommandService = nil
+local AnalyticsService = nil
 
 -- Phase 1: Must run before any model is used
 function ServiceRunner.initPersistence()
@@ -20,7 +21,17 @@ function ServiceRunner.initPersistence()
 	PersistenceService.init()
 end
 
--- Phase 2: After models discovered
+-- Phase 1.5: Analytics (before controllers so auto-instrumentation hooks are ready)
+function ServiceRunner.initAnalytics()
+	AnalyticsService = require(frameworkFolder.AnalyticsService)
+	AnalyticsService.init()
+end
+
+function ServiceRunner.getAnalyticsService()
+	return AnalyticsService
+end
+
+-- Phase 2: After models discovered (idempotent — safe to call from multiple scripts)
 function ServiceRunner.initSlashCommands()
 	if SlashCommandService then return end
 	SlashCommandService = require(frameworkFolder.SlashCommandService)

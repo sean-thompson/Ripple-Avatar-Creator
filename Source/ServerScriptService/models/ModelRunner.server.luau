@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local AbstractModel = require(script.Parent.AbstractModel)
 local ServiceRunner = require(script.Parent.Parent.services.ServiceRunner)
 ServiceRunner.initPersistence()
+ServiceRunner.initAnalytics()
 
 -- Auto-discover and require all models (skip Abstract)
 local modelsFolder = script.Parent
@@ -104,8 +105,15 @@ end
 -- Initialize game services that depend on models
 ServiceRunner.initGameServices()
 
--- Handle player initialization
-Players.PlayerAdded:Connect(function(player: Player)
+-- Player initialization logic (extracted so it can handle already-present players too)
+local initializedPlayers: { [number]: true } = {}
+
+local function initializePlayer(player: Player)
+	if initializedPlayers[player.UserId] then
+		return
+	end
+	initializedPlayers[player.UserId] = true
+
 	local ownerId = tostring(player.UserId)
 	print("ModelRunner: Initializing models for player " .. player.Name)
 
@@ -173,12 +181,35 @@ Players.PlayerAdded:Connect(function(player: Player)
 			instance:syncState(true)
 		end
 	end
-end)
+
+	-- Track player join for analytics (after all models are initialized)
+	local AnalyticsService = ServiceRunner.getAnalyticsService()
+	if AnalyticsService and AnalyticsService.isEnabled then
+		AnalyticsService:cacheUserProperties(player)
+		AnalyticsService:trackPlayerJoin(player)
+	end
+end
+
+-- Handle player initialization
+Players.PlayerAdded:Connect(initializePlayer)
+
+-- Handle players who joined before the handler was connected
+for _, player in Players:GetPlayers() do
+	task.spawn(initializePlayer, player)
+end
 
 -- Handle player cleanup
 local playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
+	initializedPlayers[player.UserId] = nil
 	local ownerId = tostring(player.UserId)
 	print("ModelRunner: Cleaning up models for player " .. player.Name)
+
+	-- Track player leave and flush analytics events before cleanup
+	local AnalyticsService = ServiceRunner.getAnalyticsService()
+	if AnalyticsService and AnalyticsService.isEnabled then
+		AnalyticsService:trackPlayerLeave(player)
+		AnalyticsService:flushPlayer(player)
+	end
 
 	local PersistenceService = ServiceRunner.getPersistenceService()
 

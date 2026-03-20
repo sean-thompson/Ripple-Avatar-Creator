@@ -20,7 +20,11 @@ This separation allows:
 
 ## File Locations
 
-### Types (Version Controlled)
+There are two config locations: **shared configs** (ReplicatedStorage) and **server-side configs** (ServerScriptService). Use server-side configs for anything containing secrets or data that only the server needs and views never use.
+
+### Shared Configs (ReplicatedStorage)
+
+#### Types (Version Controlled)
 
 ```
 Source/ReplicatedStorage/Config/ConfigTypes/{Name}ConfigTypes.luau
@@ -28,7 +32,7 @@ Source/ReplicatedStorage/Config/ConfigTypes/{Name}ConfigTypes.luau
 
 Type definition files are synced via Rojo and should be in version control. They define the structure that config modules must follow.
 
-### Config Modules (Studio Only)
+#### Config Modules (Studio Only)
 
 ```
 ReplicatedStorage.Config.{Name}Config (ModuleScript in Studio)
@@ -38,6 +42,71 @@ Config modules are created directly in Roblox Studio under ReplicatedStorage > C
 - Config data often needs adjustment during playtesting
 - Values like prices, rates, and thresholds change frequently
 - Rojo's `$ignoreUnknownInstances: true` on the Config folder protects these from deletion
+
+### Server-Side Configs (ServerScriptService)
+
+Use server-side configs when the config contains secrets (API keys, tokens) or when only server code needs the values and clients should never see them.
+
+#### Types (Version Controlled)
+
+```
+Source/ServerScriptService/Config/ConfigTypes/{Name}ConfigTypes.luau
+```
+
+Same pattern as shared config types — synced via Rojo, version controlled.
+
+#### Config Modules (Studio Only)
+
+```
+ServerScriptService.Config.{Name}Config (ModuleScript in Studio)
+```
+
+Created in Studio under ServerScriptService > Config. Protected from Rojo deletion by `$ignoreUnknownInstances: true` on the Config folder in `default.project.json`.
+
+#### Example: AnalyticsConfig
+
+The AnalyticsConfig is a server-side config because it contains a GA4 API secret. It also includes heatmap tracking settings. Create it in Studio at `ServerScriptService > Config > AnalyticsConfig`:
+
+```lua
+--!strict
+local ServerScriptService = game:GetService("ServerScriptService")
+local ConfigTypes = ServerScriptService:WaitForChild("Config"):WaitForChild("ConfigTypes")
+local AnalyticsConfigTypes = require(ConfigTypes:WaitForChild("AnalyticsConfigTypes"))
+
+type AnalyticsConfig = AnalyticsConfigTypes.AnalyticsConfig
+
+local config: AnalyticsConfig = {
+    enabled = true,
+    measurementId = "G-XXXXXXXXXX",
+    apiSecret = "your-api-secret",
+    hashSalt = "change-me-to-something-unique",
+    flushIntervalSeconds = 15,
+    maxBatchSize = 25,
+    debug = false,
+
+    heatmap = {
+        enabled = false,
+        trackingMode = "summary",
+        boundsMin = { -100, -100 },
+        boundsMax = { 100, 100 },
+        cellSize = 10,
+        sampleIntervalSeconds = 1,
+        flushIntervalSeconds = 120,
+        heartbeatIntervalSeconds = 60,
+    },
+}
+
+return config
+```
+
+**Note:** HttpService must be enabled in Game Settings > Security for analytics to work.
+
+#### Accessing Server-Side Configs
+
+```lua
+local ServerScriptService = game:GetService("ServerScriptService")
+local config = require(ServerScriptService:WaitForChild("Config"):WaitForChild("AnalyticsConfig"))
+```
 
 ## Config Pattern
 
@@ -115,7 +184,7 @@ return config
 
 ### Examples
 
-**Use Configs for:**
+**Use shared configs (ReplicatedStorage) for:**
 - Item prices and costs
 - Experience point thresholds
 - Spawn rates and probabilities
@@ -124,6 +193,11 @@ return config
 - Level requirements
 - Drop tables
 - Quest rewards
+
+**Use server-side configs (ServerScriptService) for:**
+- API keys and secrets (e.g., analytics, external services)
+- Server-only tuning values that clients don't need
+- Any data containing credentials or tokens
 
 **Use Models instead when:**
 - Data changes at runtime (player inventory, health)
@@ -323,6 +397,7 @@ export type LootConfig = {
 
 ### Creating a New Config Module
 
+**Shared config (ReplicatedStorage):**
 1. Open Roblox Studio
 2. Navigate to ReplicatedStorage > Config
 3. Right-click Config folder > Insert Object > ModuleScript
@@ -332,6 +407,19 @@ export type LootConfig = {
 7. Test by requiring it in the command bar:
    ```lua
    local config = require(game.ReplicatedStorage.Config.YourConfig)
+   print(config)
+   ```
+
+**Server-side config (ServerScriptService):**
+1. Open Roblox Studio
+2. Navigate to ServerScriptService > Config
+3. Right-click Config folder > Insert Object > ModuleScript
+4. Name it `{Name}Config` (e.g., `AnalyticsConfig`)
+5. Paste the config module template (use ServerScriptService path for types)
+6. Fill in your data values
+7. Test by requiring it in the command bar:
+   ```lua
+   local config = require(game.ServerScriptService.Config.YourConfig)
    print(config)
    ```
 

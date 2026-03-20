@@ -26,6 +26,7 @@ Services are organized into two folders based on initialization requirements:
 ### Framework Services (`services/framework/`)
 Services that require explicit ordering or are dependencies for other systems:
 - **PersistenceService** - Must initialize before any model is used
+- **AnalyticsService** - GA4 event tracking and batching (initializes after PersistenceService)
 - **SlashCommandService** - Must initialize after models are discovered
 
 Framework services are initialized explicitly by ServiceRunner in a specific order.
@@ -33,6 +34,7 @@ Framework services are initialized explicitly by ServiceRunner in a specific ord
 ### Game Services (`services/game/`)
 Services that just need to run after models are ready:
 - **CandleService** - Removes expired candles
+- **HeatmapService** - Tracks player positions on a 2D grid for spatial analytics
 - *Your new services go here!*
 
 Game services are **auto-discovered** - just drop a `.luau` file with an `init()` function and it runs automatically.
@@ -262,9 +264,11 @@ Source/ServerScriptService/
 │   ├── ServiceRunner.luau         -- Orchestrates service initialization
 │   ├── framework/                 -- Explicit initialization order
 │   │   ├── PersistenceService.luau    -- DataStore write queue (loop-based)
+│   │   ├── AnalyticsService.luau      -- GA4 event batching (loop-based)
 │   │   └── SlashCommandService.luau   -- Chat commands (event-driven)
 │   └── game/                      -- Auto-discovered services
-│       └── CandleService.luau         -- Candle expiry (loop-based)
+│       ├── CandleService.luau         -- Candle expiry (loop-based)
+│       └── HeatmapService.luau        -- Player position tracking (loop-based)
 ├── models/
 │   └── ModelRunner.server.luau    -- Calls ServiceRunner for service init
 └── controllers/
@@ -291,13 +295,37 @@ ServiceRunner will automatically discover and initialize it. You'll see in the O
 [ServiceRunner] Initialized: MyNewService
 ```
 
+## Tracking Custom Analytics Events
+
+If AnalyticsService is enabled, your game services can send custom GA4 events:
+
+```lua
+local ServiceRunner = require(script.Parent.Parent.ServiceRunner)
+
+function MyService.init()
+    local AnalyticsService = ServiceRunner.getAnalyticsService()
+
+    -- Track a custom event (player, event name, params)
+    if AnalyticsService and AnalyticsService.isEnabled then
+        AnalyticsService:trackEvent(player, "quest_completed", {
+            quest_name = "Dragon Slayer",
+            time_taken = 120,
+        })
+    end
+end
+```
+
+Events are automatically batched, enriched with session/user data, and sent to GA4. See AnalyticsConfig for setup.
+
 ## Existing Services Reference
 
 | Service | Location | Pattern | Purpose |
 |---------|----------|---------|---------|
 | PersistenceService | framework/ | Loop-based | Processes DataStore write queue with rate limiting |
+| AnalyticsService | framework/ | Loop-based | Batches and sends GA4 events via Measurement Protocol |
 | SlashCommandService | framework/ | Event-driven | Registers and handles chat slash commands |
 | CandleService | game/ | Loop-based | Removes expired candles every second |
+| HeatmapService | game/ | Loop-based | Tracks player positions on a 2D grid for spatial analytics |
 
 ### When to Use Framework vs Game
 

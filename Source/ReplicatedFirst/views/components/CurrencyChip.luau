@@ -46,7 +46,7 @@ end
 
 local function CurrencyChip(props: Props)
 	local config = CURRENCY_CONFIG[props.currencyType] or CURRENCY_CONFIG.gold
-	local displayAmount = useSpringNumber(props.amount, { force = 120, dampening = 14 })
+	local displayAmount = useSpringNumber(props.amount, { force = 120, dampening = 24 })
 
 	return e("Frame", {
 		AutomaticSize = Enum.AutomaticSize.X,

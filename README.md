@@ -178,6 +178,7 @@ Views come in two flavours depending on what they control:
 - Composed into a single ScreenGui tree mounted by `HudApp.client.luau`
 - Use the `useBoltState` hook to subscribe to Bolt RemoteProperty state (Network.State.*)
 - Receive data and callbacks as React props -- no BindableEvents needed
+- Spring physics animation available via hooks (`useSpring`, `useTransition`, `useDrag`) -- force/dampening/mass config with zero-re-render motor bindings
 - Modal windows are managed via React state (`activeModal`) inside HudApp
 - Examples: StatusBarView, FavoursView, CandlesView
 
@@ -259,6 +260,7 @@ Bolt ReliableEvents express **what the user wants to do**, not direct commands:
 
 **HUD views** use react-luau:
 - Components subscribe to server state with the `useBoltState` hook
+- Spring physics animation hooks (`useSpring`, `useTransition`, `useDrag`) provide smooth motion with configurable force/dampening/mass and zero-re-render motor bindings
 - Props and callbacks flow through the React tree (HudApp is the root)
 - No CollectionService tags or Studio-authored ScreenGuis needed
 
@@ -956,7 +958,13 @@ Source/
 ├── ReplicatedFirst/
 │   └── views/               # HUD (react-luau .luau) + workspace (.client.luau)
 │       ├── components/      # Shared React UI components
-│       └── hooks/           # Custom React hooks (useBoltState)
+│       └── hooks/           # Custom React hooks
+│           ├── useBoltState.luau
+│           ├── SpringSolver.luau
+│           ├── useSpring.luau
+│           ├── useSpringNumber.luau
+│           ├── useTransition.luau
+│           └── useDrag.luau
 └── ReplicatedStorage/
     ├── Network.luau         # Intent/State/Actions definitions
     └── Config/              # Static game data (prices, rates, etc.)

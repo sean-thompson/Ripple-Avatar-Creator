@@ -244,6 +244,115 @@ if activeModal == "favours" then
 end
 ```
 
+## Animation
+
+The project includes a spring physics animation system built on React bindings. Animations run on `RenderStepped` and update Instance properties directly — no re-renders during motion.
+
+### Spring Physics Config (SpringSolver.luau)
+
+SpringSolver is a pure math module (no React dependency) implementing a damped harmonic oscillator. It decomposes complex types (UDim2, Color3, Vector2) into number arrays, solves component-wise, then recomposes.
+
+Config parameters:
+- `force` — stiffness; how aggressively the spring moves toward the target
+- `dampening` — friction; how quickly oscillation settles
+- `mass` — inertia; higher values make the spring feel heavier
+
+Default config: `{ force = 180, dampening = 20, mass = 1 }`
+
+**Presets:**
+
+| Use case | force | dampening | mass | Character |
+|----------|-------|-----------|------|-----------|
+| Modal open/close | 200 | 14 | 1 | Bouncy entrance |
+| Modal leave | 300 | 30 | 1 | Fast overdamped exit |
+| Tile stagger | 220 | 22 | 1 | Quick pop-in |
+| Number tick | 120 | 24 | 1 | Smooth counting, no overshoot |
+| Drag spring-back | 300 | 25 | 1 | Stiff physical return |
+
+### useSpring (useSpring.luau)
+
+Binding-based property animation. Animates a dictionary of properties toward target values. Returns React bindings that update Instance properties directly — zero re-renders during animation.
+
+```lua
+local springProps = useSpring({
+    Position = UDim2.new(0.5, 0, 0.5, 0),
+    BackgroundTransparency = 0,
+}, { force = 200, dampening = 20 })
+-- springProps.Position and springProps.BackgroundTransparency are bindings
+```
+
+Pass `immediate = true` in the config to snap to target without animating.
+
+### useSpringNumber (useSpringNumber.luau)
+
+Animates a single number using spring physics. Returns a rounded integer via `useState` — re-renders only when the displayed digit changes. Used for currency displays and counters.
+
+```lua
+local displayAmount = useSpringNumber(props.amount, { force = 120, dampening = 24 })
+```
+
+### useTransition (useTransition.luau)
+
+Enter/leave transitions with stagger. Manages delayed unmount so leaving elements animate out before removal.
+
+**Boolean mode** (single item show/hide — modals):
+
+```lua
+local transitions = useTransition(isVisible, {
+    from = { BackgroundTransparency = 1, WindowYOffset = -50 },
+    enter = { BackgroundTransparency = 0, WindowYOffset = 0 },
+    leave = { BackgroundTransparency = 1, WindowYOffset = -50 },
+    config = { force = 200, dampening = 14 },
+    leaveConfig = { force = 300, dampening = 30 },
+})
+```
+
+**List mode** (multiple items with stagger — grids):
+
+```lua
+local transitions = useTransition(items, {
+    from = { BackgroundTransparency = 1 },
+    enter = { BackgroundTransparency = 0 },
+    leave = { BackgroundTransparency = 1 },
+    trail = 40, -- ms between items
+    keys = function(item) return item.id end,
+    config = { force = 220, dampening = 22 },
+})
+```
+
+Returns an array of `{ item, key, springProps, phase }`. Each `springProps` table contains bindings. `phase` is `"entering"`, `"entered"`, or `"leaving"`.
+
+Separate `leaveConfig` allows fast overdamped exits while keeping bouncy entrances. `AnimatedModal` (`components/AnimatedModal.luau`) wraps this for the modal use case.
+
+### useDrag (useDrag.luau)
+
+Drag with momentum and spring-back. Tracks release velocity from a circular buffer of position samples and feeds it into the spring as initial velocity.
+
+```lua
+local dragBind, dragOffset = useDrag({ springBack = true, config = { force = 300, dampening = 25 } })
+-- Bind: [React.Event.InputBegan] = dragBind.onInputBegan
+-- Position: dragOffset:map(function(offset) return UDim2.new(0.5, offset.X, 0.5, offset.Y) end)
+```
+
+### CanvasGroup Pattern
+
+Use `CanvasGroup` instead of `Frame` when you need `GroupTransparency` for uniform fade (e.g., fading an entire modal including all children).
+
+Gotcha: `UIStroke` on a `CanvasGroup` does NOT fade with `GroupTransparency`. Put the stroke on a child `Frame` inside the `CanvasGroup` instead.
+
+### File Locations
+
+```
+views/hooks/
+  SpringSolver.luau      — Pure math, no React dependency
+  useSpring.luau          — Binding-based property springs
+  useSpringNumber.luau    — Number springs for text displays
+  useTransition.luau      — Enter/leave/stagger transitions
+  useDrag.luau            — Drag with momentum + spring-back
+views/components/
+  AnimatedModal.luau      — Delayed-unmount modal wrapper using useTransition
+```
+
 ## Creating a HUD View
 
 ### Step 1: Create the Component

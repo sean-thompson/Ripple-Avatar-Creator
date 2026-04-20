@@ -158,6 +158,33 @@ I will show you the available properties from Network.luau.
 
 **Properties** (comma-separated):
 
+### Step 4.5H: Animation Needs
+
+Does this view need animation? (spring transitions, drag, number springs)
+
+**Examples that use animation**:
+- Currency display that rolls up/down — useSpringNumber
+- Panel that slides in — useSpring on Position
+- Modal with enter/exit animation — AnimatedModal wrapper + useTransition
+- Draggable sticker or item — useDrag
+
+**Needs animation?** (Yes/No):
+
+**If Yes**:
+
+Which animation hooks does this view need?
+
+| Hook | Use case |
+|---|---|
+| `useSpring` | Animate properties (Position, Size, Transparency) toward targets with spring physics |
+| `useSpringNumber` | Animate numeric displays (gold, health, score) — re-renders only when displayed digit changes |
+| `useTransition` | Enter/exit animations for items appearing/disappearing, supports stagger via `trail` |
+| `useDrag` | Make an element draggable with momentum and spring-back |
+
+**Selected hooks** (comma-separated):
+
+**Note**: If this is a **modal view** that needs enter/exit animation, use the `AnimatedModal` wrapper pattern in `Source/ReplicatedFirst/views/components/AnimatedModal.luau` rather than calling useTransition directly in the view.
+
 ### Step 5H: Props Definition
 
 Based on the patterns detected, what props will this component receive from HudApp?
@@ -424,6 +451,43 @@ end
 
 return {ViewName}
 ```
+
+**If animation hooks are needed**, add the relevant imports and usage:
+
+```lua
+{If useSpring:}
+local useSpring = require(script.Parent:WaitForChild("hooks"):WaitForChild("useSpring"))
+
+-- In the component body:
+local springProps = useSpring({
+    Position = if isOpen then UDim2.new(0.5, 0, 0.5, 0) else UDim2.new(0.5, 0, 1.5, 0),
+    BackgroundTransparency = if isOpen then 0 else 1,
+}, {
+    force = 200,
+    dampening = 20,
+})
+
+-- Bind spring values directly to element properties:
+return e("Frame", {
+    Position = springProps.Position,
+    BackgroundTransparency = springProps.BackgroundTransparency,
+})
+
+{If useSpringNumber — for currency/number displays:}
+local useSpringNumber = require(script.Parent:WaitForChild("hooks"):WaitForChild("useSpringNumber"))
+
+-- In the component body:
+local displayGold = useSpringNumber(props.gold, {
+    force = 120,
+    dampening = 14,
+})
+
+return e("TextLabel", {
+    Text = `Gold: {displayGold}`,
+})
+```
+
+**Note**: Modal views that need enter/exit animation should follow the `AnimatedModal` pattern in `Source/ReplicatedFirst/views/components/AnimatedModal.luau` — this wrapper uses `useTransition` to manage mount/unmount animations and keeps the view mounted during the exit phase.
 
 **After generating the component**, provide instructions to wire it into HudApp.client.luau:
 
@@ -722,6 +786,9 @@ Before finalizing:
 - **HUD**: useBoltState used correctly (not raw :Observe())
 - **HUD**: React.Event used for button interactions (not .Activated:Connect)
 - **HUD**: HudApp wiring instructions are complete and correct
+- **HUD (animated)**: Verify animations play on state changes (spring targets update when observed state changes)
+- **HUD (animated)**: Verify spring settles (no infinite oscillation — dampening must be > 0)
+- **HUD (animated, drag)**: Verify `React.Event.InputBegan` fires on the drag target (bind `dragBind.onInputBegan`)
 - **Workspace**: CollectionService used directly (NOT AbstractView)
 - **Workspace**: GetTagged + GetInstanceAddedSignal pattern used
 - **Workspace**: task.spawn wraps setup calls
@@ -789,6 +856,12 @@ Testing:
   3. Verify state updates render in the UI
   {If Pattern B:}
   3. Click action buttons and check server Output for controller processing
+
+  {If animated:}
+  3. Verify animations play on state changes (e.g., spring moves to new target)
+  4. Verify spring settles — no infinite oscillation
+  {If drag:}
+  5. Verify InputBegan fires on the drag target (element should follow pointer)
 
 Common Issues:
 

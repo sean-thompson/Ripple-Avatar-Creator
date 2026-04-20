@@ -1,0 +1,97 @@
+--!strict
+
+--[[
+	CurrencyChip
+
+	Displays a currency icon circle + formatted number inside a pill-shaped frame.
+	Used in the StatusBar and ModalWindow header.
+
+	Props:
+		currencyType: "gold" | "treasure"
+		amount: number
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
+
+local e = React.createElement
+
+export type Props = {
+	currencyType: string,
+	amount: number,
+	layoutOrder: number?,
+}
+
+local CURRENCY_CONFIG = {
+	gold = {
+		iconColor = Color3.fromRGB(233, 180, 76),
+		iconText = "G",
+	},
+	treasure = {
+		iconColor = Color3.fromRGB(111, 214, 199),
+		iconText = "T",
+	},
+}
+
+local function formatNumber(n: number): string
+	local formatted = tostring(math.floor(n))
+	local k: number
+	repeat
+		formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", "%1,%2")
+	until k == 0
+	return formatted
+end
+
+local function CurrencyChip(props: Props)
+	local config = CURRENCY_CONFIG[props.currencyType] or CURRENCY_CONFIG.gold
+
+	return e("Frame", {
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.new(0, 0, 0, 34),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.layoutOrder or 0,
+	}, {
+		Layout = e("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 8),
+		}),
+		Padding = e("UIPadding", {
+			PaddingLeft = UDim.new(0, 4),
+			PaddingRight = UDim.new(0, 14),
+		}),
+
+		Icon = e("Frame", {
+			Size = UDim2.new(0, 24, 0, 24),
+			BackgroundColor3 = config.iconColor,
+			LayoutOrder = 1,
+		}, {
+			Corner = e("UICorner", {
+				CornerRadius = UDim.new(1, 0),
+			}),
+			Label = e("TextLabel", {
+				Size = UDim2.new(1, 0, 1, 0),
+				BackgroundTransparency = 1,
+				Text = config.iconText,
+				TextColor3 = Color3.fromRGB(255, 255, 255),
+				TextSize = 13,
+				Font = Enum.Font.GothamBold,
+			}),
+		}),
+
+		Value = e("TextLabel", {
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.new(0, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Text = formatNumber(props.amount),
+			TextColor3 = Color3.fromRGB(243, 241, 236),
+			TextSize = 15,
+			Font = Enum.Font.GothamBold,
+			LayoutOrder = 2,
+		}),
+	})
+end
+
+return CurrencyChip

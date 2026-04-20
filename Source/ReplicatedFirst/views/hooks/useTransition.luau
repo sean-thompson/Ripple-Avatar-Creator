@@ -50,6 +50,11 @@ export type TransitionConfig = {
 		dampening: number?,
 		mass: number?,
 	}?,
+	leaveConfig: {
+		force: number?,
+		dampening: number?,
+		mass: number?,
+	}?,
 }
 
 export type TransitionItem = {
@@ -75,6 +80,11 @@ local function useTransition(input: any, transitionConfig: TransitionConfig): { 
 		force = if transitionConfig.config and transitionConfig.config.force then transitionConfig.config.force else 200,
 		dampening = if transitionConfig.config and transitionConfig.config.dampening then transitionConfig.config.dampening else 22,
 		mass = if transitionConfig.config and transitionConfig.config.mass then transitionConfig.config.mass else 1,
+	}
+	local resolvedLeaveConfig: SpringConfig = {
+		force = if transitionConfig.leaveConfig and transitionConfig.leaveConfig.force then transitionConfig.leaveConfig.force else resolvedConfig.force,
+		dampening = if transitionConfig.leaveConfig and transitionConfig.leaveConfig.dampening then transitionConfig.leaveConfig.dampening else resolvedConfig.dampening,
+		mass = if transitionConfig.leaveConfig and transitionConfig.leaveConfig.mass then transitionConfig.leaveConfig.mass else resolvedConfig.mass,
 	}
 	local trail = (transitionConfig.trail or 0) / 1000 -- convert ms to seconds
 
@@ -245,10 +255,11 @@ local function useTransition(input: any, transitionConfig: TransitionConfig): { 
 					continue
 				end
 
+				local activeConfig = if internal.phase == "leaving" then resolvedLeaveConfig else resolvedConfig
 				local itemSettled = true
 				for propName, state in internal.springs do
 					if not state.settled then
-						local newState = SpringSolver.step(state, resolvedConfig, dt)
+						local newState = SpringSolver.step(state, activeConfig, dt)
 						internal.springs[propName] = newState
 						local value = SpringSolver.recompose(newState.position, internal.templates[propName])
 						internal.updaters[propName](value)

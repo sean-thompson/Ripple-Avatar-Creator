@@ -70,7 +70,7 @@ local function FavoursView(props: Props)
 		from = { GroupTransparency = 1 },
 		enter = { GroupTransparency = 0 },
 		leave = { GroupTransparency = 1 },
-		trail = 80,
+		trail = 40,
 		keys = function(item: any)
 			return item.favourType
 		end,

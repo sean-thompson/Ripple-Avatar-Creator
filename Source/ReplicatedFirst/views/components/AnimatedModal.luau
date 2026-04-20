@@ -60,16 +60,20 @@ local function AnimatedModal(props: Props)
 		from = {
 			BackgroundTransparency = 1, -- scrim starts invisible
 			WindowTransparency = 1,     -- window starts invisible
+			WindowYOffset = -50,        -- window starts 50px above center
 		},
 		enter = {
 			BackgroundTransparency = 0.35, -- scrim target (1 - 0.65)
 			WindowTransparency = 0,        -- window fully visible
+			WindowYOffset = 0,             -- slides down to center
 		},
 		leave = {
 			BackgroundTransparency = 1,
 			WindowTransparency = 1,
+			WindowYOffset = -50,
 		},
-		config = { force = 200, dampening = 22, mass = 1 },
+		config = { force = 200, dampening = 14, mass = 1 },
+		leaveConfig = { force = 300, dampening = 30, mass = 1 },
 	})
 
 	local elements: { [string]: any } = {}
@@ -104,6 +108,7 @@ local function AnimatedModal(props: Props)
 			bodyContent = bodyContent,
 			scrimTransparency = transition.springProps.BackgroundTransparency,
 			windowTransparency = transition.springProps.WindowTransparency,
+			windowYOffset = transition.springProps.WindowYOffset,
 		})
 	end
 

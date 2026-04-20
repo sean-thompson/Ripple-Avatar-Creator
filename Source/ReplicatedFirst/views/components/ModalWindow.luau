@@ -37,6 +37,7 @@ export type Props = {
 	bodyContent: any?, -- React element to render inside the body
 	scrimTransparency: any?, -- React binding for animated scrim
 	windowTransparency: any?, -- React binding for animated window fade
+	windowYOffset: any?, -- React binding for vertical slide animation
 }
 
 -- Colours
@@ -110,10 +111,17 @@ local function ModalWindow(props: Props)
 		config = { force = 300, dampening = 25 },
 	})
 
-	-- Map drag offset onto window center position
-	local windowPosition = dragOffset:map(function(offset: Vector2)
-		return UDim2.new(0.5, offset.X, 0.5, offset.Y)
-	end)
+	-- Combine drag offset with optional slide animation offset
+	local windowPosition
+	if props.windowYOffset then
+		windowPosition = React.joinBindings({ drag = dragOffset, slide = props.windowYOffset }):map(function(values: any)
+			return UDim2.new(0.5, values.drag.X, 0.5, values.drag.Y + values.slide)
+		end)
+	else
+		windowPosition = dragOffset:map(function(offset: Vector2)
+			return UDim2.new(0.5, offset.X, 0.5, offset.Y)
+		end)
+	end
 
 	return e("Frame", {
 		Name = "ModalContainer",
@@ -139,18 +147,24 @@ local function ModalWindow(props: Props)
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = windowPosition,
 			Size = UDim2.new(0, props.windowWidth, 0, props.windowHeight),
-			BackgroundColor3 = COLOR_WINDOW_BG,
+			BackgroundTransparency = 1,
 			GroupTransparency = props.windowTransparency or 0,
 			ClipsDescendants = true,
 			ZIndex = 2,
 		}, {
-			Corner = e("UICorner", {
-				CornerRadius = UDim.new(0, 14),
-			}),
-			Stroke = e("UIStroke", {
-				Color = COLOR_STROKE,
-				Transparency = 0.86,
-				Thickness = 1,
+			-- Inner frame holds the background + stroke so GroupTransparency fades both
+			Inner = e("Frame", {
+				Size = UDim2.new(1, 0, 1, 0),
+				BackgroundColor3 = COLOR_WINDOW_BG,
+			}, {
+				InnerCorner = e("UICorner", {
+					CornerRadius = UDim.new(0, 14),
+				}),
+				Stroke = e("UIStroke", {
+					Color = COLOR_STROKE,
+					Transparency = 0.86,
+					Thickness = 1,
+				}),
 			}),
 
 			-- Header (draggable)

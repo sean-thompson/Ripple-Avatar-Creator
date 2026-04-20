@@ -70,8 +70,8 @@ local function StatusBarView(props: Props)
 			Thickness = 1,
 		}),
 		Padding = e("UIPadding", {
-			PaddingLeft = UDim.new(0, 5),
-			PaddingRight = UDim.new(0, 5),
+			PaddingLeft = UDim.new(0, 8),
+			PaddingRight = UDim.new(0, 8),
 			PaddingTop = UDim.new(0, 5),
 			PaddingBottom = UDim.new(0, 5),
 		}),
@@ -79,7 +79,7 @@ local function StatusBarView(props: Props)
 			FillDirection = Enum.FillDirection.Horizontal,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 4),
+			Padding = UDim.new(0, 8),
 		}),
 
 		GoldChip = e(CurrencyChip, {
@@ -96,12 +96,14 @@ local function StatusBarView(props: Props)
 		Divider2 = Divider({ layoutOrder = 4 }),
 		FavoursButton = e(HudButton, {
 			label = "Favours",
+			icon = "\u{2B50}",
 			isActive = props.activeModal == "favours",
 			onActivated = onToggleFavours,
 			layoutOrder = 5,
 		}),
 		CandlesButton = e(HudButton, {
 			label = "Candles",
+			icon = "\u{1F56F}",
 			isActive = props.activeModal == "candles",
 			onActivated = onToggleCandles,
 			layoutOrder = 6,

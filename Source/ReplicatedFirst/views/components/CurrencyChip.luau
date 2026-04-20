@@ -26,11 +26,11 @@ export type Props = {
 local CURRENCY_CONFIG = {
 	gold = {
 		iconColor = Color3.fromRGB(233, 180, 76),
-		iconText = "G",
+		iconText = "\u{1F4B0}",
 	},
 	treasure = {
 		iconColor = Color3.fromRGB(111, 214, 199),
-		iconText = "T",
+		iconText = "\u{1F48E}",
 	},
 }
 
@@ -75,9 +75,8 @@ local function CurrencyChip(props: Props)
 				Size = UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
 				Text = config.iconText,
-				TextColor3 = Color3.fromRGB(255, 255, 255),
-				TextSize = 13,
-				Font = Enum.Font.GothamBold,
+				TextColor3 = Color3.fromRGB(0, 0, 0),
+				TextSize = 14,
 			}),
 		}),
 

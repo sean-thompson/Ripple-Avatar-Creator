@@ -52,8 +52,16 @@ local function useDrag(dragConfig: UseDragConfig?): (DragBind, any)
 		mass = if dragConfig and dragConfig.config and dragConfig.config.mass then dragConfig.config.mass else 1,
 	}
 
-	-- Offset binding: Vector2 representing pixel offset from original position
-	local offsetBinding, setOffset = React.createBinding(Vector2.new(0, 0))
+	-- Offset binding: stable across re-renders via ref
+	local bindingRef = React.useRef(nil :: any?)
+	local setOffsetRef = React.useRef(nil :: any?)
+	if bindingRef.current == nil then
+		local binding, updater = React.createBinding(Vector2.new(0, 0))
+		bindingRef.current = binding
+		setOffsetRef.current = updater
+	end
+	local offsetBinding = bindingRef.current
+	local setOffset = setOffsetRef.current :: (Vector2) -> ()
 
 	-- Refs for drag state
 	local stateRef = React.useRef({

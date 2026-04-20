@@ -129,16 +129,13 @@ local function ModalWindow(props: Props)
 		BackgroundTransparency = 1,
 		ZIndex = 10,
 	}, {
-		-- Scrim overlay
-		Scrim = e("TextButton", {
+		-- Scrim overlay (non-interactive — close via X button only)
+		Scrim = e("Frame", {
 			Name = "Scrim",
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundColor3 = COLOR_SCRIM,
 			BackgroundTransparency = props.scrimTransparency or 0.65,
-			Text = "",
-			AutoButtonColor = false,
 			ZIndex = 1,
-			[React.Event.Activated] = props.onClose,
 		}),
 
 		-- Window frame (CanvasGroup enables GroupTransparency for fade animation)
@@ -172,9 +169,15 @@ local function ModalWindow(props: Props)
 				Name = "Header",
 				Size = UDim2.new(1, 0, 0, 56),
 				BackgroundTransparency = 1,
-				Active = true, -- required for InputBegan to fire
-				[React.Event.InputBegan] = dragBind.onInputBegan,
 			}, {
+				-- Drag handle: invisible overlay that captures drag input
+				DragHandle = e("Frame", {
+					Size = UDim2.new(1, -46, 1, 0), -- leave space for close button
+					BackgroundTransparency = 1,
+					Active = true,
+					ZIndex = 10,
+					[React.Event.InputBegan] = dragBind.onInputBegan,
+				}),
 				Border = e("Frame", {
 					AnchorPoint = Vector2.new(0, 1),
 					Position = UDim2.new(0, 0, 1, 0),

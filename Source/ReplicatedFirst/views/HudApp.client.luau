@@ -58,12 +58,18 @@ local function HudApp()
 		setActiveModal(nil)
 	end, {})
 
+	-- Count total favours for subtitle
+	local favourCount = 0
+	for _ in favoursDict do
+		favourCount += 1
+	end
+
 	-- Build modal content
 	local modalElement = nil
 	if activeModal == "favours" then
 		modalElement = e(ModalWindow, {
 			title = "Favours",
-			subtitle = "COLLECTION",
+			subtitle = `{favourCount} \u{00B7} BLESSINGS EARNED AT THE SHRINE`,
 			gold = inventory.gold,
 			treasure = inventory.treasure,
 			onClose = closeModal,

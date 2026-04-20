@@ -4,10 +4,12 @@
 	FavourTile
 
 	A single favour card in the Favours grid.
-	Shows a cream-colored card with rarity bar, count badge, art placeholder, and name.
+	The tile background IS the rarity colour (derived from FavoursConfig chance
+	values). A cream body with UICorner is overlaid below so the coloured
+	stripe follows the parent's corner radius naturally.
 
 	Props:
-		favourType: string  (e.g., "Blessing", "Fortune", "Miracle")
+		favourType: string
 		count: number
 		layoutOrder: number?
 ]]
@@ -15,6 +17,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
+local FavoursConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("FavoursConfig"))
 
 local e = React.createElement
 
@@ -24,36 +27,50 @@ export type Props = {
 	layoutOrder: number?,
 }
 
--- Rarity colour mapping
-local RARITY_COLORS: { [string]: Color3 } = {
-	Blessing = Color3.fromRGB(184, 190, 200), -- common
-	Fortune = Color3.fromRGB(111, 214, 199),   -- uncommon
-	Miracle = Color3.fromRGB(233, 180, 76),    -- legendary
+-- Rarity colour tiers based on chance value from FavoursConfig
+local RARITY_TIERS = {
+	{ threshold = 0.5,  color = Color3.fromRGB(184, 190, 200) }, -- common (grey)
+	{ threshold = 0.2,  color = Color3.fromRGB(111, 214, 199) }, -- uncommon (teal)
+	{ threshold = 0.05, color = Color3.fromRGB(91, 164, 232) },  -- rare (blue)
+	{ threshold = 0,    color = Color3.fromRGB(233, 180, 76) },   -- legendary (gold)
 }
 
-local COLOR_TILE_TOP = Color3.fromRGB(245, 241, 232)
-local COLOR_TILE_BOTTOM = Color3.fromRGB(232, 225, 208)
+local function getRarityColor(favourType: string): Color3
+	local chance = FavoursConfig.favours[favourType]
+	if not chance then
+		return RARITY_TIERS[1].color
+	end
+
+	for _, tier in RARITY_TIERS do
+		if chance >= tier.threshold then
+			return tier.color
+		end
+	end
+
+	return RARITY_TIERS[#RARITY_TIERS].color
+end
+
+local COLOR_TILE_BG = Color3.fromRGB(245, 241, 232)
 local COLOR_TILE_TEXT = Color3.fromRGB(44, 38, 32)
 local COLOR_BADGE_BG = Color3.fromRGB(11, 13, 16)
 local COLOR_BADGE_TEXT = Color3.fromRGB(246, 213, 138)
 local COLOR_ART_BG = Color3.fromRGB(220, 214, 200)
 
+local RARITY_BAR_HEIGHT = 4
+local CORNER_RADIUS = 10
+
 local function FavourTile(props: Props)
-	local rarityColor = RARITY_COLORS[props.favourType] or RARITY_COLORS.Blessing
+	local rarityColor = getRarityColor(props.favourType)
 	local initials = string.upper(string.sub(props.favourType, 1, 2))
 
 	return e("Frame", {
-		Size = UDim2.new(0, 118, 0, 128), -- ~1:1.08 aspect
-		BackgroundColor3 = COLOR_TILE_TOP,
+		Size = UDim2.new(0, 118, 0, 128),
+		BackgroundColor3 = rarityColor,
 		LayoutOrder = props.layoutOrder or 0,
 		ClipsDescendants = true,
 	}, {
 		Corner = e("UICorner", {
-			CornerRadius = UDim.new(0, 10),
-		}),
-		Gradient = e("UIGradient", {
-			Color = ColorSequence.new(COLOR_TILE_TOP, COLOR_TILE_BOTTOM),
-			Rotation = 90,
+			CornerRadius = UDim.new(0, CORNER_RADIUS),
 		}),
 		Stroke = e("UIStroke", {
 			Color = Color3.new(0, 0, 0),
@@ -61,22 +78,27 @@ local function FavourTile(props: Props)
 			Thickness = 1,
 		}),
 
-		-- Rarity bar at top
-		RarityBar = e("Frame", {
-			Size = UDim2.new(1, 0, 0, 3),
-			BackgroundColor3 = rarityColor,
+		-- Cream body overlaid below the rarity stripe
+		Body = e("Frame", {
+			Position = UDim2.new(0, 0, 0, RARITY_BAR_HEIGHT),
+			Size = UDim2.new(1, 0, 1, -RARITY_BAR_HEIGHT),
+			BackgroundColor3 = COLOR_TILE_BG,
 			BorderSizePixel = 0,
+		}, {
+			BodyCorner = e("UICorner", {
+				CornerRadius = UDim.new(0, CORNER_RADIUS),
+			}),
 		}),
 
-		-- Count badge (top-right)
+		-- Count badge (top-right, fixed circle)
 		CountBadge = e("Frame", {
 			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -6, 0, 9),
-			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.new(0, 22, 0, 22),
+			Position = UDim2.new(1, -6, 0, 10),
+			Size = UDim2.new(0, 24, 0, 24),
 			BackgroundColor3 = COLOR_BADGE_BG,
+			ZIndex = 3,
 		}, {
-			Corner = e("UICorner", {
+			BadgeCorner = e("UICorner", {
 				CornerRadius = UDim.new(1, 0),
 			}),
 			Stroke = e("UIStroke", {
@@ -84,16 +106,12 @@ local function FavourTile(props: Props)
 				Transparency = 0.6,
 				Thickness = 1,
 			}),
-			Padding = e("UIPadding", {
-				PaddingLeft = UDim.new(0, 6),
-				PaddingRight = UDim.new(0, 6),
-			}),
 			Label = e("TextLabel", {
 				Size = UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
 				Text = tostring(props.count),
 				TextColor3 = COLOR_BADGE_TEXT,
-				TextSize = 12,
+				TextSize = 11,
 				Font = Enum.Font.GothamBold,
 			}),
 		}),
@@ -104,8 +122,9 @@ local function FavourTile(props: Props)
 			Position = UDim2.new(0.5, 0, 0, 34),
 			Size = UDim2.new(0, 56, 0, 56),
 			BackgroundColor3 = COLOR_ART_BG,
+			ZIndex = 2,
 		}, {
-			Corner = e("UICorner", {
+			ArtCorner = e("UICorner", {
 				CornerRadius = UDim.new(0, 6),
 			}),
 			Initials = e("TextLabel", {
@@ -131,6 +150,7 @@ local function FavourTile(props: Props)
 			Font = Enum.Font.GothamMedium,
 			TextWrapped = true,
 			TextTruncate = Enum.TextTruncate.AtEnd,
+			ZIndex = 2,
 		}),
 	})
 end

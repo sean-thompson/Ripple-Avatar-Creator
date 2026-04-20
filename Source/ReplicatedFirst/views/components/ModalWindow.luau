@@ -37,8 +37,7 @@ export type Props = {
 }
 
 -- Colours
-local COLOR_WINDOW_BG = Color3.fromRGB(22, 24, 28)
-local COLOR_WINDOW_BG_BOTTOM = Color3.fromRGB(16, 18, 21)
+local COLOR_WINDOW_BG = Color3.fromRGB(30, 33, 38)
 local COLOR_STROKE = Color3.new(1, 1, 1)
 local COLOR_TEXT = Color3.fromRGB(243, 241, 236)
 local COLOR_TEXT_DIM = Color3.fromRGB(243, 241, 236)
@@ -59,7 +58,7 @@ local function formatNumber(n: number): string
 end
 
 -- Currency mini display for the header
-local function CurrencyMini(props: { color: Color3, amount: number, layoutOrder: number })
+local function CurrencyMini(props: { color: Color3, amount: number, label: string, layoutOrder: number })
 	return e("Frame", {
 		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundTransparency = 1,
@@ -88,6 +87,16 @@ local function CurrencyMini(props: { color: Color3, amount: number, layoutOrder:
 			TextSize = 13,
 			Font = Enum.Font.GothamBold,
 			LayoutOrder = 2,
+		}),
+		Label = e("TextLabel", {
+			AutomaticSize = Enum.AutomaticSize.XY,
+			BackgroundTransparency = 1,
+			Text = props.label,
+			TextColor3 = COLOR_TEXT_MUTE,
+			TextTransparency = 0.38,
+			TextSize = 12,
+			Font = Enum.Font.GothamMedium,
+			LayoutOrder = 3,
 		}),
 	})
 end
@@ -128,10 +137,6 @@ local function ModalWindow(props: Props)
 				Color = COLOR_STROKE,
 				Transparency = 0.86,
 				Thickness = 1,
-			}),
-			Gradient = e("UIGradient", {
-				Color = ColorSequence.new(COLOR_WINDOW_BG, COLOR_WINDOW_BG_BOTTOM),
-				Rotation = 90,
 			}),
 
 			-- Header
@@ -209,9 +214,9 @@ local function ModalWindow(props: Props)
 							BackgroundTransparency = 1,
 							Text = props.subtitle,
 							TextColor3 = COLOR_TEXT_MUTE,
-							TextTransparency = 0.62,
+							TextTransparency = 0.38,
 							TextSize = 10,
-							Font = Enum.Font.GothamMedium,
+							Font = Enum.Font.GothamBold,
 							LayoutOrder = 2,
 						}),
 					}),
@@ -237,11 +242,13 @@ local function ModalWindow(props: Props)
 					Gold = e(CurrencyMini, {
 						color = COLOR_GOLD,
 						amount = props.gold,
+						label = "gold",
 						layoutOrder = 1,
 					}),
 					Treasure = e(CurrencyMini, {
 						color = COLOR_TREASURE,
 						amount = props.treasure,
+						label = "treasure",
 						layoutOrder = 2,
 					}),
 

@@ -21,6 +21,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
+local useDrag = require(script.Parent.Parent:WaitForChild("hooks"):WaitForChild("useDrag"))
 
 local e = React.createElement
 
@@ -34,6 +35,8 @@ export type Props = {
 	windowHeight: number,
 	footerText: string?,
 	bodyContent: any?, -- React element to render inside the body
+	scrimTransparency: any?, -- React binding for animated scrim
+	windowTransparency: any?, -- React binding for animated window fade
 }
 
 -- Colours
@@ -102,6 +105,16 @@ local function CurrencyMini(props: { color: Color3, amount: number, label: strin
 end
 
 local function ModalWindow(props: Props)
+	local dragBind, dragOffset = useDrag({
+		springBack = true,
+		config = { force = 300, dampening = 25 },
+	})
+
+	-- Map drag offset onto window center position
+	local windowPosition = dragOffset:map(function(offset: Vector2)
+		return UDim2.new(0.5, offset.X, 0.5, offset.Y)
+	end)
+
 	return e("Frame", {
 		Name = "ModalContainer",
 		Size = UDim2.new(1, 0, 1, 0),
@@ -113,20 +126,21 @@ local function ModalWindow(props: Props)
 			Name = "Scrim",
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundColor3 = COLOR_SCRIM,
-			BackgroundTransparency = 0.65,
+			BackgroundTransparency = props.scrimTransparency or 0.65,
 			Text = "",
 			AutoButtonColor = false,
 			ZIndex = 1,
 			[React.Event.Activated] = props.onClose,
 		}),
 
-		-- Window frame
-		Window = e("Frame", {
+		-- Window frame (CanvasGroup enables GroupTransparency for fade animation)
+		Window = e("CanvasGroup", {
 			Name = "Window",
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Position = windowPosition,
 			Size = UDim2.new(0, props.windowWidth, 0, props.windowHeight),
 			BackgroundColor3 = COLOR_WINDOW_BG,
+			GroupTransparency = props.windowTransparency or 0,
 			ClipsDescendants = true,
 			ZIndex = 2,
 		}, {
@@ -139,11 +153,13 @@ local function ModalWindow(props: Props)
 				Thickness = 1,
 			}),
 
-			-- Header
+			-- Header (draggable)
 			Header = e("Frame", {
 				Name = "Header",
 				Size = UDim2.new(1, 0, 0, 56),
 				BackgroundTransparency = 1,
+				Active = true, -- required for InputBegan to fire
+				[React.Event.InputBegan] = dragBind.onInputBegan,
 			}, {
 				Border = e("Frame", {
 					AnchorPoint = Vector2.new(0, 1),

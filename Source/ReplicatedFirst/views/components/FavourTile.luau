@@ -12,6 +12,7 @@
 		favourType: string
 		count: number
 		layoutOrder: number?
+		groupTransparency: any? -- React binding for stagger fade-in
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,6 +26,7 @@ export type Props = {
 	favourType: string,
 	count: number,
 	layoutOrder: number?,
+	groupTransparency: any?,
 }
 
 -- Rarity colour tiers based on chance value from FavoursConfig
@@ -63,9 +65,11 @@ local function FavourTile(props: Props)
 	local rarityColor = getRarityColor(props.favourType)
 	local initials = string.upper(string.sub(props.favourType, 1, 2))
 
-	return e("Frame", {
+	-- CanvasGroup enables GroupTransparency for stagger fade-in
+	return e("CanvasGroup", {
 		Size = UDim2.new(0, 118, 0, 128),
 		BackgroundColor3 = rarityColor,
+		GroupTransparency = props.groupTransparency or 0,
 		LayoutOrder = props.layoutOrder or 0,
 		ClipsDescendants = true,
 	}, {

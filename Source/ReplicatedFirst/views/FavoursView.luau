@@ -4,7 +4,8 @@
 	FavoursView
 
 	Body content for the Favours modal window.
-	Aggregates favour data by type and renders a grid of FavourTile cards.
+	Aggregates favour data by type and renders a grid of FavourTile cards
+	with staggered entrance animation.
 
 	Props:
 		favoursData: { [string]: Network.FavoursState }
@@ -16,6 +17,7 @@ local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("R
 
 local Network = require(ReplicatedStorage:WaitForChild("Network"))
 local FavourTile = require(script.Parent:WaitForChild("components"):WaitForChild("FavourTile"))
+local useTransition = require(script.Parent:WaitForChild("hooks"):WaitForChild("useTransition"))
 
 local e = React.createElement
 
@@ -37,7 +39,7 @@ local function getCountsByType(favours: { [string]: Network.FavoursState }): { [
 	return counts
 end
 
--- Stable sort order for favour types
+-- Stable sort order for favour types (fallback to alphabetical)
 local TYPE_ORDER: { [string]: number } = {
 	Blessing = 1,
 	Fortune = 2,
@@ -47,15 +49,36 @@ local TYPE_ORDER: { [string]: number } = {
 local function FavoursView(props: Props)
 	local counts = getCountsByType(props.favoursData)
 
-	-- Check if there are any favours
-	local hasFavours = false
-	for _ in counts do
-		hasFavours = true
-		break
-	end
+	-- Build sorted item list for transitions
+	local sortedItems = React.useMemo(function()
+		local items = {}
+		for favourType, count in counts do
+			table.insert(items, { favourType = favourType, count = count })
+		end
+		table.sort(items, function(a, b)
+			local orderA = TYPE_ORDER[a.favourType] or 99
+			local orderB = TYPE_ORDER[b.favourType] or 99
+			if orderA ~= orderB then
+				return orderA < orderB
+			end
+			return a.favourType < b.favourType
+		end)
+		return items
+	end, { props.favoursData })
 
-	if not hasFavours then
-		-- Empty state
+	local transitions = useTransition(sortedItems, {
+		from = { GroupTransparency = 1 },
+		enter = { GroupTransparency = 0 },
+		leave = { GroupTransparency = 1 },
+		trail = 80,
+		keys = function(item: any)
+			return item.favourType
+		end,
+		config = { force = 220, dampening = 22, mass = 1 },
+	})
+
+	-- Check if there are any favours
+	if #sortedItems == 0 then
 		return e("Frame", {
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
@@ -97,17 +120,18 @@ local function FavoursView(props: Props)
 		})
 	end
 
-	-- Build tile elements
+	-- Build tile elements from transitions
 	local tiles: { [string]: any } = {}
-	for favourType, count in counts do
-		tiles[favourType] = e(FavourTile, {
-			favourType = favourType,
-			count = count,
-			layoutOrder = TYPE_ORDER[favourType] or 99,
+	for i, transition in transitions do
+		local item = transition.item
+		tiles[transition.key] = e(FavourTile, {
+			favourType = item.favourType,
+			count = item.count,
+			layoutOrder = TYPE_ORDER[item.favourType] or 99,
+			groupTransparency = transition.springProps.GroupTransparency,
 		})
 	end
 
-	-- Add grid layout
 	tiles["_Layout"] = e("UIGridLayout", {
 		CellSize = UDim2.new(0, 118, 0, 128),
 		CellPadding = UDim2.new(0, 10, 0, 10),

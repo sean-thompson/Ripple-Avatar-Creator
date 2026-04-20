@@ -14,6 +14,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
+local useSpringNumber = require(script.Parent.Parent:WaitForChild("hooks"):WaitForChild("useSpringNumber"))
 
 local e = React.createElement
 
@@ -45,6 +46,7 @@ end
 
 local function CurrencyChip(props: Props)
 	local config = CURRENCY_CONFIG[props.currencyType] or CURRENCY_CONFIG.gold
+	local displayAmount = useSpringNumber(props.amount, { force = 120, dampening = 14 })
 
 	return e("Frame", {
 		AutomaticSize = Enum.AutomaticSize.X,
@@ -84,7 +86,7 @@ local function CurrencyChip(props: Props)
 			AutomaticSize = Enum.AutomaticSize.X,
 			Size = UDim2.new(0, 0, 1, 0),
 			BackgroundTransparency = 1,
-			Text = formatNumber(props.amount),
+			Text = formatNumber(displayAmount),
 			TextColor3 = Color3.fromRGB(243, 241, 236),
 			TextSize = 15,
 			Font = Enum.Font.GothamBold,

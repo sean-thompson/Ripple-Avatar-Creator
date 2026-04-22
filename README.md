@@ -21,8 +21,8 @@ This template implements a strict Model-View-Controller pattern with automatic s
                              │
                              ▼
                     ┌────────────────┐
-                    │  View (Client) │  ← LocalScript targeting tagged
-                    │                │    objects in Workspace/UI
+                    │  View (Client) │  ← react-luau (HUD) or
+                    │                │    LocalScript (Workspace)
                     └───┬────────┬───┘
                         │        │
           Immediate     │        │ Send intent via
@@ -171,15 +171,24 @@ Services are server-side modules that run automatically to handle background tas
 
 ### Views (src/client/)
 
-Views are LocalScripts that observe state and update visual elements:
+Views come in two flavours depending on what they control:
 
-- Use CollectionService to target tagged objects in Workspace or UI
-- Provide immediate feedback for user interactions
+**HUD views (ScreenGui / UI)** -- react-luau components:
+- Built as `.luau` ModuleScripts in `Source/ReplicatedFirst/views/`
+- Composed into a single ScreenGui tree mounted by `HudApp.client.luau`
+- Use the `useBoltState` hook to subscribe to Bolt RemoteProperty state (Network.State.*)
+- Receive data and callbacks as React props -- no BindableEvents needed
+- Spring physics animation available via hooks (`useSpring`, `useTransition`, `useDrag`) -- force/dampening/mass config with zero-re-render motor bindings
+- Modal windows are managed via React state (`activeModal`) inside HudApp
+- Examples: StatusBarView, FavoursView, CandlesView
+
+**Workspace views (3D parts / models)** -- imperative LocalScripts:
+- Written as `.client.luau` LocalScripts in `Source/ReplicatedFirst/views/`
+- Use CollectionService to target tagged objects in Workspace
 - Observe state changes via Bolt RemoteProperty (Network.State.*) using Observe() callback
-- Observe() fires immediately with current state - no need to request initial state
-- Can target server-created objects (visible to all) or client-only objects
-- **Modal Support**: ScreenGuis tagged with "ModalWindow" automatically close when another modal opens
-- Examples: InventoryUI, ScoreboardDisplay, InteractableObject
+- Observe() fires immediately with current state -- no need to request initial state
+- Provide immediate feedback for user interactions (particles, sounds, tweens)
+- Examples: CashMachineView, ShrineView, BazaarView
 
 **[📖 See the View Development Guide](VIEW_GUIDE.md)** for step-by-step instructions on creating views. The guide includes a complete example using `CashMachineView`.
 
@@ -204,7 +213,7 @@ Claude Code slash commands are available to scaffold all MVC components without 
 | `/create-model` | Scaffolds a server-side `AbstractModel` file with scope, properties, and Network.luau wiring |
 | `/create-controller` | Scaffolds a server-side `AbstractController` file with actions, validation, and Network.luau wiring |
 | `/create-service` | Scaffolds a server-side service for background tasks (loop-based or event-driven) |
-| `/create-view` | Scaffolds a client-side `AbstractView` file with automatic pattern detection (A, B, C, or B+C) |
+| `/create-view` | Scaffolds a view -- react-luau component for HUD or imperative LocalScript for workspace |
 | `/create-config` | Scaffolds a config types file and outputs the Studio config module |
 
 Run `/help-me` in Claude Code for a full description of each command.
@@ -247,11 +256,16 @@ Bolt ReliableEvents express **what the user wants to do**, not direct commands:
 - **Wait for confirmation**: Inventory updates, score changes, state transitions
 - **Visual feedback**: Show loading/pending states while waiting for server
 
-### 3. Tagged Objects for Views
+### 3. How Views Connect
 
-Views use CollectionService tags to find their targets:
-- Workspace objects: `game:GetService("CollectionService"):GetTagged("ShopButton")`
-- UI elements: Tagged ScreenGuis, TextButtons, Frames, etc.
+**HUD views** use react-luau:
+- Components subscribe to server state with the `useBoltState` hook
+- Spring physics animation hooks (`useSpring`, `useTransition`, `useDrag`) provide smooth motion with configurable force/dampening/mass and zero-re-render motor bindings
+- Props and callbacks flow through the React tree (HudApp is the root)
+- No CollectionService tags or Studio-authored ScreenGuis needed
+
+**Workspace views** use CollectionService tags:
+- `game:GetService("CollectionService"):GetTagged("CashMachine")` finds tagged parts/models
 - Supports both server-created and client-only objects
 
 ### 4. Separation of Concerns
@@ -276,7 +290,7 @@ All code must be managed through Rojo and stored in the repository:
 
 All UI and Workspace objects must be created directly in Roblox Studio:
 
-- This includes: Workspace parts/models/terrain, StarterGui, UI containers, Lighting, SoundService, other service configurations, any non-code instances
+- This includes: Workspace parts/models/terrain, Lighting, SoundService, other service configurations, any non-code instances (HUD UI is now code-only via react-luau -- no StarterGui authoring needed)
 - These instances are NOT synced via Rojo and will NOT be in version control
 - The `$ignoreUnknownInstances: true` configuration ensures Rojo won't delete Studio-created content
 
@@ -393,16 +407,23 @@ Always start in this order:
    - Example: `InventoryController.server.luau`
 
 3. **Create the View** (`src/client/views/`)
-   - Create a LocalScript (`.client.luau`) that targets tagged objects
-   - Use CollectionService to find UI/Workspace elements
-   - Provide immediate feedback for interactions
-   - Observe state changes via Network.State.* and update visuals
-   - Example: `InventoryView.client.luau`
 
-4. **Create Visual Elements in Studio**
-   - Build UI in StarterGui or objects in Workspace
+   **For HUD / ScreenGui features** (react-luau):
+   - Create a `.luau` ModuleScript that returns a React component
+   - Use `useBoltState` to subscribe to Network.State.* inside the component
+   - Wire the component into `HudApp.client.luau` (add require, render in tree)
+   - Example: `FavoursView.luau`
+
+   **For Workspace / 3D features** (imperative):
+   - Create a `.client.luau` LocalScript
+   - Use CollectionService to find tagged parts/models in Workspace
+   - Observe state changes via Network.State.* and update visuals
+   - Example: `CashMachineView.client.luau`
+
+4. **Create Visual Elements in Studio** (workspace views only)
+   - Build parts/models in Workspace
    - Add CollectionService tags to elements the View will target
-   - Example: Tag a ScreenGui with "InventoryUI"
+   - Example: Tag a part with "CashMachine"
 
 5. **Define Network Events** (`Network.luau`)
    - Add entries to NetworkConfig for controllers and states
@@ -452,21 +473,35 @@ These checklists provide step-by-step guidance for adding new components to your
 
 ### Adding a New View
 
+**Choose the right kind of view first:**
+- HUD / ScreenGui feature → react-luau component (`.luau` ModuleScript)
+- Workspace / 3D feature → imperative LocalScript (`.client.luau`)
+
+#### HUD view (react-luau)
+
+1. ✓ **Verify Network.State.* exists** (if observing state)
+2. ✓ **Create view file** in `src/client/views/` as a `.luau` ModuleScript (e.g., `YourView.luau`)
+3. ✓ **Write a React function component** that returns UI elements via `React.createElement`
+4. ✓ **Use `useBoltState` hook** to subscribe to Bolt state: `local data = useBoltState(Network.State.YourModel, defaultValue)`
+5. ✓ **Accept props** for data, callbacks, and modal state from HudApp
+6. ✓ **Fire intents** using `Network.Intent.YourFeature:FireServer(Network.Actions.YourFeature.Action, ...)`
+7. ✓ **Wire into HudApp.client.luau**: require the component and add it to the render tree
+8. ✓ **Test in Play mode** (F5 in Studio)
+
+#### Workspace view (imperative)
+
 1. ✓ **Decide which pattern**: A (pure client), B (intent-based), or C (state observation). See [VIEW_GUIDE.md](VIEW_GUIDE.md) for decision tree.
 2. ✓ **Verify Network.Actions constants exist** (if sending intents - Pattern B)
 3. ✓ **Verify Network.State.* exists** (if observing state - Pattern C)
 4. ✓ **Create view file** in `src/client/views/` (name it `YourView.client.luau`)
-5. ✓ **Extend AbstractView** with `AbstractView.new("YourView", "YourTag")`
-6. ✓ **Create setup function** for instance initialization
-7. ✓ **Call view:initialize(setupFn)** to handle CollectionService pattern
-8. ✓ **Connect to user interactions** (buttons, prompts, proximity prompts, etc.)
-9. ✓ **Use Network.Actions constants** when firing intents (e.g., `Network.Intent.YourFeature:FireServer(Network.Actions.YourFeature.Action)`)
-10. ✓ **Use Network.State and Observe()** when observing state changes:
+5. ✓ **Use CollectionService** to find tagged instances and set up each one
+6. ✓ **Connect to user interactions** (proximity prompts, click detectors, etc.)
+7. ✓ **Use Network.Actions constants** when firing intents (e.g., `Network.Intent.YourFeature:FireServer(Network.Actions.YourFeature.Action)`)
+8. ✓ **Use Network.State and Observe()** when observing state changes:
     - Observe state: `Network.State.YourModel:Observe(function(data) ... end)`
     - Observe() fires immediately with current value - no need to request initial state
-11. ✓ **Use view:createEvent/getEvent** for view-to-view communication (optional)
-12. ✓ **Create UI in Roblox Studio** and tag with CollectionService
-13. ✓ **Test in Play mode** (F5 in Studio)
+9. ✓ **Create objects in Roblox Studio** and tag with CollectionService
+10. ✓ **Test in Play mode** (F5 in Studio)
 
 **See [VIEW_GUIDE.md](VIEW_GUIDE.md) for detailed examples.**
 
@@ -754,71 +789,101 @@ return WeaponShopController
 
 ### Step 6: Create the WeaponShopView
 
-**File:** `src/client/views/WeaponShopView.client.luau`
+Because this is a ScreenGui / HUD feature, it is built as a react-luau component and wired into HudApp.
+
+**File:** `src/client/views/WeaponShopView.luau`
 
 ```lua
 --!strict
 
-local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local AbstractView = require(ReplicatedFirst:WaitForChild("AbstractView"))
+local Packages = ReplicatedStorage:WaitForChild("Packages")
+local React = require(Packages:WaitForChild("React"))
+
+local viewsFolder = script.Parent
+local useBoltState = require(viewsFolder:WaitForChild("hooks"):WaitForChild("useBoltState"))
 local Network = require(ReplicatedStorage:WaitForChild("Network"))
 
-local view = AbstractView.new("WeaponShopView", "WeaponShop")
+local e = React.createElement
 
--- Listen for shop state changes (purchases by any player)
-Network.State.WeaponShop:Observe(function(shopData)
+local SHOP_DEFAULT = {
+    ownerId = "SERVER",
+    lastPurchase = "",
+    buyerName = "",
+}
+
+local WEAPONS = {
+    { name = "Sword", price = 100 },
+    { name = "Bow",   price = 150 },
+    { name = "Staff", price = 200 },
+}
+
+local function WeaponShopView()
+    local shopData = useBoltState(Network.State.WeaponShop, SHOP_DEFAULT)
+
+    -- Show broadcast when someone buys something
     if shopData.lastPurchase ~= "" then
         print("SHOP: " .. shopData.buyerName .. " just bought a " .. shopData.lastPurchase .. "!")
     end
-end)
 
-local function setupShopUI(shopUI: Instance)
-    -- Find weapon buttons
-    local swordButton = shopUI:WaitForChild("SwordButton") :: TextButton
-    local bowButton = shopUI:WaitForChild("BowButton") :: TextButton
-    local staffButton = shopUI:WaitForChild("StaffButton") :: TextButton
+    local buttons = {}
+    for i, weapon in WEAPONS do
+        buttons["Weapon" .. i] = e("TextButton", {
+            Text = weapon.name .. " (" .. weapon.price .. "g)",
+            Size = UDim2.fromOffset(200, 50),
+            LayoutOrder = i,
+            [React.Event.Activated] = function()
+                print("Requesting to purchase " .. weapon.name .. "...")
+                Network.Intent.WeaponShop:FireServer(
+                    Network.Actions.WeaponShop.PurchaseWeapon,
+                    weapon.name
+                )
+            end,
+        })
+    end
 
-    -- Connect button clicks
-    swordButton.Activated:Connect(function()
-        print("Requesting to purchase Sword...")
-        Network.Intent.WeaponShop:FireServer(Network.Actions.WeaponShop.PurchaseWeapon, "Sword")
-    end)
+    buttons["Layout"] = e("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 8),
+    })
 
-    bowButton.Activated:Connect(function()
-        print("Requesting to purchase Bow...")
-        Network.Intent.WeaponShop:FireServer(Network.Actions.WeaponShop.PurchaseWeapon, "Bow")
-    end)
-
-    staffButton.Activated:Connect(function()
-        print("Requesting to purchase Staff...")
-        Network.Intent.WeaponShop:FireServer(Network.Actions.WeaponShop.PurchaseWeapon, "Staff")
-    end)
+    return e("Frame", {
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+    }, buttons)
 end
 
-view:initialize(setupShopUI)
+return WeaponShopView
+```
+
+**Then wire it into HudApp.client.luau:**
+
+```lua
+-- In HudApp.client.luau, add require:
+local WeaponShopView = require(viewsFolder:WaitForChild("WeaponShopView"))
+
+-- Add to the modal section (alongside Favours, Candles):
+elseif activeModal == "weaponShop" then
+    modalElement = e(ModalWindow, {
+        title = "Weapon Shop",
+        ...
+        bodyContent = e(WeaponShopView),
+    })
 ```
 
 **Key points:**
-- Extends AbstractView for standardized initialization
+- React component -- no AbstractView, no CollectionService tags
+- Uses `useBoltState` hook to subscribe to shop state reactively
 - Uses Network.Actions.WeaponShop.PurchaseWeapon for type-safe intent
-- Uses Network.Intent.WeaponShop to fire intents to server
-- Observes shop state changes via Network.State.WeaponShop:Observe()
-- Observe() fires immediately with current state and on each update
-- `view:initialize(setupShopUI)` handles CollectionService boilerplate
+- Fires intents via `React.Event.Activated` callback on buttons
+- Wired into HudApp's modal system via React state
+- No Studio-authored ScreenGui needed -- UI is entirely code-driven
 - StatusBarView (already exists) will show gold updates automatically
 
-### Step 7: Create UI in Roblox Studio
+### Step 7: Test Setup
 
-1. Open Roblox Studio
-2. In `StarterGui`, create:
-   - `ScreenGui` named "WeaponShopUI"
-   - Inside it, add `Frame` for the shop panel
-   - Add three `TextButton` children: "SwordButton", "BowButton", "StaffButton"
-   - Set button text to "Sword (100g)", "Bow (150g)", "Staff (200g)"
-3. **Tag the ScreenGui**: Use CollectionService to add tag "WeaponShop"
-4. Save the place
+No Studio UI authoring is needed for HUD views. The react-luau component renders its own UI tree into HudApp's ScreenGui automatically.
 
 ### Step 8: Test the Complete Flow
 
@@ -850,7 +915,7 @@ view:initialize(setupShopUI)
 ✓ **Automatic scope detection** - syncState() automatically detects scope from model type
 ✓ **MVC separation** - Views don't validate, Controllers validate, Models are authoritative
 ✓ **Optimistic UI** - Immediate feedback (print) + wait for confirmation (gold update)
-✓ **Complete data flow** - User click → Bolt ReliableEvent → Controller validation → Model update → Bolt RemoteProperty sync → Observe() callback → View update
+✓ **Complete data flow** - User click → Bolt ReliableEvent → Controller validation → Model update → Bolt RemoteProperty sync → useBoltState / Observe() → View update
 
 ### Next Steps
 
@@ -864,16 +929,16 @@ view:initialize(setupShopUI)
 
 1. Write code in your preferred editor in the `src/` directories
 2. Rojo will automatically sync your code changes to Studio
-3. Create visual elements (UI, workspace objects) directly in Studio
-4. Tag elements with CollectionService for Views to find them
+3. Create workspace objects (parts, models) directly in Studio
+4. Tag workspace objects with CollectionService for workspace views to find them
 5. Test with MCP (structural) and Play mode (behavioral)
 6. Commit only code changes to git - Studio-created content stays in place file
 
 ### File Naming Conventions
 
 - `.server.luau` - Creates a Script (server-side) - Use for Controllers
-- `.client.luau` - Creates a LocalScript (client-side) - Use for Views
-- `.luau` - Creates a ModuleScript - Use for Models and shared utilities
+- `.client.luau` - Creates a LocalScript (client-side) - Use for workspace views and client entry points (e.g., `HudApp.client.luau`)
+- `.luau` - Creates a ModuleScript - Use for Models, shared utilities, and react-luau HUD view components
 - Folders become Folder instances in Roblox
 
 ### Directory Structure Recommendation
@@ -891,7 +956,15 @@ Source/
 │       ├── framework/       # Explicit order (Persistence, SlashCommand)
 │       └── game/            # Auto-discovered (drop in & run)
 ├── ReplicatedFirst/
-│   └── views/               # UI and visual logic (LocalScripts)
+│   └── views/               # HUD (react-luau .luau) + workspace (.client.luau)
+│       ├── components/      # Shared React UI components
+│       └── hooks/           # Custom React hooks
+│           ├── useBoltState.luau
+│           ├── SpringSolver.luau
+│           ├── useSpring.luau
+│           ├── useSpringNumber.luau
+│           ├── useTransition.luau
+│           └── useDrag.luau
 └── ReplicatedStorage/
     ├── Network.luau         # Intent/State/Actions definitions
     └── Config/              # Static game data (prices, rates, etc.)
@@ -1105,27 +1178,47 @@ Source/
    - Fix: Controller: `action: string`
    - Fix: View Observe callback: `function(data) ... end` (Bolt handles typing)
 
-### CollectionService Tag Not Found
+### CollectionService Tag Not Found (Workspace Views)
 
-**Symptoms:** View setupInstance never called, "tag not found" warnings
+**Symptoms:** Workspace view setup never runs, tagged objects not found
+
+**Note:** This section applies to workspace views only. HUD views use react-luau and do not use CollectionService tags.
 
 **Common causes:**
 
 1. **Tag not added in Studio**
    - Check: Select object in Explorer → View → Tags window
-   - Fix: Add the exact tag name (case-sensitive!) to your ScreenGui/Part
+   - Fix: Add the exact tag name (case-sensitive!) to your Part/Model
 
 2. **Tag name typo**
    - Check: Does TAG constant match Studio tag exactly?
-   - Fix: Tags are case-sensitive: "WeaponShop" ≠ "weaponshop"
+   - Fix: Tags are case-sensitive: "CashMachine" ≠ "cashmachine"
 
-3. **Wrong instance type tagged**
-   - Check: Are you tagging the correct type? (ScreenGui for UI, Part for 3D objects)
-   - Fix: setupInstance expects specific type - verify with `instance :: Type`
-
-4. **Instance not replicated to client**
+3. **Instance not replicated to client**
    - Check: Is the tagged object in a client-visible location?
-   - Fix: UI must be in StarterGui or PlayerGui, 3D objects in Workspace
+   - Fix: 3D objects must be in Workspace or another replicated container
+
+### HUD View Not Rendering (react-luau)
+
+**Symptoms:** Component doesn't appear, UI missing from screen
+
+**Common causes:**
+
+1. **Component not added to HudApp**
+   - Check: Is the component required and rendered in `HudApp.client.luau`?
+   - Fix: Add `require()` for your component and include it in the `React.createElement` tree
+
+2. **useBoltState returns default value**
+   - Check: Is Network.State.YourModel registered in Network.luau?
+   - Fix: The hook will use the default you provide until the server sends real state
+
+3. **Hook called conditionally or in wrong scope**
+   - Check: React hooks must be called at the top level of a function component, never inside `if` blocks or loops
+   - Fix: Move the `useBoltState` call to the top of the component function
+
+4. **ModuleScript not returning a function**
+   - Check: Does your view `.luau` file return a function component?
+   - Fix: Ensure the file ends with `return YourComponent` (a function, not a table)
 
 ### "Attempt to Index Nil" Errors
 

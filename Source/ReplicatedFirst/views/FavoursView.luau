@@ -18,6 +18,7 @@ local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("R
 local Network = require(ReplicatedStorage:WaitForChild("Network"))
 local FavourTile = require(script.Parent:WaitForChild("components"):WaitForChild("FavourTile"))
 local useTransition = require(script.Parent:WaitForChild("hooks"):WaitForChild("useTransition"))
+local useViewportScale = require(script.Parent:WaitForChild("hooks"):WaitForChild("useViewportScale"))
 
 local e = React.createElement
 
@@ -47,6 +48,12 @@ local TYPE_ORDER: { [string]: number } = {
 }
 
 local function FavoursView(props: Props)
+	-- Called before the empty-state early return so the hook runs every render.
+	local scale = useViewportScale()
+	local function px(n: number): number
+		return math.floor(n * scale + 0.5)
+	end
+
 	local counts = getCountsByType(props.favoursData)
 
 	-- Build sorted item list for transitions
@@ -88,13 +95,13 @@ local function FavoursView(props: Props)
 				HorizontalAlignment = Enum.HorizontalAlignment.Center,
 				VerticalAlignment = Enum.VerticalAlignment.Center,
 				SortOrder = Enum.SortOrder.LayoutOrder,
-				Padding = UDim.new(0, 8),
+				Padding = UDim.new(0, px(8)),
 			}),
 			Icon = e("TextLabel", {
 				AutomaticSize = Enum.AutomaticSize.XY,
 				BackgroundTransparency = 1,
 				Text = "\u{2B50}",
-				TextSize = 32,
+				TextSize = math.max(16, px(32)),
 				LayoutOrder = 1,
 			}),
 			Message = e("TextLabel", {
@@ -103,7 +110,7 @@ local function FavoursView(props: Props)
 				Text = "No favours yet",
 				TextColor3 = COLOR_TEXT_MUTE,
 				TextTransparency = 0.38,
-				TextSize = 14,
+				TextSize = math.max(9, px(14)),
 				Font = Enum.Font.GothamMedium,
 				LayoutOrder = 2,
 			}),
@@ -113,7 +120,7 @@ local function FavoursView(props: Props)
 				Text = "Donate at the shrine to earn blessings",
 				TextColor3 = COLOR_TEXT_MUTE,
 				TextTransparency = 0.62,
-				TextSize = 12,
+				TextSize = math.max(8, px(12)),
 				Font = Enum.Font.GothamMedium,
 				LayoutOrder = 3,
 			}),
@@ -133,8 +140,9 @@ local function FavoursView(props: Props)
 	end
 
 	tiles["_Layout"] = e("UIGridLayout", {
-		CellSize = UDim2.new(0, 118, 0, 128),
-		CellPadding = UDim2.new(0, 10, 0, 10),
+		-- CellSize must track FavourTile's scaled size (px(118) x px(128))
+		CellSize = UDim2.new(0, px(118), 0, px(128)),
+		CellPadding = UDim2.new(0, px(10), 0, px(10)),
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Left,
 		SortOrder = Enum.SortOrder.LayoutOrder,

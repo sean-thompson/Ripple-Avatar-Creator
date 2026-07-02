@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 local FavoursConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("FavoursConfig"))
+local useViewportScale = require(script.Parent.Parent:WaitForChild("hooks"):WaitForChild("useViewportScale"))
 
 local e = React.createElement
 
@@ -64,41 +65,47 @@ local CORNER_RADIUS = 10
 local function FavourTile(props: Props)
 	local rarityColor = getRarityColor(props.favourType)
 	local initials = string.upper(string.sub(props.favourType, 1, 2))
+	local scale = useViewportScale()
+	local function px(n: number): number
+		return math.floor(n * scale + 0.5)
+	end
+	local barHeight = px(RARITY_BAR_HEIGHT)
+	local cornerRadius = px(CORNER_RADIUS)
 
 	-- CanvasGroup enables GroupTransparency for stagger fade-in
 	return e("CanvasGroup", {
-		Size = UDim2.new(0, 118, 0, 128),
+		Size = UDim2.new(0, px(118), 0, px(128)),
 		BackgroundColor3 = rarityColor,
 		GroupTransparency = props.groupTransparency or 0,
 		LayoutOrder = props.layoutOrder or 0,
 		ClipsDescendants = true,
 	}, {
 		Corner = e("UICorner", {
-			CornerRadius = UDim.new(0, CORNER_RADIUS),
+			CornerRadius = UDim.new(0, cornerRadius),
 		}),
 		Stroke = e("UIStroke", {
 			Color = Color3.new(0, 0, 0),
 			Transparency = 0.92,
-			Thickness = 1,
+			Thickness = math.max(1, px(1)),
 		}),
 
 		-- Cream body overlaid below the rarity stripe
 		Body = e("Frame", {
-			Position = UDim2.new(0, 0, 0, RARITY_BAR_HEIGHT),
-			Size = UDim2.new(1, 0, 1, -RARITY_BAR_HEIGHT),
+			Position = UDim2.new(0, 0, 0, barHeight),
+			Size = UDim2.new(1, 0, 1, -barHeight),
 			BackgroundColor3 = COLOR_TILE_BG,
 			BorderSizePixel = 0,
 		}, {
 			BodyCorner = e("UICorner", {
-				CornerRadius = UDim.new(0, CORNER_RADIUS),
+				CornerRadius = UDim.new(0, cornerRadius),
 			}),
 		}),
 
 		-- Count badge (top-right, fixed circle)
 		CountBadge = e("Frame", {
 			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -6, 0, 10),
-			Size = UDim2.new(0, 24, 0, 24),
+			Position = UDim2.new(1, px(-6), 0, px(10)),
+			Size = UDim2.new(0, px(24), 0, px(24)),
 			BackgroundColor3 = COLOR_BADGE_BG,
 			ZIndex = 3,
 		}, {
@@ -108,14 +115,14 @@ local function FavourTile(props: Props)
 			Stroke = e("UIStroke", {
 				Color = Color3.fromRGB(233, 180, 76),
 				Transparency = 0.6,
-				Thickness = 1,
+				Thickness = math.max(1, px(1)),
 			}),
 			Label = e("TextLabel", {
 				Size = UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
 				Text = tostring(props.count),
 				TextColor3 = COLOR_BADGE_TEXT,
-				TextSize = 11,
+				TextSize = math.max(8, px(11)),
 				Font = Enum.Font.GothamBold,
 			}),
 		}),
@@ -123,13 +130,13 @@ local function FavourTile(props: Props)
 		-- Art placeholder (initials)
 		Art = e("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 34),
-			Size = UDim2.new(0, 56, 0, 56),
+			Position = UDim2.new(0.5, 0, 0, px(34)),
+			Size = UDim2.new(0, px(56), 0, px(56)),
 			BackgroundColor3 = COLOR_ART_BG,
 			ZIndex = 2,
 		}, {
 			ArtCorner = e("UICorner", {
-				CornerRadius = UDim.new(0, 6),
+				CornerRadius = UDim.new(0, px(6)),
 			}),
 			Initials = e("TextLabel", {
 				Size = UDim2.new(1, 0, 1, 0),
@@ -137,7 +144,7 @@ local function FavourTile(props: Props)
 				Text = initials,
 				TextColor3 = COLOR_TILE_TEXT,
 				TextTransparency = 0.3,
-				TextSize = 22,
+				TextSize = math.max(12, px(22)),
 				Font = Enum.Font.GothamBold,
 			}),
 		}),
@@ -145,12 +152,12 @@ local function FavourTile(props: Props)
 		-- Name label at bottom
 		NameLabel = e("TextLabel", {
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -8),
-			Size = UDim2.new(1, -20, 0, 28),
+			Position = UDim2.new(0.5, 0, 1, px(-8)),
+			Size = UDim2.new(1, px(-20), 0, px(28)),
 			BackgroundTransparency = 1,
 			Text = props.favourType,
 			TextColor3 = COLOR_TILE_TEXT,
-			TextSize = 11,
+			TextSize = math.max(8, px(11)),
 			Font = Enum.Font.GothamMedium,
 			TextWrapped = true,
 			TextTruncate = Enum.TextTruncate.AtEnd,

@@ -10,12 +10,18 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
+local useViewportScale = require(script.Parent:WaitForChild("hooks"):WaitForChild("useViewportScale"))
 
 local e = React.createElement
 
 local COLOR_TEXT_MUTE = Color3.fromRGB(243, 241, 236)
 
 local function CandlesView()
+	local scale = useViewportScale()
+	local function px(n: number): number
+		return math.floor(n * scale + 0.5)
+	end
+
 	return e("Frame", {
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
@@ -25,14 +31,14 @@ local function CandlesView()
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 8),
+			Padding = UDim.new(0, px(8)),
 		}),
 
 		Icon = e("TextLabel", {
 			AutomaticSize = Enum.AutomaticSize.XY,
 			BackgroundTransparency = 1,
 			Text = "\u{1F56F}",
-			TextSize = 32,
+			TextSize = math.max(16, px(32)),
 			LayoutOrder = 1,
 		}),
 
@@ -42,7 +48,7 @@ local function CandlesView()
 			Text = "No candles to display",
 			TextColor3 = COLOR_TEXT_MUTE,
 			TextTransparency = 0.38,
-			TextSize = 14,
+			TextSize = math.max(9, px(14)),
 			Font = Enum.Font.GothamMedium,
 			LayoutOrder = 2,
 		}),
@@ -53,7 +59,7 @@ local function CandlesView()
 			Text = "Light a candle at the shrine",
 			TextColor3 = COLOR_TEXT_MUTE,
 			TextTransparency = 0.62,
-			TextSize = 12,
+			TextSize = math.max(8, px(12)),
 			Font = Enum.Font.GothamMedium,
 			LayoutOrder = 3,
 		}),

@@ -28,8 +28,12 @@
 		inventoryState:Observe(function(data) ... end)
 ]]
 
-local Bolt = require(script.Parent.Bolt)
-local NetworkBuilder = require(script.Parent.NetworkBuilder)
+-- WaitForChild, not direct indexing: Network is required very early from
+-- ReplicatedFirst (HudApp), before ReplicatedStorage is guaranteed to have
+-- replicated its siblings to the client. Direct indexing raised an intermittent
+-- "Bolt is not a valid member of ReplicatedStorage" on startup.
+local Bolt = require(script.Parent:WaitForChild("Bolt"))
+local NetworkBuilder = require(script.Parent:WaitForChild("NetworkBuilder"))
 
 -- ============================================================================
 -- GAME CONFIGURATION: Add new controllers and models here

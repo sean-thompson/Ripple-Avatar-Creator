@@ -241,6 +241,10 @@ Key patterns to extract:
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- Controllers are server-side, so direct indexing of Rojo-synced siblings is
+-- safe (the server DataModel is fully built before scripts run). If you adapt
+-- any of this for CLIENT code, switch to WaitForChild — see CLAUDE.md
+-- "Finding instances & requiring modules".
 local AbstractController = require(script.Parent.AbstractController)
 -- Import all required models
 local {ModelName} = require(script.Parent.Parent.models.{scope}.{ModelName})

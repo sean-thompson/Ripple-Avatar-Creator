@@ -183,6 +183,22 @@ GROUP BY country, locale, membership
 ORDER BY session_count DESC
 ```
 
+### Campaign / Acquisition Query
+Every player carries a `launch_data` user property — the experience link's `LaunchData`, set per ad campaign/creative (`"wknd-adA"`, …), or `"organic"` for untagged joins. Because it's a GA4 **user property**, it rides on every event, so you can segment ANY metric by campaign. Example — retention and engagement by campaign:
+```sql
+SELECT
+  (SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'launch_data') AS campaign,
+  COUNT(DISTINCT user_pseudo_id) AS players,
+  COUNTIF(event_name = 'player_leave') AS sessions,
+  AVG(IF(event_name = 'player_leave',
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'session_duration_seconds'), NULL)) AS avg_session_seconds
+FROM `PROJECT.DATASET.events_*`
+WHERE _TABLE_SUFFIX BETWEEN 'DATE_START' AND 'DATE_END'
+GROUP BY campaign
+ORDER BY players DESC
+```
+To segment any other query by campaign, add the same `launch_data` UNNEST as a `SELECT` column and `GROUP BY` it. To compare one campaign against the rest, filter `WHERE (SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'launch_data') = 'wknd-adA'`.
+
 ### Insights (Holistic)
 Run ALL of the above queries, then provide a comprehensive analysis covering:
 - What stands out? What's surprising?
@@ -202,6 +218,7 @@ The user describes what they want in natural language. Write SQL using the same 
 - When showing numbers, include context (e.g., "847 player-seconds in cell (3,5) — that's 3x the average")
 - For insights, go beyond raw numbers — identify patterns, anomalies, and make recommendations
 - If a query returns no data, suggest the user check their date range or whether the relevant events are being tracked
+- **Campaign attribution is available on every event** via the `launch_data` user property (see the Campaign / Acquisition Query). If the user asks about ad campaigns, creatives, traffic sources, or "where players came from", segment on `launch_data`. Untagged joins show as `"organic"`. In Studio playtests, `launch_data` reflects a `workspace.TestLaunchData` attribute/StringValue if one is set (otherwise `"organic"`).
 - **Always measure standard deviation alongside any mean.** Whenever you compute an average (session length, action counts per user, player-seconds per cell, etc.), also query STDDEV in the same pass. Then act on what the SD reveals:
   - If SD is low relative to the mean → the mean is trustworthy, report it confidently
   - If SD is high relative to the mean → flag the spread, consider reporting median/mode instead, and if the data exists to explain *why* (e.g., outlier sessions, demographic splits, time-of-day effects), dig into that

@@ -29,6 +29,14 @@ export type HeatmapConfig = {
 -- GA4 analytics via the Measurement Protocol.
 -- Controller actions and player lifecycle events are tracked automatically.
 -- Custom events can be sent via AnalyticsService:trackEvent(player, name, params).
+--
+-- Acquisition attribution is automatic (no config needed): AnalyticsService
+-- reads player:GetJoinData().LaunchData on join and stores it as the
+-- `launch_data` GA4 user property, so every event can be segmented by ad
+-- campaign in BigQuery. Tag each campaign link with a distinct LaunchData;
+-- untagged joins record as "organic". To test in Studio (no real LaunchData),
+-- set a `TestLaunchData` attribute or StringValue on Workspace. See the
+-- /analytics skill's "Campaign / Acquisition Query" for how to segment on it.
 export type AnalyticsConfig = {
 	enabled: boolean,                  -- master toggle for all analytics
 	measurementId: string,             -- GA4 measurement ID (e.g., "G-XXXXXXXXXX")

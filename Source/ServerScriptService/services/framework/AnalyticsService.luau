@@ -43,6 +43,12 @@ type UserProperties = {
 	country: { value: string },
 	account_age_days: { value: string },
 	membership: { value: string },
+	-- Acquisition attribution: the experience link's launchData, set on join via
+	-- player:GetJoinData().LaunchData. Tag each ad campaign/creative with a
+	-- distinct launchData ("wknd-adA", …) and this rides on EVERY event the
+	-- player fires (GA4 attaches user properties to all events), so behaviour can
+	-- be segmented by campaign in BigQuery. "organic" when the join wasn't tagged.
+	launch_data: { value: string },
 }
 
 -- State
@@ -295,23 +301,56 @@ function AnalyticsService:cacheUserProperties(player: Player)
 		country = countryResult
 	end
 
+	-- Acquisition attribution from the join link's launchData (set per ad
+	-- campaign). pcall-guarded — GetJoinData can be empty/absent for some join
+	-- paths. Truncated to GA4's 36-char user-property limit; "organic" when no
+	-- launchData (arrived without a tagged link).
+	local launchData = ""
+	local joinOk, joinData = pcall(function()
+		return player:GetJoinData()
+	end)
+	if joinOk and type(joinData) == "table" and type(joinData.LaunchData) == "string" then
+		launchData = joinData.LaunchData
+	end
+
+	-- Studio test hook: Studio playtests can't supply real LaunchData, so when
+	-- there's none AND we're in Studio, fall back to a workspace `TestLaunchData`
+	-- — either an attribute OR a StringValue child (whichever you set in the
+	-- Explorer, e.g. value "wknd-adA"). Lets you verify the launchData →
+	-- user-property → BigQuery chain without a deep link or ad spend. Gated on
+	-- IsStudio, so live joins are never affected.
+	if launchData == "" and RunService:IsStudio() then
+		local testValue = workspace:GetAttribute("TestLaunchData")
+		if type(testValue) ~= "string" or testValue == "" then
+			local sv = workspace:FindFirstChild("TestLaunchData")
+			testValue = if sv and sv:IsA("StringValue") then sv.Value else nil
+		end
+		if type(testValue) == "string" and testValue ~= "" then
+			launchData = testValue
+		end
+	end
+
+	local launchValue = if launchData ~= "" then string.sub(launchData, 1, 36) else "organic"
+
 	userPropertiesCache[clientId] = {
 		locale = { value = player.LocaleId },
 		country = { value = country },
 		account_age_days = { value = tostring(player.AccountAge) },
 		membership = { value = tostring(player.MembershipType) },
+		launch_data = { value = launchValue },
 	}
 
 	playerJoinTimes[clientId] = os.clock()
 
 	if config.debug then
 		print(string.format(
-			"[AnalyticsService] Cached properties for %s: locale=%s, country=%s, age=%d, membership=%s",
+			"[AnalyticsService] Cached properties for %s: locale=%s, country=%s, age=%d, membership=%s, launch_data=%s",
 			player.Name,
 			player.LocaleId,
 			country,
 			player.AccountAge,
-			tostring(player.MembershipType)
+			tostring(player.MembershipType),
+			launchValue
 		))
 	end
 end

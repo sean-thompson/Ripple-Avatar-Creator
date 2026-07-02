@@ -21,6 +21,7 @@ local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("R
 local componentsFolder = script.Parent:WaitForChild("components")
 local CurrencyChip = require(componentsFolder:WaitForChild("CurrencyChip"))
 local HudButton = require(componentsFolder:WaitForChild("HudButton"))
+local useViewportScale = require(script.Parent:WaitForChild("hooks"):WaitForChild("useViewportScale"))
 
 local e = React.createElement
 
@@ -34,9 +35,10 @@ export type Props = {
 local COLOR_PANEL = Color3.fromRGB(18, 20, 24)
 local COLOR_DIVIDER = Color3.new(1, 1, 1)
 
-local function Divider(props: { layoutOrder: number })
+local function Divider(props: { layoutOrder: number, scale: number })
 	return e("Frame", {
-		Size = UDim2.new(0, 1, 0, 20),
+		-- width stays a 1px hairline; height scales with the bar
+		Size = UDim2.new(0, 1, 0, math.floor(20 * props.scale + 0.5)),
 		BackgroundColor3 = COLOR_DIVIDER,
 		BackgroundTransparency = 0.86,
 		BorderSizePixel = 0,
@@ -45,6 +47,11 @@ local function Divider(props: { layoutOrder: number })
 end
 
 local function StatusBarView(props: Props)
+	local scale = useViewportScale()
+	local function px(n: number): number
+		return math.floor(n * scale + 0.5)
+	end
+
 	local onToggleFavours = React.useCallback(function()
 		props.onToggleModal("favours")
 	end, { props.onToggleModal })
@@ -55,9 +62,9 @@ local function StatusBarView(props: Props)
 
 	return e("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 20),
+		Position = UDim2.new(0.5, 0, 0, px(20)),
 		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 0, 44),
+		Size = UDim2.new(0, 0, 0, px(44)),
 		BackgroundColor3 = COLOR_PANEL,
 		BackgroundTransparency = 0.22,
 	}, {
@@ -67,19 +74,19 @@ local function StatusBarView(props: Props)
 		Stroke = e("UIStroke", {
 			Color = Color3.new(1, 1, 1),
 			Transparency = 0.92,
-			Thickness = 1,
+			Thickness = math.max(1, px(1)),
 		}),
 		Padding = e("UIPadding", {
-			PaddingLeft = UDim.new(0, 8),
-			PaddingRight = UDim.new(0, 8),
-			PaddingTop = UDim.new(0, 5),
-			PaddingBottom = UDim.new(0, 5),
+			PaddingLeft = UDim.new(0, px(8)),
+			PaddingRight = UDim.new(0, px(8)),
+			PaddingTop = UDim.new(0, px(5)),
+			PaddingBottom = UDim.new(0, px(5)),
 		}),
 		Layout = e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 8),
+			Padding = UDim.new(0, px(8)),
 		}),
 
 		GoldChip = e(CurrencyChip, {
@@ -87,13 +94,13 @@ local function StatusBarView(props: Props)
 			amount = props.gold,
 			layoutOrder = 1,
 		}),
-		Divider1 = Divider({ layoutOrder = 2 }),
+		Divider1 = Divider({ layoutOrder = 2, scale = scale }),
 		TreasureChip = e(CurrencyChip, {
 			currencyType = "treasure",
 			amount = props.treasure,
 			layoutOrder = 3,
 		}),
-		Divider2 = Divider({ layoutOrder = 4 }),
+		Divider2 = Divider({ layoutOrder = 4, scale = scale }),
 		FavoursButton = e(HudButton, {
 			label = "Favours",
 			icon = "\u{2B50}",

@@ -16,6 +16,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
+local useViewportScale = require(script.Parent.Parent:WaitForChild("hooks"):WaitForChild("useViewportScale"))
 
 local e = React.createElement
 
@@ -34,6 +35,10 @@ local COLOR_HOVER = Color3.new(1, 1, 1)
 
 local function HudButton(props: Props)
 	local isHovered, setIsHovered = React.useState(false)
+	local scale = useViewportScale()
+	local function px(n: number): number
+		return math.floor(n * scale + 0.5)
+	end
 
 	local bgTransparency: number
 	local bgColor: Color3
@@ -63,7 +68,7 @@ local function HudButton(props: Props)
 
 	return e("TextButton", {
 		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 0, 34),
+		Size = UDim2.new(0, 0, 0, px(34)),
 		BackgroundColor3 = bgColor,
 		BackgroundTransparency = bgTransparency,
 		Text = "",
@@ -74,29 +79,29 @@ local function HudButton(props: Props)
 		[React.Event.MouseLeave] = onLeave,
 	}, {
 		Corner = e("UICorner", {
-			CornerRadius = UDim.new(0, 10),
+			CornerRadius = UDim.new(0, px(10)),
 		}),
 		Stroke = if props.isActive then e("UIStroke", {
 			Color = Color3.fromRGB(233, 180, 76),
 			Transparency = 0.45,
-			Thickness = 1,
+			Thickness = math.max(1, px(1)),
 		}) else nil,
 		Padding = e("UIPadding", {
-			PaddingLeft = UDim.new(0, 12),
-			PaddingRight = UDim.new(0, 14),
+			PaddingLeft = UDim.new(0, px(12)),
+			PaddingRight = UDim.new(0, px(14)),
 		}),
 		Layout = e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 7),
+			Padding = UDim.new(0, px(7)),
 		}),
 
 		Icon = e("TextLabel", {
 			AutomaticSize = Enum.AutomaticSize.XY,
 			BackgroundTransparency = 1,
 			Text = props.icon,
-			TextSize = 14,
+			TextSize = math.max(9, px(14)),
 			LayoutOrder = 1,
 		}),
 
@@ -106,7 +111,7 @@ local function HudButton(props: Props)
 			BackgroundTransparency = 1,
 			Text = props.label,
 			TextColor3 = textColor,
-			TextSize = 14,
+			TextSize = math.max(9, px(14)),
 			Font = Enum.Font.GothamMedium,
 			LayoutOrder = 2,
 		}),

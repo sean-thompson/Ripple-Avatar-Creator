@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 local useSpringNumber = require(script.Parent.Parent:WaitForChild("hooks"):WaitForChild("useSpringNumber"))
+local useViewportScale = require(script.Parent.Parent:WaitForChild("hooks"):WaitForChild("useViewportScale"))
 
 local e = React.createElement
 
@@ -47,10 +48,14 @@ end
 local function CurrencyChip(props: Props)
 	local config = CURRENCY_CONFIG[props.currencyType] or CURRENCY_CONFIG.gold
 	local displayAmount = useSpringNumber(props.amount, { force = 120, dampening = 24 })
+	local scale = useViewportScale()
+	local function px(n: number): number
+		return math.floor(n * scale + 0.5)
+	end
 
 	return e("Frame", {
 		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 0, 34),
+		Size = UDim2.new(0, 0, 0, px(34)),
 		BackgroundTransparency = 1,
 		LayoutOrder = props.layoutOrder or 0,
 	}, {
@@ -58,15 +63,15 @@ local function CurrencyChip(props: Props)
 			FillDirection = Enum.FillDirection.Horizontal,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 8),
+			Padding = UDim.new(0, px(8)),
 		}),
 		Padding = e("UIPadding", {
-			PaddingLeft = UDim.new(0, 4),
-			PaddingRight = UDim.new(0, 14),
+			PaddingLeft = UDim.new(0, px(4)),
+			PaddingRight = UDim.new(0, px(14)),
 		}),
 
 		Icon = e("Frame", {
-			Size = UDim2.new(0, 24, 0, 24),
+			Size = UDim2.new(0, px(24), 0, px(24)),
 			BackgroundColor3 = config.iconColor,
 			LayoutOrder = 1,
 		}, {
@@ -78,7 +83,7 @@ local function CurrencyChip(props: Props)
 				BackgroundTransparency = 1,
 				Text = config.iconText,
 				TextColor3 = Color3.fromRGB(0, 0, 0),
-				TextSize = 14,
+				TextSize = math.max(9, px(14)),
 			}),
 		}),
 
@@ -88,7 +93,7 @@ local function CurrencyChip(props: Props)
 			BackgroundTransparency = 1,
 			Text = formatNumber(displayAmount),
 			TextColor3 = Color3.fromRGB(243, 241, 236),
-			TextSize = 15,
+			TextSize = math.max(9, px(15)),
 			Font = Enum.Font.GothamBold,
 			LayoutOrder = 2,
 		}),

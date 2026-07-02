@@ -48,8 +48,14 @@ Ask the user what they'd like to explore:
 3. **Session metrics** — Average session length, daily active users, retention patterns.
 4. **Player flow** — What do players do first? What sequences lead to leaving? Action ordering.
 5. **Demographics** — Player breakdown by country, locale, membership type.
-6. **Insights** — Holistic analysis across all data. Identify patterns, anomalies, and actionable findings.
-7. **Custom query** — Describe what you want in natural language. I'll write and run the SQL.
+6. **Campaign / acquisition** — Which ad campaigns drive the most (and best-retained) players? Segments by the `launch_data` user property; `"organic"` = untagged joins.
+7. **Insights** — Holistic analysis across all data. Identify patterns, anomalies, and actionable findings.
+8. **Custom query** — Describe what you want in natural language. I'll write and run the SQL.
+
+**Cross-cutting segmentation — offer these proactively.** Most of the above can be sliced further:
+- **By campaign** (`launch_data` user property) or **by player progression** (global dimensions like `gold`/`xp`, present as event params when listed in `AnalyticsConfig.globalParams`). If the user's question touches acquisition, monetisation cohorts, or "do high-progression players behave differently", add the relevant UNNEST as a column and `GROUP BY` it — see the Campaign / Acquisition and Demographics query patterns.
+- **Heatmap must be scoped to a single `heatmap_gen`** (grid version) — never sum across generations. See the Heatmap Query note.
+If a dimension the user asks for is missing from the data, tell them it likely isn't enabled in `AnalyticsConfig.globalParams` (or, for campaign, that joins weren't tagged).
 
 ### Step 2: Date Range
 

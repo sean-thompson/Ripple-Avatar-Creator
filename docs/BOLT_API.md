@@ -51,7 +51,7 @@ For most projects, Roblox's built-in networking is sufficient. Bolt adds complex
 ```lua
 -- ReplicatedStorage.BoltEvents (ModuleScript)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Bolt = require(ReplicatedStorage.Bolt)
+local Bolt = require(ReplicatedStorage:WaitForChild("Bolt"))
 
 return {
     PlayerJumped = Bolt.ReliableEvent("PlayerJumped"),
@@ -64,7 +64,7 @@ return {
 ```lua
 -- ServerScriptService
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local BoltEvents = require(ReplicatedStorage.BoltEvents)
+local BoltEvents = require(ReplicatedStorage:WaitForChild("BoltEvents"))
 
 -- Listen for client events
 BoltEvents.PlayerJumped.OnServerEvent:Connect(function(player, jumpHeight)
@@ -88,7 +88,7 @@ BoltEvents.ChatMessage:FireAllClients("Server announcement!")
 ```lua
 -- StarterPlayer.StarterPlayerScripts (LocalScript)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local BoltEvents = require(ReplicatedStorage.BoltEvents)
+local BoltEvents = require(ReplicatedStorage:WaitForChild("BoltEvents"))
 
 -- Listen for server events
 BoltEvents.ChatMessage.OnClientEvent:Connect(function(message)
@@ -1373,7 +1373,7 @@ JumpEvent:FireServer(50)
 ```lua
 -- AFTER: Using Bolt
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Bolt = require(ReplicatedStorage.Bolt)
+local Bolt = require(ReplicatedStorage:WaitForChild("Bolt"))
 local JumpEvent = Bolt.ReliableEvent("PlayerJump")
 
 -- Server (nearly identical code)

@@ -1488,4 +1488,4 @@ After creating your model:
 2. **Create a View** (`src/client/views/`) to display model state to players
 3. **Set up RemoteEvents** (`src/shared/events/`) for communication between client and server
 
-See the main [README.md](README.md) for the complete MVC architecture overview.
+See the main [README.md](../README.md) for the complete MVC architecture overview.

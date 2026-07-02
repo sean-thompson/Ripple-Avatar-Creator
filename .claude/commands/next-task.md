@@ -13,8 +13,8 @@ Run this once per task. Clearing context between tasks keeps each invocation sel
 Read by the planning sub-agent in Step 2:
 
 - `README.md` — architecture overview
-- `CONTROLLER_GUIDE.md`, `MODEL_GUIDE.md`, `VIEW_GUIDE.md`, `SERVICES_GUIDE.md`, `CONFIG_GUIDE.md` — MVC patterns
-- `BOLT_API.md` — networking library
+- `docs/CONTROLLER_GUIDE.md`, `docs/MODEL_GUIDE.md`, `docs/VIEW_GUIDE.md`, `docs/SERVICES_GUIDE.md`, `docs/CONFIG_GUIDE.md` — MVC patterns
+- `docs/BOLT_API.md` — networking library
 - `features/<slug>/SPEC.md` — the spec for acceptance criteria cross-check
 - `features/<slug>/PLAN.md` — the task list, to find the next `[TODO]` / `[PARTIAL]` task
 
@@ -150,9 +150,9 @@ codebase for context.
 ## Architecture docs to read for context
 
 - README.md
-- CONTROLLER_GUIDE.md, MODEL_GUIDE.md, VIEW_GUIDE.md
-- SERVICES_GUIDE.md, CONFIG_GUIDE.md
-- BOLT_API.md
+- docs/CONTROLLER_GUIDE.md, docs/MODEL_GUIDE.md, docs/VIEW_GUIDE.md
+- docs/SERVICES_GUIDE.md, docs/CONFIG_GUIDE.md
+- docs/BOLT_API.md
 
 ## Output
 
@@ -196,9 +196,9 @@ consistency, security, risks, completeness>
 ## Project context to read
 
 - README.md
-- CONTROLLER_GUIDE.md, MODEL_GUIDE.md, VIEW_GUIDE.md
-- SERVICES_GUIDE.md, CONFIG_GUIDE.md
-- BOLT_API.md
+- docs/CONTROLLER_GUIDE.md, docs/MODEL_GUIDE.md, docs/VIEW_GUIDE.md
+- docs/SERVICES_GUIDE.md, docs/CONFIG_GUIDE.md
+- docs/BOLT_API.md
 - features/<slug>/SPEC.md — design tensions & resolutions section
 - Source/ — existing patterns
 

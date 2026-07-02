@@ -1231,4 +1231,4 @@ After creating your controller:
 2. **Create a View** (`src/client/views/`) to display state and send intents to your controller
 3. **Test the flow** end-to-end with both server and client scripts
 
-See the main [README.md](README.md) for the complete MVC architecture overview.
+See the main [README.md](../README.md) for the complete MVC architecture overview.

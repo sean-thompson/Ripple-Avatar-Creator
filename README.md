@@ -141,7 +141,7 @@ Models represent authoritative game state and live exclusively on the server:
   - **UserEntity-scoped**: Multiple per player, persistent (e.g., pets, bases, character slots)
 - Examples: InventoryModel (User), ShrineModel (Server), PetModel (UserEntity)
 
-**[📖 See the Model Development Guide](MODEL_GUIDE.md)** for step-by-step instructions on creating models. The guide includes a complete example using `InventoryModel`.
+**[📖 See the Model Development Guide](docs/MODEL_GUIDE.md)** for step-by-step instructions on creating models. The guide includes a complete example using `InventoryModel`.
 
 ### Controllers (src/server/)
 
@@ -153,7 +153,7 @@ Controllers handle business logic and orchestrate Model updates:
 - Never directly manipulate Views
 - Examples: InventoryController, CombatController, ShopController
 
-**[📖 See the Controller Development Guide](CONTROLLER_GUIDE.md)** for step-by-step instructions on creating controllers. The guide includes a complete example using `CashMachineController`.
+**[📖 See the Controller Development Guide](docs/CONTROLLER_GUIDE.md)** for step-by-step instructions on creating controllers. The guide includes a complete example using `CashMachineController`.
 
 ### Services (src/server/)
 
@@ -167,7 +167,7 @@ Services are server-side modules that run automatically to handle background tas
   - **Game services** (`services/game/`): Auto-discovered by ServiceRunner - just add an `init()` function
 - Examples: AnalyticsService (GA4 events), HeatmapService (spatial tracking), CandleService (candle expiry)
 
-**[📖 See the Services Guide](SERVICES_GUIDE.md)** for step-by-step instructions on creating services. The guide includes patterns, decision trees, and complete examples.
+**[📖 See the Services Guide](docs/SERVICES_GUIDE.md)** for step-by-step instructions on creating services. The guide includes patterns, decision trees, and complete examples.
 
 ### Views (src/client/)
 
@@ -190,7 +190,7 @@ Views come in two flavours depending on what they control:
 - Provide immediate feedback for user interactions (particles, sounds, tweens)
 - Examples: CashMachineView, ShrineView, BazaarView
 
-**[📖 See the View Development Guide](VIEW_GUIDE.md)** for step-by-step instructions on creating views. The guide includes a complete example using `CashMachineView`.
+**[📖 See the View Development Guide](docs/VIEW_GUIDE.md)** for step-by-step instructions on creating views. The guide includes a complete example using `CashMachineView`.
 
 ### Configs (ReplicatedStorage)
 
@@ -202,7 +202,7 @@ Configs are static game data modules that hold tunable values:
 - Config modules are created manually in Studio under `ReplicatedStorage.Config`
 - Examples: item prices, spawn rates, level thresholds, damage values
 
-**[📖 See the Config Development Guide](CONFIG_GUIDE.md)** for step-by-step instructions on creating configs. The guide includes a complete example using `FavoursConfig`.
+**[📖 See the Config Development Guide](docs/CONFIG_GUIDE.md)** for step-by-step instructions on creating configs. The guide includes a complete example using `FavoursConfig`.
 
 ### Claude Slash Commands
 
@@ -229,7 +229,7 @@ Slash commands provide a quick way for high-rank users to execute model methods 
 - Zero configuration: Commands auto-discovered at server startup
 - Examples: `/inventorymodel addGold 100`, `/shrinemodel donate 123 50`
 
-**[📖 See the Slash Commands Guide](SLASH_COMMANDS.md)** for complete documentation on using and customizing slash commands.
+**[📖 See the Slash Commands Guide](docs/SLASH_COMMANDS.md)** for complete documentation on using and customizing slash commands.
 
 ### Bolt Networking Library
 
@@ -240,7 +240,7 @@ Bolt is a high-performance networking library included with this template that p
 - **Type-safe API**: Strongly typed events, properties, and functions
 - **Optional optimization**: Works with default serialization or custom serializers
 
-**[📖 See the Bolt API Reference](BOLT_API.md)** for complete documentation on using Bolt for networking in your game.
+**[📖 See the Bolt API Reference](docs/BOLT_API.md)** for complete documentation on using Bolt for networking in your game.
 
 ## Key Principles
 
@@ -312,7 +312,7 @@ HeatmapService tracks where players spend time on a configurable 2D grid (X/Z). 
 1. Create `AnalyticsConfig` ModuleScript in Studio at `ServerScriptService > Config`
 2. Fill in your GA4 `measurementId`, `apiSecret`, and `hashSalt`
 3. Enable HttpService in Game Settings > Security
-4. See [CONFIG_GUIDE.md](CONFIG_GUIDE.md) for the full config structure including heatmap settings
+4. See [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) for the full config structure including heatmap settings
 
 ## Prerequisites
 
@@ -438,7 +438,7 @@ These checklists provide step-by-step guidance for adding new components to your
 
 ### Adding a New Model
 
-1. ✓ **Choose scope**: User (per-player, single instance, persistent), Server (shared, ephemeral), or UserEntity (per-player, multiple instances, persistent). See [MODEL_GUIDE.md](MODEL_GUIDE.md) for decision tree.
+1. ✓ **Choose scope**: User (per-player, single instance, persistent), Server (shared, ephemeral), or UserEntity (per-player, multiple instances, persistent). See [MODEL_GUIDE.md](docs/MODEL_GUIDE.md) for decision tree.
 2. ✓ **Create model file** in `src/server/models/user/`, `src/server/models/server/`, or `src/server/models/userEntities/`
 3. ✓ **Extend AbstractModel** with proper inheritance pattern (`setmetatable`)
 4. ✓ **Define properties** in the exported type (using `typeof(setmetatable(...))`)
@@ -451,7 +451,7 @@ These checklists provide step-by-step guidance for adding new components to your
    - Add exported data type (e.g., `export type YourModelData = { ownerId: string, ... }`)
 10. ✓ **Test with ModelRunner** - Models are auto-discovered by PersistenceService
 
-**See [MODEL_GUIDE.md](MODEL_GUIDE.md) for detailed examples.**
+**See [MODEL_GUIDE.md](docs/MODEL_GUIDE.md) for detailed examples.**
 
 ### Adding a New Controller
 
@@ -469,7 +469,7 @@ These checklists provide step-by-step guidance for adding new components to your
 10. ✓ **Dispatch actions** using `self:dispatchAction(ACTIONS, action, player, model, ...)`
 11. ✓ **Test with ControllerRunner** - Controllers are auto-discovered
 
-**See [CONTROLLER_GUIDE.md](CONTROLLER_GUIDE.md) for detailed examples.**
+**See [CONTROLLER_GUIDE.md](docs/CONTROLLER_GUIDE.md) for detailed examples.**
 
 ### Adding a New View
 
@@ -490,7 +490,7 @@ These checklists provide step-by-step guidance for adding new components to your
 
 #### Workspace view (imperative)
 
-1. ✓ **Decide which pattern**: A (pure client), B (intent-based), or C (state observation). See [VIEW_GUIDE.md](VIEW_GUIDE.md) for decision tree.
+1. ✓ **Decide which pattern**: A (pure client), B (intent-based), or C (state observation). See [VIEW_GUIDE.md](docs/VIEW_GUIDE.md) for decision tree.
 2. ✓ **Verify Network.Actions constants exist** (if sending intents - Pattern B)
 3. ✓ **Verify Network.State.* exists** (if observing state - Pattern C)
 4. ✓ **Create view file** in `src/client/views/` (name it `YourView.client.luau`)
@@ -503,11 +503,11 @@ These checklists provide step-by-step guidance for adding new components to your
 9. ✓ **Create objects in Roblox Studio** and tag with CollectionService
 10. ✓ **Test in Play mode** (F5 in Studio)
 
-**See [VIEW_GUIDE.md](VIEW_GUIDE.md) for detailed examples.**
+**See [VIEW_GUIDE.md](docs/VIEW_GUIDE.md) for detailed examples.**
 
 ### Adding a New Config
 
-1. ✓ **Decide if you need a config** - Use for tunable values (prices, rates, thresholds). See [CONFIG_GUIDE.md](CONFIG_GUIDE.md) for decision tree.
+1. ✓ **Decide if you need a config** - Use for tunable values (prices, rates, thresholds). See [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) for decision tree.
 2. ✓ **Create types file** in `Source/ReplicatedStorage/Config/ConfigTypes/{Name}ConfigTypes.luau`
 3. ✓ **Define table types** for any structured data (e.g., `export type PricesTable = { [string]: number }`)
 4. ✓ **Define main config type** (e.g., `export type {Name}Config = { ... }`)
@@ -517,11 +517,11 @@ These checklists provide step-by-step guidance for adding new components to your
 8. ✓ **Annotate config variable** with the type for type safety
 9. ✓ **Test in Studio** by requiring in command bar
 
-**See [CONFIG_GUIDE.md](CONFIG_GUIDE.md) for detailed examples.**
+**See [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) for detailed examples.**
 
 ### Adding a New Service
 
-1. ✓ **Choose pattern**: Loop-based (periodic tasks) or Event-driven (respond to events). See [SERVICES_GUIDE.md](SERVICES_GUIDE.md) for decision tree.
+1. ✓ **Choose pattern**: Loop-based (periodic tasks) or Event-driven (respond to events). See [SERVICES_GUIDE.md](docs/SERVICES_GUIDE.md) for decision tree.
 2. ✓ **Choose location**: `services/game/` for most services (auto-discovered), `services/framework/` only if initialization order matters
 3. ✓ **Create service file** in `Source/ServerScriptService/services/game/YourService.luau`
 4. ✓ **Implement init() function** that starts the service (required for auto-discovery)
@@ -530,7 +530,7 @@ These checklists provide step-by-step guidance for adding new components to your
 7. ✓ **Add print statements** with `[ServiceName]` prefix for debugging
 8. ✓ **Test in Play mode** - Check Output window for `[ServiceRunner] Initialized: YourService`
 
-**See [SERVICES_GUIDE.md](SERVICES_GUIDE.md) for detailed examples.**
+**See [SERVICES_GUIDE.md](docs/SERVICES_GUIDE.md) for detailed examples.**
 
 ### Updating Network.Actions
 
@@ -555,7 +555,7 @@ These checklists provide step-by-step guidance for adding new components to your
 - ✅ Good: `PurchaseWeapon`, `EquipItem`, `Donate`, `BuyTreasure` (verb-based, intent-focused)
 - ❌ Bad: `SetInventory`, `Update`, `Click`, `Execute` (commands or too vague)
 
-**See [CONTROLLER_GUIDE.md](CONTROLLER_GUIDE.md) for more details on working with Network.Actions.**
+**See [CONTROLLER_GUIDE.md](docs/CONTROLLER_GUIDE.md) for more details on working with Network.Actions.**
 
 ### Updating Network.State
 
@@ -591,7 +591,7 @@ These checklists provide step-by-step guidance for adding new components to your
 - ❌ Don't include: Internal model state that clients never see
 - ❌ Don't include: Computed values that views calculate themselves
 
-**See [MODEL_GUIDE.md](MODEL_GUIDE.md) and [VIEW_GUIDE.md](VIEW_GUIDE.md) for more details on working with Network.State.**
+**See [MODEL_GUIDE.md](docs/MODEL_GUIDE.md) and [VIEW_GUIDE.md](docs/VIEW_GUIDE.md) for more details on working with Network.State.**
 
 ## Tutorial: Adding a Complete Feature
 

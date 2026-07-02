@@ -9,7 +9,7 @@ I'll guide you through creating a new Roblox service. Services are server-side m
 ## Reference Files
 
 Before generating code, I will read:
-- `SERVICES_GUIDE.md` - Complete patterns, templates, and best practices
+- `docs/SERVICES_GUIDE.md` - Complete patterns, templates, and best practices
 
 ## Interactive Service Creation Wizard
 
@@ -36,7 +36,7 @@ Which pattern does this service follow?
 - Use for: player join/leave, game lifecycle, chat commands
 - Example: SlashCommandService listens for PlayerAdded
 
-See SERVICES_GUIDE.md "Decision Tree" for pattern selection guidance.
+See docs/SERVICES_GUIDE.md "Decision Tree" for pattern selection guidance.
 
 ### Step 3: Pattern-Specific Details
 
@@ -59,7 +59,7 @@ For each dependency:
 ### Step 5: Generation
 
 I will:
-1. Read SERVICES_GUIDE.md for the exact template
+1. Read docs/SERVICES_GUIDE.md for the exact template
 2. Generate service file in `Source/ServerScriptService/services/game/`
 3. Provide testing instructions
 
@@ -74,7 +74,7 @@ Services here are auto-discovered by ServiceRunner - no registration needed.
 
 ### Templates
 
-Use the templates from SERVICES_GUIDE.md:
+Use the templates from docs/SERVICES_GUIDE.md:
 - Loop-based: Pattern 1 template with `task.spawn()` and `while true do`
 - Event-driven: Pattern 2 template with event connections
 

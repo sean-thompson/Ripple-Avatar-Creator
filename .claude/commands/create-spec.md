@@ -13,8 +13,8 @@ This is the upstream step before `/create-plan` and `/next-task`. Run this once 
 Before writing the spec I may consult, depending on the project shape:
 
 - `README.md` — project overview and architecture at a glance
-- `CONTROLLER_GUIDE.md`, `MODEL_GUIDE.md`, `VIEW_GUIDE.md`, `SERVICES_GUIDE.md`, `CONFIG_GUIDE.md` — MVC patterns for integration-point analysis
-- `BOLT_API.md` — networking library
+- `docs/CONTROLLER_GUIDE.md`, `docs/MODEL_GUIDE.md`, `docs/VIEW_GUIDE.md`, `docs/SERVICES_GUIDE.md`, `docs/CONFIG_GUIDE.md` — MVC patterns for integration-point analysis
+- `docs/BOLT_API.md` — networking library
 - Any file the user points me at via argument (e.g. `/create-spec Refs/client-brief.md`)
 
 ## Project architecture context (background for me, not user-facing)

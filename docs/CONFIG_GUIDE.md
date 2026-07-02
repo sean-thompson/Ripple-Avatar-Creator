@@ -79,10 +79,18 @@ local config: AnalyticsConfig = {
     enabled = true,
     measurementId = "G-XXXXXXXXXX",
     apiSecret = "your-api-secret",
-    hashSalt = "change-me-to-something-unique",
+    hashSalt = "change-me-to-something-unique",  -- set once, NEVER change post-launch (rehashes all UserIds)
     flushIntervalSeconds = 15,
     maxBatchSize = 25,
-    debug = false,
+    debug = false,  -- true routes events to GA4 DebugView and OUT of standard reports; false for live
+
+    -- Controller action names to skip in auto-tracking (noise reduction). Optional.
+    excludedActions = {},
+
+    -- Absolute model values stamped as params onto (almost) every event, so any
+    -- metric can be segmented by player progression in BigQuery. Each key needs a
+    -- resolver registered in services/game/AnalyticsDimensions (ships with "gold").
+    globalParams = { "gold" },
 
     heatmap = {
         enabled = false,
@@ -93,6 +101,9 @@ local config: AnalyticsConfig = {
         sampleIntervalSeconds = 1,
         flushIntervalSeconds = 120,
         heartbeatIntervalSeconds = 60,
+        -- version = "arena-v1",  -- optional friendly label stamped as `heatmap_gen`;
+                                  -- omit to auto-derive from cellSize + bounds (any grid
+                                  -- change then yields a new generation automatically)
     },
 }
 
@@ -100,6 +111,8 @@ return config
 ```
 
 **Note:** HttpService must be enabled in Game Settings > Security for analytics to work.
+
+**Acquisition attribution** is automatic — no config needed. `AnalyticsService` reads `player:GetJoinData().LaunchData` on join and stores it as the `launch_data` user property, so events can be segmented by ad campaign. Tag each campaign link with a distinct LaunchData; untagged joins record as `"organic"`. To test in Studio, set a `TestLaunchData` attribute/StringValue on Workspace.
 
 #### Accessing Server-Side Configs
 

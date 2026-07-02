@@ -37,6 +37,27 @@ local playerStates: { [Player]: PlayerTrackingState } = {}
 local cellAccumulator: { [string]: CellData } = {}
 local isRunning = false
 
+-- Identifies the grid config that produced an event, stamped on every heatmap
+-- event as `heatmap_gen`. Lets BigQuery filter to one grid version instead of
+-- reverse-engineering resolution/area changes from coordinate ranges (which
+-- silently mix when cellSize/bounds change). Resolved once at init.
+local heatmapGen: string = "unknown"
+
+-- Explicit `config.version` if set, else auto-derived from the grid-defining
+-- params — so ANY change to cellSize or bounds produces a new id automatically,
+-- with no reliance on someone remembering to bump a label.
+local function resolveHeatmapGen(): string
+	if config.version ~= nil and tostring(config.version) ~= "" then
+		return tostring(config.version)
+	end
+	return string.format(
+		"c%g_x%g.%g_z%g.%g",
+		config.cellSize,
+		config.boundsMin[1], config.boundsMax[1],
+		config.boundsMin[2], config.boundsMax[2]
+	)
+end
+
 -- Convert world position to grid cell indices
 local function positionToCell(posX: number, posZ: number): (number, number)
 	local cellX = math.floor((posX - config.boundsMin[1]) / config.cellSize)
@@ -115,6 +136,7 @@ local function flushSummary()
 					cell_z = cZ,
 					player_seconds = math.floor(data.playerSeconds),
 					unique_players = uniqueCount,
+					heatmap_gen = heatmapGen,
 				})
 			end
 		end
@@ -129,6 +151,7 @@ local function fireTransitionEvent(player: Player, cellX: number, cellZ: number,
 		cell_x = cellX,
 		cell_z = cellZ,
 		dwell_seconds = math.floor(dwellSeconds),
+		heatmap_gen = heatmapGen,
 	})
 end
 
@@ -138,6 +161,7 @@ local function firePresenceEvent(player: Player, cellX: number, cellZ: number, d
 		cell_x = cellX,
 		cell_z = cellZ,
 		dwell_seconds = math.floor(dwellSeconds),
+		heatmap_gen = heatmapGen,
 	})
 end
 
@@ -309,6 +333,7 @@ function HeatmapService.init()
 	end
 
 	config = fullConfig.heatmap
+	heatmapGen = resolveHeatmapGen()
 
 	-- Get AnalyticsService
 	local ServiceRunner = require(script.Parent.Parent.ServiceRunner)

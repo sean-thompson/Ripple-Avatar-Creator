@@ -48,8 +48,14 @@ Ask the user what they'd like to explore:
 3. **Session metrics** — Average session length, daily active users, retention patterns.
 4. **Player flow** — What do players do first? What sequences lead to leaving? Action ordering.
 5. **Demographics** — Player breakdown by country, locale, membership type.
-6. **Insights** — Holistic analysis across all data. Identify patterns, anomalies, and actionable findings.
-7. **Custom query** — Describe what you want in natural language. I'll write and run the SQL.
+6. **Campaign / acquisition** — Which ad campaigns drive the most (and best-retained) players? Segments by the `launch_data` user property; `"organic"` = untagged joins.
+7. **Insights** — Holistic analysis across all data. Identify patterns, anomalies, and actionable findings.
+8. **Custom query** — Describe what you want in natural language. I'll write and run the SQL.
+
+**Cross-cutting segmentation — offer these proactively.** Most of the above can be sliced further:
+- **By campaign** (`launch_data` user property) or **by player progression** (global dimensions like `gold`/`xp`, present as event params when listed in `AnalyticsConfig.globalParams`). If the user's question touches acquisition, monetisation cohorts, or "do high-progression players behave differently", add the relevant UNNEST as a column and `GROUP BY` it — see the Campaign / Acquisition and Demographics query patterns.
+- **Heatmap must be scoped to a single `heatmap_gen`** (grid version) — never sum across generations. See the Heatmap Query note.
+If a dimension the user asks for is missing from the data, tell them it likely isn't enabled in `AnalyticsConfig.globalParams` (or, for campaign, that joins weren't tagged).
 
 ### Step 2: Date Range
 
@@ -79,6 +85,8 @@ WHERE event_name IN ('heatmap_summary', 'heatmap_cell', 'heatmap_presence')
 GROUP BY cell_x, cell_z
 ORDER BY total_player_seconds DESC, total_dwell_seconds DESC
 ```
+
+**Filter by grid version.** Every heatmap event carries a `heatmap_gen` param identifying the grid config (cellSize + bounds) that produced it. When the grid changes, `heatmap_gen` changes automatically, so old and new data don't silently blend. If you have more than one generation in range, pick one — otherwise cells from different resolutions/areas are summed together nonsensically. Add `AND (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'heatmap_gen') = '<gen>'` to the WHERE clause (list generations first with a `GROUP BY heatmap_gen` count if unsure which exist).
 
 After running, identify:
 - Hottest cells (highest player_seconds or dwell_seconds)
@@ -183,6 +191,22 @@ GROUP BY country, locale, membership
 ORDER BY session_count DESC
 ```
 
+### Campaign / Acquisition Query
+Every player carries a `launch_data` user property — the experience link's `LaunchData`, set per ad campaign/creative (`"wknd-adA"`, …), or `"organic"` for untagged joins. Because it's a GA4 **user property**, it rides on every event, so you can segment ANY metric by campaign. Example — retention and engagement by campaign:
+```sql
+SELECT
+  (SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'launch_data') AS campaign,
+  COUNT(DISTINCT user_pseudo_id) AS players,
+  COUNTIF(event_name = 'player_leave') AS sessions,
+  AVG(IF(event_name = 'player_leave',
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'session_duration_seconds'), NULL)) AS avg_session_seconds
+FROM `PROJECT.DATASET.events_*`
+WHERE _TABLE_SUFFIX BETWEEN 'DATE_START' AND 'DATE_END'
+GROUP BY campaign
+ORDER BY players DESC
+```
+To segment any other query by campaign, add the same `launch_data` UNNEST as a `SELECT` column and `GROUP BY` it. To compare one campaign against the rest, filter `WHERE (SELECT value.string_value FROM UNNEST(user_properties) WHERE key = 'launch_data') = 'wknd-adA'`.
+
 ### Insights (Holistic)
 Run ALL of the above queries, then provide a comprehensive analysis covering:
 - What stands out? What's surprising?
@@ -202,6 +226,9 @@ The user describes what they want in natural language. Write SQL using the same 
 - When showing numbers, include context (e.g., "847 player-seconds in cell (3,5) — that's 3x the average")
 - For insights, go beyond raw numbers — identify patterns, anomalies, and make recommendations
 - If a query returns no data, suggest the user check their date range or whether the relevant events are being tracked
+- **Campaign attribution is available on every event** via the `launch_data` user property (see the Campaign / Acquisition Query). If the user asks about ad campaigns, creatives, traffic sources, or "where players came from", segment on `launch_data`. Untagged joins show as `"organic"`. In Studio playtests, `launch_data` reflects a `workspace.TestLaunchData` attribute/StringValue if one is set (otherwise `"organic"`).
+- **Heatmap data is versioned by `heatmap_gen`** (an event param on all heatmap events). Always scope a heatmap query to a single `heatmap_gen` — summing across generations mixes grids with different cell sizes/bounds. See the Heatmap Query note.
+- **Global dimensions** (configured in `AnalyticsConfig.globalParams`, e.g. `gold`, `xp`) are stamped as event params on almost every event, so you can segment ANY metric by player progression — add the relevant `event_params` UNNEST as a column and `GROUP BY` it, exactly like the demographics/campaign patterns. They're absent from aggregate events (`heatmap_summary`) and `player_join`. If a dimension the user asks about isn't present, it likely isn't listed in `globalParams`.
 - **Always measure standard deviation alongside any mean.** Whenever you compute an average (session length, action counts per user, player-seconds per cell, etc.), also query STDDEV in the same pass. Then act on what the SD reveals:
   - If SD is low relative to the mean → the mean is trustworthy, report it confidently
   - If SD is high relative to the mean → flag the spread, consider reporting median/mode instead, and if the data exists to explain *why* (e.g., outlier sessions, demographic splits, time-of-day effects), dig into that

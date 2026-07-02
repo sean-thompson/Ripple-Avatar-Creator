@@ -43,6 +43,12 @@ type UserProperties = {
 	country: { value: string },
 	account_age_days: { value: string },
 	membership: { value: string },
+	-- Acquisition attribution: the experience link's launchData, set on join via
+	-- player:GetJoinData().LaunchData. Tag each ad campaign/creative with a
+	-- distinct launchData ("wknd-adA", …) and this rides on EVERY event the
+	-- player fires (GA4 attaches user properties to all events), so behaviour can
+	-- be segmented by campaign in BigQuery. "organic" when the join wasn't tagged.
+	launch_data: { value: string },
 }
 
 -- State
@@ -52,6 +58,23 @@ local userPropertiesCache: { [string]: UserProperties } = {}
 local playerJoinTimes: { [string]: number } = {}
 local numericSessionId: number = 0
 local isRunning = false
+
+-- Lookup of controller action names to skip (built from config.excludedActions)
+local excludedActionSet: { [string]: boolean } = {}
+
+-- Global dimensions: absolute model values stamped onto (almost) every event.
+-- `dimensionFetchers` maps a config key -> a (player) -> value resolver,
+-- registered by a game-specific module via AnalyticsService.registerDimension —
+-- the service stays model-agnostic. `globalParamKeys` is the ordered subset
+-- enabled in config.globalParams. Events in GLOBAL_PARAM_EXCLUDED_EVENTS are
+-- skipped: aggregate (heatmap_summary, attributed to an arbitrary player) and
+-- pre-hydration (player_join, before per-player models exist).
+local dimensionFetchers: { [string]: (Player) -> any } = {}
+local globalParamKeys: { string } = {}
+local GLOBAL_PARAM_EXCLUDED_EVENTS: { [string]: boolean } = {
+	heatmap_summary = true,
+	player_join = true,
+}
 
 -- Public flag checked by AbstractController to avoid require overhead
 AnalyticsService.isEnabled = false
@@ -207,6 +230,21 @@ local function queueEvent(player: Player, eventName: string, params: { [string]:
 		eventParams.debug_mode = true
 	end
 
+	-- Stamp configured global dimensions (e.g. gold, xp) onto the event, except
+	-- aggregate / pre-hydration events. Each fetcher reads the current model
+	-- value; nil results are omitted (model not ready / absent).
+	if not GLOBAL_PARAM_EXCLUDED_EVENTS[eventName] then
+		for _, key in globalParamKeys do
+			local fetcher = dimensionFetchers[key]
+			if fetcher then
+				local value = fetcher(player)
+				if value ~= nil then
+					eventParams[key] = value
+				end
+			end
+		end
+	end
+
 	local event: GA4Event = {
 		name = eventName,
 		params = eventParams,
@@ -262,6 +300,25 @@ function AnalyticsService.init()
 		return
 	end
 
+	-- Build the excluded-action lookup: controller actions named here are
+	-- skipped by trackControllerAction (high-volume, low-value events).
+	excludedActionSet = {}
+	if config.excludedActions then
+		for _, actionName in config.excludedActions do
+			excludedActionSet[actionName] = true
+		end
+	end
+
+	-- Snapshot the ordered list of global dimensions to stamp on every event
+	-- (resolved via registerDimension). Order is cosmetic — all enabled keys are
+	-- sent, well under GA4's 25-param/event limit.
+	globalParamKeys = {}
+	if config.globalParams then
+		for _, key in config.globalParams do
+			table.insert(globalParamKeys, key)
+		end
+	end
+
 	AnalyticsService.isEnabled = true
 	numericSessionId = generateNumericSessionId()
 
@@ -295,25 +352,66 @@ function AnalyticsService:cacheUserProperties(player: Player)
 		country = countryResult
 	end
 
+	-- Acquisition attribution from the join link's launchData (set per ad
+	-- campaign). pcall-guarded — GetJoinData can be empty/absent for some join
+	-- paths. Truncated to GA4's 36-char user-property limit; "organic" when no
+	-- launchData (arrived without a tagged link).
+	local launchData = ""
+	local joinOk, joinData = pcall(function()
+		return player:GetJoinData()
+	end)
+	if joinOk and type(joinData) == "table" and type(joinData.LaunchData) == "string" then
+		launchData = joinData.LaunchData
+	end
+
+	-- Studio test hook: Studio playtests can't supply real LaunchData, so when
+	-- there's none AND we're in Studio, fall back to a workspace `TestLaunchData`
+	-- — either an attribute OR a StringValue child (whichever you set in the
+	-- Explorer, e.g. value "wknd-adA"). Lets you verify the launchData →
+	-- user-property → BigQuery chain without a deep link or ad spend. Gated on
+	-- IsStudio, so live joins are never affected.
+	if launchData == "" and RunService:IsStudio() then
+		local testValue = workspace:GetAttribute("TestLaunchData")
+		if type(testValue) ~= "string" or testValue == "" then
+			local sv = workspace:FindFirstChild("TestLaunchData")
+			testValue = if sv and sv:IsA("StringValue") then sv.Value else nil
+		end
+		if type(testValue) == "string" and testValue ~= "" then
+			launchData = testValue
+		end
+	end
+
+	local launchValue = if launchData ~= "" then string.sub(launchData, 1, 36) else "organic"
+
 	userPropertiesCache[clientId] = {
 		locale = { value = player.LocaleId },
 		country = { value = country },
 		account_age_days = { value = tostring(player.AccountAge) },
 		membership = { value = tostring(player.MembershipType) },
+		launch_data = { value = launchValue },
 	}
 
 	playerJoinTimes[clientId] = os.clock()
 
 	if config.debug then
 		print(string.format(
-			"[AnalyticsService] Cached properties for %s: locale=%s, country=%s, age=%d, membership=%s",
+			"[AnalyticsService] Cached properties for %s: locale=%s, country=%s, age=%d, membership=%s, launch_data=%s",
 			player.Name,
 			player.LocaleId,
 			country,
 			player.AccountAge,
-			tostring(player.MembershipType)
+			tostring(player.MembershipType),
+			launchValue
 		))
 	end
+end
+
+-- Register a resolver for a global dimension (keyed to config.globalParams).
+-- A game-specific module (e.g. AnalyticsDimensions) wires these so
+-- AnalyticsService stays model-agnostic. The fetcher must be non-yielding and
+-- return the value to stamp on every event (or nil to omit it).
+function AnalyticsService.registerDimension(key: string, fetcher: (Player) -> any)
+	dimensionFetchers[key] = fetcher
 end
 
 -- Track a custom event
@@ -323,6 +421,10 @@ end
 
 -- Track a controller action (called automatically by AbstractController)
 function AnalyticsService:trackControllerAction(player: Player, controllerName: string, actionName: string)
+	-- Skip high-volume / low-value actions listed in config.excludedActions.
+	if excludedActionSet[actionName] then
+		return
+	end
 	queueEvent(player, "controller_action", {
 		controller_name = controllerName,
 		action_name = actionName,

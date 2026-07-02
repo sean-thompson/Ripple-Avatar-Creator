@@ -80,6 +80,8 @@ GROUP BY cell_x, cell_z
 ORDER BY total_player_seconds DESC, total_dwell_seconds DESC
 ```
 
+**Filter by grid version.** Every heatmap event carries a `heatmap_gen` param identifying the grid config (cellSize + bounds) that produced it. When the grid changes, `heatmap_gen` changes automatically, so old and new data don't silently blend. If you have more than one generation in range, pick one — otherwise cells from different resolutions/areas are summed together nonsensically. Add `AND (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'heatmap_gen') = '<gen>'` to the WHERE clause (list generations first with a `GROUP BY heatmap_gen` count if unsure which exist).
+
 After running, identify:
 - Hottest cells (highest player_seconds or dwell_seconds)
 - Cold/dead zones (cells with zero or near-zero activity)
@@ -219,6 +221,8 @@ The user describes what they want in natural language. Write SQL using the same 
 - For insights, go beyond raw numbers — identify patterns, anomalies, and make recommendations
 - If a query returns no data, suggest the user check their date range or whether the relevant events are being tracked
 - **Campaign attribution is available on every event** via the `launch_data` user property (see the Campaign / Acquisition Query). If the user asks about ad campaigns, creatives, traffic sources, or "where players came from", segment on `launch_data`. Untagged joins show as `"organic"`. In Studio playtests, `launch_data` reflects a `workspace.TestLaunchData` attribute/StringValue if one is set (otherwise `"organic"`).
+- **Heatmap data is versioned by `heatmap_gen`** (an event param on all heatmap events). Always scope a heatmap query to a single `heatmap_gen` — summing across generations mixes grids with different cell sizes/bounds. See the Heatmap Query note.
+- **Global dimensions** (configured in `AnalyticsConfig.globalParams`, e.g. `gold`, `xp`) are stamped as event params on almost every event, so you can segment ANY metric by player progression — add the relevant `event_params` UNNEST as a column and `GROUP BY` it, exactly like the demographics/campaign patterns. They're absent from aggregate events (`heatmap_summary`) and `player_join`. If a dimension the user asks about isn't present, it likely isn't listed in `globalParams`.
 - **Always measure standard deviation alongside any mean.** Whenever you compute an average (session length, action counts per user, player-seconds per cell, etc.), also query STDDEV in the same pass. Then act on what the SD reveals:
   - If SD is low relative to the mean → the mean is trustworthy, report it confidently
   - If SD is high relative to the mean → flag the spread, consider reporting median/mode instead, and if the data exists to explain *why* (e.g., outlier sessions, demographic splits, time-of-day effects), dig into that

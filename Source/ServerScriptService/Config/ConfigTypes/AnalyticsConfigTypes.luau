@@ -24,6 +24,11 @@ export type HeatmapConfig = {
 	sampleIntervalSeconds: number,     -- how often to check player positions
 	flushIntervalSeconds: number,      -- summary mode: how often to flush aggregates to GA4
 	heartbeatIntervalSeconds: number,  -- transitions mode: interval for stationary player events
+	version: string?,                  -- optional label stamped on heatmap events as `heatmap_gen`,
+	                                   -- so a specific grid config can be filtered in BigQuery. When
+	                                   -- omitted, an id is auto-derived from cellSize + bounds, so any
+	                                   -- grid change yields a new `heatmap_gen` automatically. Set an
+	                                   -- explicit value (e.g. "arena-v2") for a friendly tag.
 }
 
 -- GA4 analytics via the Measurement Protocol.
@@ -45,6 +50,11 @@ export type AnalyticsConfig = {
 	flushIntervalSeconds: number,      -- how often to send batched events to GA4
 	maxBatchSize: number,              -- max events per GA4 request (GA4 limit is 25)
 	debug: boolean,                    -- log events to output + send to GA4 DebugView
+	excludedActions: { string }?,      -- controller action names to skip auto-tracking (noise reduction)
+	globalParams: { string }?,         -- absolute model values stamped onto (almost) every event, e.g.
+	                                   -- { "gold", "xp" }. Each key needs a resolver registered via
+	                                   -- AnalyticsService.registerDimension (see AnalyticsDimensions).
+	                                   -- Lets any event be segmented by player progression in BigQuery.
 	heatmap: HeatmapConfig,            -- spatial heatmap tracking settings
 }
 

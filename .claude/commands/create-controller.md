@@ -24,7 +24,7 @@ Client (View) → Bolt ReliableEvent (Network.Intent.*) → Controller (Validati
 
 Before generating code, I will read these stable reference files to ensure accuracy:
 - `Source/ServerScriptService/controllers/AbstractController.luau` - Base class pattern and required methods
-- `CONTROLLER_GUIDE.md` - Complete controller documentation with examples and patterns
+- `docs/CONTROLLER_GUIDE.md` - Complete controller documentation with examples and patterns
 - `Source/ReplicatedStorage/Network.luau` - Network configuration structure and action constants
 - `Source/ServerScriptService/controllers/CashMachineController.luau` - Example of ACTIONS pattern
 - `Source/ServerScriptService/controllers/ShrineController.luau` - Example of multiple model interactions
@@ -202,7 +202,7 @@ When generating the controller, I will:
 
 Use Read tool on:
 - **AbstractController.luau** to understand base class API (intentEvent, dispatchAction)
-- **CONTROLLER_GUIDE.md** for complete pattern examples and conventions
+- **docs/CONTROLLER_GUIDE.md** for complete pattern examples and conventions
 - **Network.luau** to understand current configuration and alphabetical ordering
 - **Example controllers** to see patterns in practice (CashMachineController, ShrineController)
 
@@ -568,7 +568,7 @@ Next Steps:
    - Use CollectionService to target UI elements or 3D objects
    - Connect button clicks to Network.Intent.{Feature}:FireServer()
    - Use Network.State to observe model changes
-   - See VIEW_GUIDE.md for complete patterns
+   - See docs/VIEW_GUIDE.md for complete patterns
 
 5. **Test Edge Cases**
    - Invalid parameters (wrong type, out of range)
@@ -579,10 +579,10 @@ Next Steps:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Documentation:
-  - CONTROLLER_GUIDE.md - Complete controller patterns and best practices
+  - docs/CONTROLLER_GUIDE.md - Complete controller patterns and best practices
   - Network.luau - All action constants and networking infrastructure
   - AbstractController.luau - Base class reference
-  - VIEW_GUIDE.md - Creating views to interact with this controller
+  - docs/VIEW_GUIDE.md - Creating views to interact with this controller
 
 ⚠️  Important Reminders:
   - NEVER trust client data - always validate on server

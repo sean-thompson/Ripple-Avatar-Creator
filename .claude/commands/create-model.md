@@ -30,7 +30,7 @@ I'll guide you through creating a new Roblox model that follows this project's A
 Before generating code, I will read these stable reference files to ensure accuracy:
 - `Source/ServerScriptService/models/AbstractModel.luau` - Base class pattern and required methods
 - `Source/ReplicatedStorage/Network.luau` - Network state structure and type exports
-- `MODEL_GUIDE.md` - Complete model documentation with examples and patterns
+- `docs/MODEL_GUIDE.md` - Complete model documentation with examples and patterns
 
 These core files contain the exact patterns, type definitions, and conventions to follow.
 
@@ -102,7 +102,7 @@ When generating the model, I will:
 
 1. **Read reference files**:
    - Use Read tool on `Source/ServerScriptService/models/AbstractModel.luau` to understand the base class API
-   - Read `MODEL_GUIDE.md` for complete pattern examples and conventions
+   - Read `docs/MODEL_GUIDE.md` for complete pattern examples and conventions
    - Read `Source/ReplicatedStorage/Network.luau` to understand state structure
    - Understand: inheritance setup, type definitions, .new()/.get()/.remove() pattern
    - Note the syncState() calls in all state-modifying methods
@@ -133,7 +133,7 @@ When generating the model, I will:
    - Register Network state the same way as User models (model syncs to client)
    - No `loadAllForOwner` or `removeAllEntitiesForOwner` required
    - Methods call `syncState()` — syncs to owner player but skips DataStore
-   - See MODEL_GUIDE.md UserSession template for complete pattern
+   - See docs/MODEL_GUIDE.md UserSession template for complete pattern
 
 2c. **For ServerEntity models specifically**:
    - Constructor takes `entityId: string`, always passes `"SERVER"` as ownerId
@@ -141,7 +141,7 @@ When generating the model, I will:
    - Must implement `initAllServerEntities()` static method (required by ModelRunner)
    - **Predefined variant**: `initAllServerEntities()` creates all known entities upfront and calls `syncState()` on each
    - **Dynamic variant**: `initAllServerEntities()` is a no-op; add a `create(entityId, ...)` static factory that sets properties and calls `syncState()`; add a `syncAll()` that handles the empty-collection edge case by broadcasting `{}` via Network directly when no entities remain
-   - See MODEL_GUIDE.md ServerEntity templates for both patterns
+   - See docs/MODEL_GUIDE.md ServerEntity templates for both patterns
 
 3. **For UserEntity models specifically**:
    - Constructor requires `modelId` parameter: `function Model.new(ownerId: string, modelId: string)`
@@ -149,7 +149,7 @@ When generating the model, I will:
    - remove() method requires `modelId`: `function Model.remove(ownerId: string, modelId: string)`
    - Must implement `loadAllForOwner(ownerId)` static method
    - Must implement `removeAllEntitiesForOwner(ownerId)` static method
-   - See MODEL_GUIDE.md UserEntity template for complete pattern
+   - See docs/MODEL_GUIDE.md UserEntity template for complete pattern
 
 4. **Edit Network.luau**:
    - Read current file first

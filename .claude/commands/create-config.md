@@ -18,7 +18,7 @@ I'll guide you through creating a new Roblox config that follows this project's 
 ## Reference Files
 
 Before generating code, I will read these stable reference files to ensure accuracy:
-- `CONFIG_GUIDE.md` - Complete config documentation with patterns and examples
+- `docs/CONFIG_GUIDE.md` - Complete config documentation with patterns and examples
 - `Source/ReplicatedStorage/Config/ConfigTypes/FavoursConfigTypes.luau` - Example types file
 
 These core files contain the exact patterns, type definitions, and conventions to follow.
@@ -99,7 +99,7 @@ I'll display a summary showing:
 ### Step 6: Generation
 
 I will:
-1. Read CONFIG_GUIDE.md to understand the exact pattern
+1. Read docs/CONFIG_GUIDE.md to understand the exact pattern
 2. Read existing ConfigTypes for reference
 3. Create types file at `Source/ReplicatedStorage/Config/ConfigTypes/{Name}ConfigTypes.luau`
 4. Output config module code to the conversation for you to paste into Studio
@@ -113,7 +113,7 @@ When generating the config, I will:
 ### 1. Read Reference Files
 
 Use Read tool on:
-- **CONFIG_GUIDE.md** to understand patterns and conventions
+- **docs/CONFIG_GUIDE.md** to understand patterns and conventions
 - **FavoursConfigTypes.luau** to see exact type definition syntax
 
 ### 2. Generate Types File
@@ -203,7 +203,7 @@ Usage in Code:
   local value = {Name}Config.{exampleProperty}
 
 Documentation:
-  See CONFIG_GUIDE.md for complete config patterns and best practices
+  See docs/CONFIG_GUIDE.md for complete config patterns and best practices
 ```
 
 ---

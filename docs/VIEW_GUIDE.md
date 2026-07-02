@@ -878,4 +878,4 @@ After creating your view:
 2. **Create a Model** (`Source/ServerScriptService/models/`) to store authoritative state
 3. **Test the flow** end-to-end with user interactions
 
-See the main [README.md](README.md) for the complete MVC architecture overview.
+See the main [README.md](../README.md) for the complete MVC architecture overview.

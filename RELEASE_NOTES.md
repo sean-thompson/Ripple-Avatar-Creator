@@ -82,11 +82,11 @@ High-performance networking layer included and integrated:
 - **MCP Integration** - Direct Roblox Studio access from Claude Code for AI-assisted development
 - **Rojo Workflow** - Version control for all code while Studio manages visual content
 - **Comprehensive Documentation**:
-  - [MODEL_GUIDE.md](MODEL_GUIDE.md) - Complete guide to creating models with examples
-  - [CONTROLLER_GUIDE.md](CONTROLLER_GUIDE.md) - Controller patterns and validation strategies
-  - [VIEW_GUIDE.md](VIEW_GUIDE.md) - Three view patterns with decision tree
-  - [SLASH_COMMANDS.md](SLASH_COMMANDS.md) - Admin command system documentation
-  - [BOLT_API.md](BOLT_API.md) - Complete Bolt networking reference
+  - [MODEL_GUIDE.md](docs/MODEL_GUIDE.md) - Complete guide to creating models with examples
+  - [CONTROLLER_GUIDE.md](docs/CONTROLLER_GUIDE.md) - Controller patterns and validation strategies
+  - [VIEW_GUIDE.md](docs/VIEW_GUIDE.md) - Three view patterns with decision tree
+  - [SLASH_COMMANDS.md](docs/SLASH_COMMANDS.md) - Admin command system documentation
+  - [BOLT_API.md](docs/BOLT_API.md) - Complete Bolt networking reference
 - **Complete Tutorial** - Full Weapon Shop example demonstrating the entire MVC flow
 
 ---
@@ -170,11 +170,11 @@ High-performance networking layer included and integrated:
 ## Documentation
 
 - **[README.md](README.md)** - Complete project overview and setup guide
-- **[MODEL_GUIDE.md](MODEL_GUIDE.md)** - Model creation with InventoryModel example
-- **[CONTROLLER_GUIDE.md](CONTROLLER_GUIDE.md)** - Controller patterns with CashMachineController example
-- **[VIEW_GUIDE.md](VIEW_GUIDE.md)** - View patterns (A, B, C, B+C) with decision tree
-- **[SLASH_COMMANDS.md](SLASH_COMMANDS.md)** - Admin command system documentation
-- **[BOLT_API.md](BOLT_API.md)** - Bolt networking library reference
+- **[MODEL_GUIDE.md](docs/MODEL_GUIDE.md)** - Model creation with InventoryModel example
+- **[CONTROLLER_GUIDE.md](docs/CONTROLLER_GUIDE.md)** - Controller patterns with CashMachineController example
+- **[VIEW_GUIDE.md](docs/VIEW_GUIDE.md)** - View patterns (A, B, C, B+C) with decision tree
+- **[SLASH_COMMANDS.md](docs/SLASH_COMMANDS.md)** - Admin command system documentation
+- **[BOLT_API.md](docs/BOLT_API.md)** - Bolt networking library reference
 - **Tutorial** - Complete Weapon Shop feature walkthrough in README.md
 
 ---

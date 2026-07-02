@@ -13,9 +13,9 @@ This is the middle step: `/create-spec` produced the spec, and `/next-task` will
 The planning sub-agent will read these, in this order, before touching the plan:
 
 1. `README.md` — architecture overview
-2. `CONTROLLER_GUIDE.md`, `MODEL_GUIDE.md`, `VIEW_GUIDE.md`, `SERVICES_GUIDE.md`, `CONFIG_GUIDE.md` — MVC patterns
-3. `BOLT_API.md` — networking library
-4. `SLASH_COMMANDS.md` — what scaffolders exist so the plan can suggest them
+2. `docs/CONTROLLER_GUIDE.md`, `docs/MODEL_GUIDE.md`, `docs/VIEW_GUIDE.md`, `docs/SERVICES_GUIDE.md`, `docs/CONFIG_GUIDE.md` — MVC patterns
+3. `docs/BOLT_API.md` — networking library
+4. `docs/SLASH_COMMANDS.md` — what scaffolders exist so the plan can suggest them
 5. `features/<slug>/SPEC.md` — the full spec
 
 ## Interactive Wizard
@@ -60,13 +60,13 @@ features/<slug>/SPEC.md. Output path: features/<slug>/PLAN.md.
 ## Architecture reading order (read in full before planning)
 
 1. README.md
-2. CONTROLLER_GUIDE.md
-3. MODEL_GUIDE.md
-4. VIEW_GUIDE.md
-5. SERVICES_GUIDE.md
-6. CONFIG_GUIDE.md
-7. BOLT_API.md
-8. SLASH_COMMANDS.md
+2. docs/CONTROLLER_GUIDE.md
+3. docs/MODEL_GUIDE.md
+4. docs/VIEW_GUIDE.md
+5. docs/SERVICES_GUIDE.md
+6. docs/CONFIG_GUIDE.md
+7. docs/BOLT_API.md
+8. docs/SLASH_COMMANDS.md
 
 ## Codebase exploration (required)
 

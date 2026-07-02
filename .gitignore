@@ -11,7 +11,8 @@ sourcemap.json
 # Wally package installs
 Packages/
 
-# Refs folder
+# Refs folder (either capitalisation, since forks may recreate it)
+refs/
 Refs/
 
 # BigQuery analytics local config and Python venv

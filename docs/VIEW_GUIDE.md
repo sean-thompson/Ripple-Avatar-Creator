@@ -349,9 +349,47 @@ views/hooks/
   useSpringNumber.luau    — Number springs for text displays
   useTransition.luau      — Enter/leave/stagger transitions
   useDrag.luau            — Drag with momentum + spring-back
+  useViewportScale.luau   — Viewport-height scale factor for residual pixels
 views/components/
   AnimatedModal.luau      — Delayed-unmount modal wrapper using useTransition
 ```
+
+## Responsive Scaling
+
+Roblox games render on every aspect ratio from phone portrait to ultrawide PC. HUD views must **scale relatively**, not to fixed pixels. The mental model: an energy bar is "40% of the screen width" (`UDim2.fromScale(0.4, ...)`) at every resolution — never "268 px wide", which is huge on a phone and tiny on a 4K monitor.
+
+**Default to `UDim2.fromScale`.** Size and position elements as fractions of their parent. Reserve `UDim2.fromOffset` (fixed pixels) for genuinely fixed things (a 1 px divider, an icon that must not scale) — and even then, prefer scaling the pixel value (see `useViewportScale` below).
+
+**Fixed pixels everywhere is a code smell.** If a design hands you `width: 268px; top: 30px; font-size: 38px` with no `vh`/`vw`/`aspect-ratio`, that layout will break for most players. Convert it to relative sizing rather than translating `px` 1:1 to `fromOffset`. (The `/html-to-react-luau` skill's Phase 2a walks through exactly this.)
+
+**Lock shapes with `UIAspectRatioConstraint`.** When an element must keep its proportions (a square avatar, a hex badge), give it a positive `Size` on both axes and add a `UIAspectRatioConstraint`. Note the trap: `Size = UDim2.fromScale(0, 1)` collapses to nothing — both axes need positive Scale (see the skill's pitfall #10).
+
+**Residual pixels → `useViewportScale`.** A few things can't be a Scale UDim — `UIStroke.Thickness`, small `UICorner` radii, and `TextSize` derived from a `vh` design value. `useViewportScale()` returns `viewport.Y / 1080`; multiply your design-pixel value by it so those pixels stay proportional to the rest of the layout:
+
+```lua
+local useViewportScale = require(script.Parent:WaitForChild("hooks"):WaitForChild("useViewportScale"))
+
+local function Badge()
+    local scale = useViewportScale()
+    return e("Frame", {
+        Size = UDim2.fromScale(0.2, 0.1),
+        BackgroundColor3 = Color3.new(1, 1, 1),
+    }, {
+        Corner = e("UICorner", { CornerRadius = UDim.new(0, math.floor(12 * scale + 0.5)) }),
+        Stroke = e("UIStroke", { Thickness = math.max(1, math.floor(3 * scale + 0.5)) }),
+        Label = e("TextLabel", {
+            -- CSS `font-size: 4vh` → 4% of a 1080 design height, scaled to viewport
+            TextSize = math.max(10, math.floor(0.04 * 1080 * scale + 0.5)),
+        }),
+    })
+end
+```
+
+**Caveat — `useViewportScale` is height-axis only.** It tracks viewport *height*, so it stays proportional only for elements that also scale with height (e.g. corner-pinned pieces in a viewport-filling root). It is **wrong** for pixels inside an aspect-locked, width-dominant container (a centred modal with `UIAspectRatioConstraint` + `DominantAxis.Width`) — there, drive scale off the container's own measured `AbsoluteSize`. The `/html-to-react-luau` skill (pitfalls #12–13) has the full treatment, including the "Canvas + `UIScale`" pattern for fixed-pixel modals.
+
+**Prefer computed `TextSize` over `TextScaled` for `vh`-based fonts.** `TextScaled` fills the label's container (layout-dependent); a `vh` font size is a literal viewport fraction. Compute `TextSize` from `useViewportScale` as above. Use `TextScaled` only when text lives inside a uniformly scaled fixed-pixel canvas.
+
+> **Starting from a design?** Run `/html-to-react-luau` to translate an HTML/CSS/JSX mockup (or screenshot) into a react-luau component that follows these rules, then wire its state with `/create-view`.
 
 ## Creating a HUD View
 

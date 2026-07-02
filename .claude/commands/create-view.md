@@ -6,6 +6,8 @@ model: sonnet
 
 I'll guide you through creating a new Roblox view with automatic pattern detection (A, B, C, or B+C). This project has two distinct view types that follow different architectures.
 
+> **Starting from a visual design?** If you have an HTML/CSS/JSX mockup or a screenshot to translate, run `/html-to-react-luau` **first** — it produces the component's structure, layout, and responsive scaling. Then come back here to wire it to Network state (patterns A/B/C) and into HudApp. This skill owns the state wiring; `/html-to-react-luau` owns the visual translation. See also `docs/VIEW_GUIDE.md` → "Responsive Scaling".
+
 ## Project View Architecture
 
 This project has **two types of views**:

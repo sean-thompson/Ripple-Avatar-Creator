@@ -112,6 +112,17 @@ Scaffolds a config types file under `ReplicatedStorage/Config/ConfigTypes/`.
 
 ---
 
+### `/html-to-react-luau`
+
+Translates an HTML/CSS/JSX UI design (or a screenshot) into a react-luau HUD component that follows this template's view architecture and responsive-scaling rules.
+
+- **Output:** `Source/ReplicatedFirst/views/` (or `views/components/` for reusable pieces)
+- **Covers:** HTML→Roblox translation, relative scaling (fixed-pixel is a code smell), reuse of existing components/hooks, and a flagged list of PNG assets to upload
+- **Pairs with `/create-view`:** this skill produces the visual structure; `/create-view` wires it to Network state. Run this one first when starting from a design.
+- See `docs/VIEW_GUIDE.md` → "Responsive Scaling" for the scaling rules it applies.
+
+---
+
 ### `/analytics`
 
 Analyse GA4 analytics data from BigQuery — heatmaps, sessions, actions, and insights.

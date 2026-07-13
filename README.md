@@ -314,6 +314,18 @@ HeatmapService tracks where players spend time on a configurable 2D grid (X/Z). 
 3. Enable HttpService in Game Settings > Security
 4. See [CONFIG_GUIDE.md](docs/CONFIG_GUIDE.md) for the full config structure including heatmap settings
 
+### Experiments & versioning
+- **Experiments**: create an `ExperimentsConfig` ModuleScript in Studio at `ReplicatedStorage > Config` to run deterministic A/B or multivariate tests (sticky per player, no storage). Each active test's cohort rides every event as an `exp_<name>` param. See the header of `ExperimentsConfigTypes` for the schema and an example.
+- **`place_version` / `place_id`** are stamped on every event automatically, so analytics can be scoped to a specific published build (`0` = unpublished Studio session). Track builds in [bigquery/PLACE_VERSION_REGISTER.md](bigquery/PLACE_VERSION_REGISTER.md).
+
+### Querying analytics with Claude (`/analytics`)
+Once events are flowing (and the GA4 property is **linked to BigQuery Export** — GA4 Admin → BigQuery links), run `/analytics` in Claude Code to explore the data: heatmaps, sessions, funnels, experiment cohorts, and ad-hoc questions.
+
+`/analytics` needs a **BigQuery MCP connection** to your analytics project — on first run it walks you through the setup. The essentials:
+- A service account with **BigQuery Data Viewer + Job User** on the project (one SA can serve several games via cross-project grants).
+- The dataset's **region** (BigQuery Studio → dataset → *Details* → *Data location*) for the `--location` flag — a wrong region only fails at query time.
+- `claude mcp add bq_<game> -s user -- npx -y @ergut/mcp-bigquery-server --project-id YOUR_PROJECT --location YOUR_REGION --key-file /path/to/key.json`, then **restart Claude Code**.
+
 ## Prerequisites
 
 1. [Rojo](https://rojo.space/) - Install the Rojo CLI and Roblox Studio plugin

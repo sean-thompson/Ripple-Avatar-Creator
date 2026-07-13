@@ -28,25 +28,31 @@
 	variant an already-enrolled player gets.
 
 	Example ExperimentsConfig (author this in Studio at
-	ReplicatedStorage.Config.ExperimentsConfig):
+	ReplicatedStorage.Config.ExperimentsConfig). These are illustrative only —
+	they bucket players but change nothing until game code reads the assignment
+	(see the getNumber / getVariantKey usage above). Rename them for your tests.
 
 		return {
 			experiments = {
-				match_length = {
+				-- A/B/n split; cohort key = the variant key (a string).
+				example_ab = {
 					enabled = true,
-					salt = "match_length_v1",
-					kind = "numericRange",
-					range = { min = 15, max = 60, step = 1 },
-				},
-				reward_style = {
-					enabled = false,
-					salt = "reward_style_v1",
-					exposure = 0.5,
+					salt = "example_ab_v1",
 					kind = "variants",
 					variants = {
-						{ key = "A", weight = 1, payload = { multiplier = 1.0 } },
-						{ key = "B", weight = 1, payload = { multiplier = 1.5 } },
+						{ key = "control", weight = 1 },
+						{ key = "variant", weight = 1 },
+						-- `payload` is optional — arbitrary data the consumer reads:
+						-- { key = "variant", weight = 1, payload = { multiplier = 1.5 } }
 					},
+				},
+				-- Dose-response sweep; cohort key = the number as a string.
+				-- `exposure` (0..1) optionally holds players out as "control".
+				example_sweep = {
+					enabled = true,
+					salt = "example_sweep_v1",
+					kind = "numericRange",
+					range = { min = 1, max = 5, step = 1 },
 				},
 			},
 		}

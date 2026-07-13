@@ -211,14 +211,15 @@ To segment any other query by campaign, add the same `launch_data` UNNEST as a `
 
 Experiments assign each player a **deterministic** cohort (hash of UserId + salt;
 see `ExperimentService` / the Studio `ExperimentsConfig`). Every event carries the
-active cohorts as `exp_<name>` params (e.g. `exp_match_length`) — stamped on
+active cohorts as `exp_<name>` params (e.g. `exp_example_sweep`) — stamped on
 *every* event type including `player_join`, so you can segment **any** metric by
 cohort.
 
-**Type gotcha (read this):** a `numericRange` cohort (like match length) is a
+**Type gotcha (read this):** a `numericRange` cohort (a numeric sweep) is a
 numeric-looking value and GA4 files it under `value.int_value`; a `variants`
-cohort (like `"A"`/`"B"`) lands under `value.string_value`. Reading the wrong one
-returns NULL and makes a present cohort look absent. Always extract with COALESCE:
+cohort (like `"control"`/`"variant"`) lands under `value.string_value`. Reading
+the wrong one returns NULL and makes a present cohort look absent. Always extract
+with COALESCE:
 
 ```sql
 SELECT
@@ -227,17 +228,16 @@ SELECT
   COUNT(*) AS events
 FROM `PROJECT.DATASET.events_*`,
   UNNEST(event_params) AS ec
-WHERE ec.key = 'exp_match_length'          -- the experiment param
+WHERE ec.key = 'exp_example_sweep'         -- the experiment param (exp_<name>)
   AND _TABLE_SUFFIX BETWEEN 'DATE_START' AND 'DATE_END'
 GROUP BY cohort
 ORDER BY SAFE_CAST(cohort AS INT64)
 ```
 
-To compare an *outcome* across cohorts (e.g. session length by assigned match
-length), take the cohort from any of the player's events and the metric from the
-relevant event, joined per `user_id`. Numeric cohorts can be range-filtered
-directly on `int_value` (e.g. `... AND ec.value.int_value BETWEEN 30 AND 45`) —
-no CAST needed.
+To compare an *outcome* across cohorts (e.g. session length by assigned cohort),
+take the cohort from any of the player's events and the metric from the relevant
+event, joined per `user_id`. Numeric cohorts can be range-filtered directly on
+`int_value` (e.g. `... AND ec.value.int_value BETWEEN 2 AND 4`) — no CAST needed.
 
 ### Insights (Holistic)
 Run ALL of the above queries, then provide a comprehensive analysis covering:

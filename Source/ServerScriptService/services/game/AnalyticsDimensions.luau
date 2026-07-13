@@ -45,7 +45,7 @@ function AnalyticsDimensions.init()
 	end)
 
 	-- Experiment cohorts: one dimension per enabled experiment, keyed "exp_<name>"
-	-- (e.g. "exp_match_length"). Registered with always = true so the cohort rides
+	-- (e.g. "exp_example_sweep"). Registered with always = true so the cohort rides
 	-- every event (cohorts are deterministic — no model hydration needed — so this
 	-- is safe pre-hydration; see ExperimentService). Auto-derived from
 	-- ExperimentsConfig, so adding a test needs no analytics or globalParams edit.

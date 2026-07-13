@@ -17,7 +17,7 @@
 	inactive rather than letting a malformed config error mid-assignment.
 
 	Typical use:
-	  local dur = ExperimentService.getNumber(player, "match_length")  -- numericRange
+	  local dur = ExperimentService.getNumber(player, "example_sweep")  -- numericRange
 	  local key = ExperimentService.getVariantKey(player, "some_test") -- for analytics
 	  local a   = ExperimentService.getAssignment(player, "some_test") -- { key, value }
 
@@ -59,8 +59,8 @@ local function getConfig(): { experiments: { [string]: ExperimentDef } }?
 
 			-- Validate on load. On failure, warn and leave experiments inactive
 			-- rather than letting a malformed config error deep inside an
-			-- assignment call. (UEFA validates in ModelRunner at startup; the
-			-- template has no such harness, so the service self-validates.)
+			-- assignment call. (Self-validated here because the template has no
+			-- central config-validation step at startup.)
 			local configTypes = configFolder :: any
 			local typesModule = configTypes:FindFirstChild("ConfigTypes")
 				and configTypes.ConfigTypes:FindFirstChild("ExperimentsConfigTypes")

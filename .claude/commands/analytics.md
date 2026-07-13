@@ -9,16 +9,19 @@ I'll help you analyse your GA4 analytics data from BigQuery. This command guides
 
 Before doing anything else, verify:
 
-1. **BigQuery MCP is available**: Try running a simple query via `mcp__bigquery__query` (e.g., `SELECT 1`). If the tool is not available, stop and tell the user:
-   ```
-   BigQuery MCP server is not connected. To set it up:
-   1. Create a service account in Google Cloud with BigQuery Data Viewer + BigQuery Job User roles
-   2. Download the JSON key file
-   3. Run: claude mcp add bigquery -s user -- npx -y @ergut/mcp-bigquery-server --project-id YOUR_PROJECT --location YOUR_REGION --key-file /path/to/key.json
-   4. Restart Claude Code
-   ```
+1. **A BigQuery MCP connection is available.** The connection can be named anything — `bigquery`, `bq_<game>`, etc. — so **don't assume a fixed tool name**: look for any connected tool matching `mcp__*__query` (backed by an `@ergut/mcp-bigquery-server`) and use whichever exists. Confirm it works with a trivial `SELECT 1`. Only if **no** such tool is connected, stop and give the user the one-time setup below.
 
-2. **Analytics config**: Read `bigquery/.analytics-config.json`. If it doesn't exist, this is the first run — proceed to Dataset Discovery.
+   **One-time setup:**
+   1. **Link GA4 → BigQuery** (if not already): GA4 Admin → *Product links* → *BigQuery links* → *Link*. Without this there is no `analytics_<propertyId>` dataset to query at all. Export lags — intraday appears within minutes/hours, finalised `events_YYYYMMDD` tables next day.
+   2. **Grant a service account access** to the analytics project: roles **BigQuery Data Viewer** + **BigQuery Job User**. Either create a new SA (Google Cloud → IAM & Admin → Service Accounts → create → download a JSON key), or reuse one from another game and grant it those two roles here — one SA can serve many projects via cross-project grants.
+   3. **Find the dataset's region** — BigQuery Studio → your `analytics_*` dataset → *Details* → *Data location* (e.g. `US`, `EU`, `europe-west2`). You need it for `--location`. A wrong region does **not** fail on connect — it fails at *query* time with "not found in location", which is easy to misdiagnose, so get it right now.
+   4. **Add the connection**, substituting placeholders literally (no angle brackets — a stray `<REGION>` is read as a shell redirect):
+      ```
+      claude mcp add bq_<game> -s user -- npx -y @ergut/mcp-bigquery-server --project-id YOUR_PROJECT --location YOUR_REGION --key-file /path/to/key.json
+      ```
+   5. **Restart Claude Code** — MCP servers only connect at startup.
+
+2. **Analytics config**: Read `bigquery/.analytics-config.json` (gitignored, so it's per-clone — a fresh fork won't have one). If it doesn't exist, this is the first run — proceed to Dataset Discovery.
 
 ## Dataset Discovery (First Run Only)
 

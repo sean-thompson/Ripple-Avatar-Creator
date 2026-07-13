@@ -31,6 +31,7 @@
 ]]
 
 local AnalyticsService = require(script.Parent.Parent.framework.AnalyticsService)
+local ExperimentService = require(script.Parent.Parent.framework.ExperimentService)
 local InventoryModel = require(script.Parent.Parent.Parent.models.user.InventoryModel)
 
 local AnalyticsDimensions = {}
@@ -42,6 +43,18 @@ function AnalyticsDimensions.init()
 		local model = InventoryModel.get(tostring(player.UserId))
 		return if model then model.gold else nil
 	end)
+
+	-- Experiment cohorts: one dimension per enabled experiment, keyed "exp_<name>"
+	-- (e.g. "exp_match_length"). Registered with always = true so the cohort rides
+	-- every event (cohorts are deterministic — no model hydration needed — so this
+	-- is safe pre-hydration; see ExperimentService). Auto-derived from
+	-- ExperimentsConfig, so adding a test needs no analytics or globalParams edit.
+	for _, experimentKey in ExperimentService.getEnabledKeys() do
+		local paramKey = "exp_" .. experimentKey
+		AnalyticsService.registerDimension(paramKey, function(player: Player): any
+			return ExperimentService.getVariantKey(player, experimentKey)
+		end, true)
+	end
 end
 
 return AnalyticsDimensions

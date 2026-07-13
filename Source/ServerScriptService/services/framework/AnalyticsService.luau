@@ -51,6 +51,18 @@ type UserProperties = {
 	launch_data: { value: string },
 }
 
+-- Build/version identity, stamped on every event for filtering in BigQuery.
+-- `place_version` is Roblox's own publish counter (game.PlaceVersion): an
+-- integer that auto-increments each time the place is published — no dev action
+-- and no config to keep in sync, so it can't silently drift. It's monotonic, so
+-- BigQuery can range-filter ("everything since v45"). It's per-place and opaque
+-- (v47 carries no date/commit), hence `place_id` rides alongside it to
+-- distinguish dev vs prod places. Captured once here — a running server's
+-- PlaceVersion is fixed for its lifetime (a publish spins up new servers).
+-- In Studio PlaceVersion is 0, which conveniently marks non-published sessions.
+local PLACE_VERSION: number = game.PlaceVersion
+local PLACE_ID: number = game.PlaceId
+
 -- State
 local config = nil :: any
 local eventQueue: { QueuedEvent } = {}
@@ -74,6 +86,19 @@ local globalParamKeys: { string } = {}
 local GLOBAL_PARAM_EXCLUDED_EVENTS: { [string]: boolean } = {
 	heatmap_summary = true,
 	player_join = true,
+}
+
+-- Always-stamp dimensions (registered with registerDimension(..., true)): a
+-- second tier for values that are known independently of per-player model
+-- hydration — chiefly deterministic experiment cohorts (see ExperimentService).
+-- Unlike globalParams these ride EVERY event, so cohort is present on
+-- player_join too. The one carve-out is genuinely aggregate events: a
+-- heatmap_summary row is attributed to an arbitrary online player (its cell data
+-- spans everyone), so stamping that player's cohort would misattribute aggregate
+-- data — those events are excluded here.
+local alwaysDimensionKeys: { string } = {}
+local ALWAYS_STAMP_EXCLUDED_EVENTS: { [string]: boolean } = {
+	heatmap_summary = true,
 }
 
 -- Public flag checked by AbstractController to avoid require overhead
@@ -226,6 +251,24 @@ local function queueEvent(player: Player, eventName: string, params: { [string]:
 	eventParams.session_id = tostring(numericSessionId)
 	eventParams.engagement_time_msec = 1
 	eventParams.timestamp = timestampMs
+	eventParams.place_version = PLACE_VERSION
+	eventParams.place_id = PLACE_ID
+
+	-- Always-stamp dimensions (experiment cohorts): resolved for every event
+	-- except genuinely aggregate ones (see ALWAYS_STAMP_EXCLUDED_EVENTS). Fetchers
+	-- are deterministic and don't depend on model hydration, so this is safe on
+	-- pre-hydration events like player_join. nil results are omitted.
+	if not ALWAYS_STAMP_EXCLUDED_EVENTS[eventName] then
+		for _, key in alwaysDimensionKeys do
+			local fetcher = dimensionFetchers[key]
+			if fetcher then
+				local value = fetcher(player)
+				if value ~= nil then
+					eventParams[key] = value
+				end
+			end
+		end
+	end
 	if config.debug then
 		eventParams.debug_mode = true
 	end
@@ -406,12 +449,20 @@ function AnalyticsService:cacheUserProperties(player: Player)
 	end
 end
 
--- Register a resolver for a global dimension (keyed to config.globalParams).
--- A game-specific module (e.g. AnalyticsDimensions) wires these so
+-- Register a resolver for a dimension. A game-specific module wires these so
 -- AnalyticsService stays model-agnostic. The fetcher must be non-yielding and
--- return the value to stamp on every event (or nil to omit it).
-function AnalyticsService.registerDimension(key: string, fetcher: (Player) -> any)
+-- return the value (or nil to omit).
+--
+-- `always = false` (default): a global dimension, stamped on events per
+-- config.globalParams (skipped on the pre-hydration / aggregate events in
+-- GLOBAL_PARAM_EXCLUDED_EVENTS).
+-- `always = true`: stamped on EVERY event (except aggregate ones), independent
+-- of config.globalParams — for deterministic values like experiment cohorts.
+function AnalyticsService.registerDimension(key: string, fetcher: (Player) -> any, always: boolean?)
 	dimensionFetchers[key] = fetcher
+	if always then
+		table.insert(alwaysDimensionKeys, key)
+	end
 end
 
 -- Track a custom event

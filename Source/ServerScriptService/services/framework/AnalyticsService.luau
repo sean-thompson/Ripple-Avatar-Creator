@@ -104,17 +104,44 @@ local ALWAYS_STAMP_EXCLUDED_EVENTS: { [string]: boolean } = {
 -- Public flag checked by AbstractController to avoid require overhead
 AnalyticsService.isEnabled = false
 
--- DJB2 hash with salt for one-way UserId hashing
-local function djb2Hash(input: string): string
-	local hash: number = 5381
+-- Salted pseudonymising hash for UserIds, emitted as 16 hex chars (64-bit).
+--
+-- This is NOT a cryptographic / irreversible hash. Its job is to keep raw Roblox
+-- UserIds out of the GA4 + BigQuery dataset. Anyone holding `hashSalt` (it lives
+-- in the server-only AnalyticsConfig) can rebuild the hash -> UserId map by
+-- enumerating UserIds, so treat the emitted id as a stable pseudonym, not as
+-- anonymisation.
+--
+-- Collision limit: the output spans a full 64-bit space (2^64). By the birthday
+-- bound, the chance of *any* collision reaches ~50% only after ~5 billion
+-- distinct users have been seen; at realistic game scale (even tens of millions
+-- of players) the probability is negligible (~n^2 / 2^65). A single 32-bit DJB2
+-- lane (the previous implementation) hit ~50% collision odds at only ~77k users
+-- — well within a successful game's lifetime audience — which is why this is
+-- widened to 64 bits.
+--
+-- Implementation note: Luau numbers are IEEE-754 doubles (53-bit integer
+-- precision), so native 64-bit integer arithmetic would lose precision. Instead
+-- we run two independent 32-bit lanes (DJB2 + SDBM) — every intermediate value
+-- stays under 2^53 — and concatenate them for an effective 2^64 output space.
+--
+-- ⚠️ Changing this function (or `hashSalt`) changes every emitted id, creating a
+-- one-time discontinuity: rows from before and after the change won't reconcile
+-- to the same user. Set it before a game goes live; changing it mid-life splits
+-- each player's history in two.
+local function hashUserIdString(input: string): string
+	local a: number = 5381 -- DJB2 lane (seed 5381, multiplier 33)
+	local b: number = 0 -- SDBM lane (multiplier 65599)
 	for i = 1, #input do
-		hash = ((hash * 33) + string.byte(input, i)) % (2 ^ 32)
+		local byte = string.byte(input, i)
+		a = ((a * 33) + byte) % 4294967296 -- mod 2^32
+		b = ((b * 65599) + byte) % 4294967296 -- mod 2^32
 	end
-	return string.format("%08x", hash)
+	return string.format("%08x%08x", a, b)
 end
 
 local function hashUserId(userId: number): string
-	return djb2Hash(config.hashSalt .. tostring(userId))
+	return hashUserIdString(config.hashSalt .. tostring(userId))
 end
 
 -- Convert JobId (UUID string) to a numeric session ID for GA4

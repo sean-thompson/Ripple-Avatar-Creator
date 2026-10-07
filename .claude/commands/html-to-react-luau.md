@@ -10,15 +10,15 @@ I'll translate an HTML/CSS UI design into a Roblox react-luau component that fit
 These two are complementary; use them together:
 
 - **`/html-to-react-luau` (this skill)** — turns a *visual design* (HTML/CSS/JSX/screenshot) into the component's **structure and styling**: the React element tree, layout, sizing, colours, fonts, and which existing components to reuse.
-- **`/create-view`** — wires a view to the game's **state and intents** (Network patterns A/B/C, modal vs always-visible, HudApp wiring) and validates against `Network.luau`.
+- **`/create-view`** — wires a view to the game's **state and intents** (Network patterns A/B/C, panel screen vs world HUD, FullPanel routing / WorldHud wiring) and validates against `Network.luau`.
 
 Typical flow: run this skill first to get a faithful component skeleton, then run `/create-view` (or follow `docs/VIEW_GUIDE.md`) to bind it to `useBoltState` / `Network.Intent` and mount it in `HudApp.client.luau`. I'll emit static, well-structured display markup and hand off the state wiring — I won't invent Network calls.
 
 ## This template's UI architecture (what I target)
 
-HUD views in this template are **react-luau components** (ModuleScripts, `.luau`) under `Source/ReplicatedFirst/views/`, mounted by `HudApp.client.luau` into one ScreenGui. Reusable pieces live in `Source/ReplicatedFirst/views/components/` and hooks in `Source/ReplicatedFirst/views/hooks/`.
+HUD views in this template are **react-luau components** (ModuleScripts, `.luau`) under `Source/ReplicatedFirst/views/`. `HudApp.client.luau` mounts the root `Hud.luau` into its own ScreenGui; `Hud` renders `WorldHud` (over the world) or `panel/FullPanel` (one full-screen panel whose content is a screen from `views/screens/`). Reusable pieces live in `Source/ReplicatedFirst/views/components/` and hooks in `Source/ReplicatedFirst/views/hooks/`.
 
-There is **no primitives library** (`branded/`/`universal/`), **no design-system asset pipeline**, and **no brand palette** shipped in this template — so I never assume those exist. Where a design system *would* help, I reuse what's actually in `views/components/` and otherwise emit self-contained chrome, flagging repeated patterns as candidates for a shared component.
+There is **no primitives library** (`branded/`/`universal/`), and **no design-system asset pipeline** — so I never assume those exist. The brand system is the skin kit (`views/Tokens.luau` + the components in `views/components/`, see "Design references" below); I reuse what's actually there and in `views/screens/Parts.luau`, and otherwise emit self-contained chrome, flagging repeated patterns as candidates for a shared component.
 
 ## How to invoke me
 
@@ -138,26 +138,33 @@ This template ships no asset-generation pipeline, so for each "needs PNG" elemen
 Before writing anything new, I run a live discovery pass (grep/ls, not a hand-maintained list that drifts):
 
 ```sh
-# 1. Reusable view components already in the template
+# 1. Skin kit components (the project's visual language)
 ls Source/ReplicatedFirst/views/components/
-#    e.g. ModalWindow, AnimatedModal, HudButton, CurrencyChip, FavourTile
+#    e.g. SkinRoot, PillButton, PillTabs, GlossFace, GlassPanel, Badge,
+#         TextTab, Chip, Icon, ShadowText
 
-# 2. Hooks (state, animation, scaling)
+# 2. Shared screen parts for the full panel
+grep -n "^function Parts\." Source/ReplicatedFirst/views/screens/Parts.luau
+#    Thumb, PriceTag, ItemCard, ListRow, CardGrid, Heading
+
+# 3. Hooks (state, skin, navigation, animation, scaling)
 ls Source/ReplicatedFirst/views/hooks/
-#    e.g. useBoltState, useSpring, useSpringNumber, useTransition, useDrag,
-#         useViewportScale, SpringSolver
+#    e.g. useSkin, useInteraction, useTextWidth, useLocalSize, useGlassBlur,
+#         useSystemBarInset, useNavigation, useBoltState, useSpring,
+#         useSpringNumber, useTransition, useDrag, useViewportScale
 
-# 3. Existing views to copy idioms from
-ls Source/ReplicatedFirst/views/
+# 4. Existing views/screens to copy idioms from
+ls Source/ReplicatedFirst/views/ Source/ReplicatedFirst/views/screens/ Source/ReplicatedFirst/views/panel/
+#    Hud, WorldHud, WorldOptionsView, panel/FullPanel, screens/*Screen
 
-# 4. Shared utilities
+# 5. Shared utilities
 ls Source/ReplicatedStorage/ 2>/dev/null
 
-# 5. Targeted name search when I have a concept in mind
+# 6. Targeted name search when I have a concept in mind
 grep -rln "ConceptKeyword" Source/ReplicatedFirst/views/
 ```
 
-**Mapping rule:** if the JSX uses `<Foo>` and a matching component exists in `views/components/`, I use it — don't reinvent. If it doesn't exist, see "When you need a new component" below.
+**Mapping rule:** if the JSX uses `<Foo>` and a matching component exists in `views/components/` (or a part in `screens/Parts.luau`), I use it — don't reinvent. A new page in the full panel becomes a screen in `views/screens/`, routed in `currentScreen` in `panel/FullPanel.luau` (see "Full Panel and Navigation" in `docs/VIEW_GUIDE.md`). If it doesn't exist, see "When you need a new component" below.
 
 **Content-population step (don't skip):** if the design shows an in-game asset inside a UI slot (a pet, character portrait, 3D model), the game may already have a renderer for it. Before emitting an empty placeholder Frame, grep for a `ViewportFrame` / preview helper and reuse the technique.
 
@@ -305,7 +312,7 @@ Engine-level gotchas. Most are independent of any component library — they're 
 
 This template ships spring-physics hooks in `views/hooks/` — prefer them over hand-rolled `TweenService`.
 
-- **`useSpring`** — animate a dictionary of properties (Position, Size, Transparency) toward targets with spring physics; returns React bindings that update instances directly (no re-render thrash). Config: `{ force, dampening, mass, immediate }`. Use for panel slide-in, modal entrance, anything that might retarget mid-animation.
+- **`useSpring`** — animate a dictionary of properties (Position, Size, Transparency) toward targets with spring physics; returns React bindings that update instances directly (no re-render thrash). Config: `{ force, dampening, mass, immediate }`. Use for panel slide-in, element entrance, anything that might retarget mid-animation.
   ```lua
   local springProps = useSpring({ Position = UDim2.fromScale(0.5, 0.5) }, { force = 200, dampening = 20 })
   -- e("Frame", { Position = springProps.Position })
@@ -314,29 +321,32 @@ This template ships spring-physics hooks in `views/hooks/` — prefer them over 
 - **`useTransition`** — mount/unmount lifecycle: keeps a component mounted through its exit animation before unmount (Roblox's `AnimatePresence`). Supports staggering via a `trail`.
 - **`useDrag`** — draggable element with momentum and spring-back.
 
-For **modals** that need enter/exit animation, don't call `useTransition` directly — use the `AnimatedModal` wrapper in `views/components/AnimatedModal.luau`.
+For enter/exit animation, use `useTransition` (boolean mode for a single element, list mode with `trail` for grids) and `useSpring` directly in the component that shows/hides. Spring presets live in `Tokens.spring`. Full-panel open/close motion belongs to the panel, not to individual screens.
 
 CSS `@keyframes` / `transition` don't translate automatically — I flag them for manual wiring (Out of scope, below).
 
 ## Interaction states
 
-This template has no shared `Pressable` primitive. For interactive elements:
+For interactive elements:
 
-- Use a real `TextButton` and `React.Event.Activated` (not `.Activated:Connect`) for taps/clicks — you get the activation event for free. Set `AutoButtonColor = false` when you're tinting via `ImageColor3`/custom chrome so Roblox's default doesn't fight it.
-- For hover/press feedback, animate a scale binding with `useSpring` (e.g. spring to `1.05` on hover, `0.92` on press).
-- **Reuse `views/components/HudButton.luau`** where it fits rather than re-implementing button behaviour. If you find yourself writing the same interaction handling a third time, that's the signal to extract a shared button component.
+- **Reuse `views/components/PillButton.luau`** for buttons (round or pill; hover glow, 0.94 press, active orange) — and `PillTabs` / `TextTab` / `Chip` for tabs and filters — rather than re-implementing button behaviour.
+- For a custom control the kit doesn't cover, use a real `TextButton` with `React.Event.Activated` (not `.Activated:Connect`) and `AutoButtonColor = false`, and get hover/press state from `hooks/useInteraction` (touch-safe) — wire its `onEnter` / `onLeave` to `MouseEnter` / `MouseLeave`, as `screens/Parts.ItemCard` and `panel/FullPanel`'s cards do. Take hover/press values from `Tokens.hover` / `Tokens.press`.
+- If you find yourself writing the same interaction handling a third time, that's the signal to extract a shared component.
 
 ## When you need a new component
 
 1. **Reusable across screens?** → `views/components/`. Keep it self-contained, expose a clean `Props` type, and reuse existing hooks (don't reinvent animation/input).
 2. **Screen-specific?** → keep it next to the view file (or inline). Don't promote to `components/` until a second screen actually needs it. A new shared component is debt; earn it with a second consumer.
 
-## Design references (this template ships no brand system)
+## Design references (the skin kit)
 
-> **Ripple Avatar Creator has one now:** use `views/Tokens.luau` and the skin components (`PillButton`, `PillTabs`, `GlassPanel`, `Badge`, `TextTab`, `Chip`, `Icon`, `SkinRoot`): see "Skin kit" in `docs/VIEW_GUIDE.md`. The generic guidance below still applies to anything the kit doesn't cover. (Full rewrite of this section: Task 2.5.)
+**`views/Tokens.luau` is the brand system.** Every colour, gradient, radius, size, type style, glass/glow/hover/press value and spring preset lives there; image asset IDs live in `views/SkinAssets.luau`. Compose the skin components (`SkinRoot`, `PillButton`, `PillTabs`, `GlossFace`, `GlassPanel`, `Badge`, `TextTab`, `Chip`, `Icon`, `ShadowText`) and `screens/Parts` rather than restyling. See "Skin kit" in `docs/VIEW_GUIDE.md`.
 
-- **No brand palette / font is bundled.** Derive colours and fonts from the design itself. Centralise any value you use more than once (a local `COLORS`/`TOKENS` table in the file, or a shared module if it spans files) rather than scattering magic `Color3`s.
-- **Drop shadow**: a black `UIStroke` at `Transparency = 0.7–0.8`, `Thickness = 6–10`, `ApplyStrokeMode = Border` — the canonical "soft halo". Not a separate Frame.
+- **Map design values to Tokens, don't copy them.** A colour, radius or font size in the HTML should resolve to an existing `Tokens` entry. If it genuinely isn't there and is used more than once, add it to `Tokens` — never scatter magic `Color3`s or sizes across components.
+- **Design pixels through `useSkin()`.** The HUD renders under `SkinRoot` (`fill` sizing, scaled by height, 1180×820 design canvas). Write the design's own px and convert with `skin.px` / `skin.stroke` / `skin.textPx`; real screen pixels (Roblox's top bar, `useSystemBarInset`) convert with `skin.fromScreen`.
+- **Fonts:** Nunito via `Tokens.font(weight)` (600/700/800/900 → SemiBold/Bold/ExtraBold/Heavy) and the `Tokens.type` styles.
+- **Text sizing:** `ShadowText` / `hooks/useTextWidth` — never `AutomaticSize` (or `AutomaticCanvasSize`) under the canvas `UIScale`; measure containers with `hooks/useLocalSize`.
+- **Drop shadow**: a black `UIStroke` halo (`ApplyStrokeMode = Border`), not a separate Frame — but keep it **thin and faint**: the kit uses `Tokens.stroke.shadowThickness` (3, through `skin.px`) at `Tokens.stroke.shadowTransparency` (0.82). `UIStroke` can't feather, so thick halos (6–10px at 0.7–0.8) read as hard rings.
 - **Multi-tone assets** (e.g. an orange-filled + gold-bordered star): one white-fill PNG per tone, layered at runtime as stacked `ImageLabel`s each with its own `ImageColor3`. Never flatten a 2-colour SVG to a single silhouette — the colour distinction is lost forever and you can only restore one tone at runtime.
 - **Spacing**: if the design implies a grid (multiples of 4 or 8), keep to it; otherwise take spacing from the design's own values.
 

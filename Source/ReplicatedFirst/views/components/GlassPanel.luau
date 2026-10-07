@@ -22,6 +22,8 @@
 		variant: "dark" | "bar" | "light"
 		cornerRadius: number?   design px (default 22)
 		shadow: boolean?
+		borderColor: Color3?    override the variant's white border (e.g. orange = "you are here")
+		borderTransparency: number?
 		size: UDim2?            default fill parent
 		position, anchorPoint, layoutOrder, zIndex
 		children                rendered inside the fill
@@ -41,6 +43,8 @@ export type Props = {
 	variant: "dark" | "bar" | "light",
 	cornerRadius: number?,
 	shadow: boolean?,
+	borderColor: Color3?,
+	borderTransparency: number?,
 	size: UDim2?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
@@ -97,8 +101,8 @@ local function GlassPanel(props: Props)
 				Transparency = NumberSequence.new(1 - alphaTop, 1 - alphaBottom),
 			}),
 			Border = e("UIStroke", {
-				Color = Tokens.color.white,
-				Transparency = variant.border,
+				Color = props.borderColor or Tokens.color.white,
+				Transparency = props.borderTransparency or variant.border,
 				Thickness = skin.stroke(1),
 				ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 			}),

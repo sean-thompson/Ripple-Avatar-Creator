@@ -14,6 +14,12 @@
 	The press scale sits on an inner frame so it doesn't nudge siblings in a
 	UIListLayout (pitfall 12); layout props live on the outer button (pitfall 7).
 
+	Labelled buttons keep their content OUT of the press scale: Roblox snaps
+	text to whole pixel sizes and positions, so text under a changing UIScale
+	visibly jitters, and the text and its shadow snap apart. The face and glow
+	still sink on press; the label stays perfectly still. Icon-only buttons
+	scale their icon (images scale smoothly).
+
 	Inferred translations (design is CSS):
 	  · box-shadow 0 0 Npx rgba(255,138,26,.9) hover glow → concentric rings
 	    behind the button (Tokens.glow)
@@ -25,6 +31,7 @@
 		width: number?           pill only, design px; nil fills the parent's width
 		icon: string?            Material Symbols name
 		iconSize: number?        design px
+		iconAfter: boolean?      put the icon after the label (e.g. a trailing chevron)
 		label: string?
 		textStyle: Tokens.TypeStyle?   default Tokens.type.cta
 		active: boolean?         orange face
@@ -58,6 +65,7 @@ export type Props = {
 	width: number?,
 	icon: string?,
 	iconSize: number?,
+	iconAfter: boolean?,
 	label: string?,
 	textStyle: Tokens.TypeStyle?,
 	active: boolean?,
@@ -132,7 +140,7 @@ local function PillButton(props: Props)
 		contentChildren.Icon = e(Icon, {
 			name = props.icon,
 			size = props.iconSize or Tokens.size.action.icon,
-			layoutOrder = 1,
+			layoutOrder = if props.iconAfter then 3 else 1,
 			zIndex = z + 2,
 		})
 	end
@@ -144,6 +152,13 @@ local function PillButton(props: Props)
 			zIndex = z + 2,
 		})
 	end
+
+	local content = e("Frame", {
+		Name = "Content",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = z + 2,
+	}, contentChildren)
 
 	return e("TextButton", {
 		Name = "PillButton",
@@ -192,12 +207,7 @@ local function PillButton(props: Props)
 					zIndex = z,
 				}),
 			}),
-			Content = e("Frame", {
-				Name = "Content",
-				Size = UDim2.fromScale(1, 1),
-				BackgroundTransparency = 1,
-				ZIndex = z + 2,
-			}, contentChildren),
+			Content = if props.label then nil else content,
 			Badge = if props.badge
 				then e("Frame", {
 					Name = "BadgeAnchor",
@@ -209,6 +219,8 @@ local function PillButton(props: Props)
 				}, { Badge = props.badge })
 				else nil,
 		}),
+		-- Unscaled label content (see header): a sibling drawn above the body.
+		Content = if props.label then content else nil,
 	})
 end
 

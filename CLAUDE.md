@@ -1,9 +1,15 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repository. This is an MVC-based
-Roblox game template (Rojo-synced Luau). For depth, see `README.md` and the
-per-layer guides in `docs/` (MODEL, CONTROLLER, VIEW, SERVICES, CONFIG, BOLT_API),
-and the scaffolding skills in `.claude/commands/`.
+Guidance for Claude Code when working in this repository. This is **Ripple Avatar
+Creator** — our take on Roblox's Catalog Avatar Creator, with a points/UGC-auction
+economy, item recommendations from an external service, and diegetic "monolith"
+interactables in place of a crowded HUD. **Read `docs/PROJECT_BRIEF.md` for the
+vision and workstreams**; per-feature specs and plans live in `features/<slug>/`.
+
+It's built on Dubit's MVC-based Roblox template (Rojo-synced Luau). For depth, see
+`README.md` and the per-layer guides in `docs/` (MODEL, CONTROLLER, VIEW, SERVICES,
+CONFIG, BOLT_API), and the scaffolding skills in `.claude/commands/`. Workflow per
+feature: `/create-spec` → `/create-plan` → `/next-task`.
 
 ## Conventions
 

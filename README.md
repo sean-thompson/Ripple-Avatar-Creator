@@ -1,6 +1,8 @@
-# Roblox Template
+# Ripple Avatar Creator
 
-An MVC-based starter template for Roblox game development with automatic DataStore synchronization. This template uses Rojo for code management, Claude Code for AI-assisted development, and the Roblox MCP server for direct Studio integration.
+Our take on a catalog avatar creator experience: try on and buy catalog items, build and save outfits, earn points for purchases and engagement, spend them in auctions for minted UGC, and get item-to-item recommendations — with most of that surfaced diegetically through interactable monoliths in the world rather than a crowded HUD. See **[docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md)** for the vision and workstreams.
+
+Built on Dubit's [Roblox Template](https://github.com/sean-thompson/Roblox-Template) — an MVC-based architecture with automatic DataStore synchronization, Rojo for code management, Claude Code for AI-assisted development, and the Roblox MCP server for direct Studio integration. The rest of this README documents that architecture.
 
 > **Note:** This template uses Luau exclusively. All script files use the `.luau`, `.server.luau`, or `.client.luau` extensions.
 

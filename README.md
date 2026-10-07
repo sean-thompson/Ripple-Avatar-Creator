@@ -177,12 +177,13 @@ Views come in two flavours depending on what they control:
 
 **HUD views (ScreenGui / UI)** -- react-luau components:
 - Built as `.luau` ModuleScripts in `Source/ReplicatedFirst/views/`
-- Composed into a single ScreenGui tree mounted by `HudApp.client.luau`
+- Composed under the root component `Hud.luau`, which `HudApp.client.luau` mounts into its own `HudApp` ScreenGui (never `createRoot(PlayerGui)` -- React would clear the other ScreenGuis)
 - Use the `useBoltState` hook to subscribe to Bolt RemoteProperty state (Network.State.*)
 - Receive data and callbacks as React props -- no BindableEvents needed
 - Spring physics animation available via hooks (`useSpring`, `useTransition`, `useDrag`) -- force/dampening/mass config with zero-re-render motor bindings
-- Modal windows are managed via React state (`activeModal`) inside HudApp
-- Examples: StatusBarView, FavoursView, CandlesView
+- `Hud` owns navigation (`hooks/useNavigation`) and renders either `WorldHud` (tab bar, Basket button with Robux badge, Create avatar / Save to Roblox / Reset, World options) or `panel/FullPanel` -- one full-screen panel (no modals) with tabs, a left column (avatar preview, Wearing, Basket) and breadcrumbs
+- Panel content is a screen from `views/screens/` (Catalogue, Item, Stores, Outfits, Basket, Wearing), chosen by `currentScreen` in `FullPanel` and navigated with `nav.push` / `nav.toggleTab` / `nav.openRoot`
+- Built from the skin kit (`Tokens.luau`, `components/`, `hooks/useSkin`) -- see [docs/VIEW_GUIDE.md](docs/VIEW_GUIDE.md)
 
 **Workspace views (3D parts / models)** -- imperative LocalScripts:
 - Written as `.client.luau` LocalScripts in `Source/ReplicatedFirst/views/`
@@ -426,8 +427,8 @@ Always start in this order:
    **For HUD / ScreenGui features** (react-luau):
    - Create a `.luau` ModuleScript that returns a React component
    - Use `useBoltState` to subscribe to Network.State.* inside the component
-   - Wire the component into `HudApp.client.luau` (add require, render in tree)
-   - Example: `FavoursView.luau`
+   - Put panel pages in `views/screens/`, route them in `currentScreen` in `panel/FullPanel.luau`, and navigate with `useNavigation` (world-HUD elements go in `WorldHud.luau` instead)
+   - Example: `screens/StoresScreen.luau`
 
    **For Workspace / 3D features** (imperative):
    - Create a `.client.luau` LocalScript
@@ -633,8 +634,8 @@ Before writing code, decide:
 - Create `WeaponShopController` to validate purchases and update models
 
 **Views:**
-- Reuse `StatusBarView` (already observes InventoryStateChanged for gold display)
-- Create `WeaponShopView` to show weapons and handle purchase clicks
+- Create `WeaponShopView` (a full-panel screen) to show weapons and handle purchase clicks
+- (Optional) show gold in the HUD by subscribing to `Network.State.Inventory` in `Hud.luau` and passing it down as a prop
 
 **Network Events:**
 - Add `Network.Intent.WeaponShop` - Bolt ReliableEvent for purchase actions
@@ -804,9 +805,9 @@ return WeaponShopController
 
 ### Step 6: Create the WeaponShopView
 
-Because this is a ScreenGui / HUD feature, it is built as a react-luau component and wired into HudApp.
+Because this is a ScreenGui / HUD feature, it is built as a react-luau component and shown as a screen in the full panel.
 
-**File:** `src/client/views/WeaponShopView.luau`
+**File:** `src/client/views/screens/WeaponShopView.luau`
 
 ```lua
 --!strict
@@ -816,7 +817,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages:WaitForChild("React"))
 
-local viewsFolder = script.Parent
+local viewsFolder = script.Parent.Parent
 local useBoltState = require(viewsFolder:WaitForChild("hooks"):WaitForChild("useBoltState"))
 local Network = require(ReplicatedStorage:WaitForChild("Network"))
 
@@ -872,19 +873,18 @@ end
 return WeaponShopView
 ```
 
-**Then wire it into HudApp.client.luau:**
+**Then route it in `panel/FullPanel.luau` and navigate to it:**
 
 ```lua
--- In HudApp.client.luau, add require:
-local WeaponShopView = require(viewsFolder:WaitForChild("WeaponShopView"))
+-- In panel/FullPanel.luau, add require:
+local WeaponShopView = require(screens:WaitForChild("WeaponShopView"))
 
--- Add to the modal section (alongside Favours, Candles):
-elseif activeModal == "weaponShop" then
-    modalElement = e(ModalWindow, {
-        title = "Weapon Shop",
-        ...
-        bodyContent = e(WeaponShopView),
-    })
+-- In currentScreen, alongside the other stack-entry kinds:
+elseif top.kind == "weaponShop" then
+    return e(WeaponShopView)
+
+-- From any screen (or a button) with the nav prop:
+nav.push({ kind = "weaponShop", id = 0, label = "Weapon Shop" })
 ```
 
 **Key points:**
@@ -892,19 +892,18 @@ elseif activeModal == "weaponShop" then
 - Uses `useBoltState` hook to subscribe to shop state reactively
 - Uses Network.Actions.WeaponShop.PurchaseWeapon for type-safe intent
 - Fires intents via `React.Event.Activated` callback on buttons
-- Wired into HudApp's modal system via React state
+- Shown in the full panel via `FullPanel`'s screen routing and `useNavigation`
 - No Studio-authored ScreenGui needed -- UI is entirely code-driven
-- StatusBarView (already exists) will show gold updates automatically
 
 ### Step 7: Test Setup
 
-No Studio UI authoring is needed for HUD views. The react-luau component renders its own UI tree into HudApp's ScreenGui automatically.
+No Studio UI authoring is needed for HUD views. The react-luau component renders inside the full panel, in HudApp's ScreenGui, automatically.
 
 ### Step 8: Test the Complete Flow
 
 1. **Start Play mode** (F5 in Studio)
 2. **Open Output window** to see print statements
-3. **Click a weapon button** (e.g., "Sword")
+3. **Open the Weapon Shop screen and click a weapon button** (e.g., "Sword")
 4. **Observe the flow:**
    ```
    Output:
@@ -912,7 +911,7 @@ No Studio UI authoring is needed for HUD views. The react-luau component renders
    [Player Name] purchased Sword for 100 gold
    SHOP: [Player Name] just bought a Sword!
    ```
-5. **Check StatusBarView**: Gold should decrease by 100
+5. **Check gold**: the player's `Network.State.Inventory` gold should decrease by 100 (shown in the HUD if you wired the optional gold prop)
 6. **Try purchasing without enough gold**: Should see "doesn't have enough gold" message
 
 ### Step 9: Test with Multiple Players (Optional)
@@ -1112,7 +1111,7 @@ Source/
 3. **Wrong ownerId filtering**
    - Check: Are you filtering by ownerId when you shouldn't?
    - Fix: Bolt handles per-player filtering automatically for User-scoped models
-   - See: StatusBarView.client.luau for example (no ownerId filtering needed)
+   - See: BazaarView.client.luau for example (observes Inventory, no ownerId filtering needed)
 
 4. **Model not syncing after changes**
    - Check: Do your model methods call `self:syncState()`?

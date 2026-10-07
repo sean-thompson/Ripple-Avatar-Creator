@@ -6,7 +6,7 @@ This guide explains how to create Views in this Roblox MVC project.
 
 Views are client-side scripts that handle visual feedback, audio, and user interactions. There are two types:
 
-- **HUD views** (ScreenGui/UI): React-luau components that render 2D interface elements. Built as ModuleScripts (`.luau`) and composed inside `HudApp.client.luau`, which mounts a single ScreenGui via ReactRoblox.
+- **HUD views** (ScreenGui/UI): React-luau components that render 2D interface elements. Built as ModuleScripts (`.luau`) and composed under the root component `Hud.luau`, which `HudApp.client.luau` mounts into its own ScreenGui via ReactRoblox.
 - **Workspace views** (3D parts/models): Imperative LocalScripts (`.client.luau`) that use CollectionService to find tagged instances in the 3D world and wire up interactions, tweens, and particle effects.
 
 Both types observe game state and provide immediate user feedback while the server remains the authority for state changes.
@@ -15,11 +15,11 @@ Both types observe game state and provide immediate user feedback while the serv
 
 ### HUD Views (React-Luau)
 
-HUD views are React function components. A single entry point (`HudApp.client.luau`) mounts one ScreenGui into PlayerGui. All HUD state flows through React:
+HUD views are React function components. A single entry point (`HudApp.client.luau`) creates its own `HudApp` ScreenGui in PlayerGui and mounts the root component `Hud.luau` into it. All HUD state flows through React:
 
 - **State**: `useBoltState` hook bridges Bolt RemoteProperty into React state
-- **Data flow**: Props flow down from HudApp to child components
-- **Modal coordination**: `activeModal` React state in HudApp (only one modal visible at a time)
+- **Data flow**: Props flow down from `Hud` to `WorldHud`, `panel/FullPanel` and the screens
+- **Navigation**: `hooks/useNavigation` in `Hud` decides whether the world HUD or the full-screen panel is shown, and which screen the panel displays (one panel, a breadcrumb stack of screens — no modals)
 - **View-to-view communication**: React props and callbacks (no BindableEvents)
 
 ### Workspace Views (Imperative)
@@ -53,8 +53,8 @@ Views follow one of three patterns (or a combination). The decision tree applies
 - `Observe()` fires immediately with current state, then on every update
 - Bolt handles per-player filtering automatically for User-scoped models
 - Examples:
-  - **HUD**: StatusBarView (receives gold/treasure as props from HudApp, which observes Inventory state)
-  - **HUD**: FavoursView (receives favoursData as props from HudApp, which observes Favours state)
+  - **HUD**: WorldHud (renders the Basket button's Robux badge from the `look` prop that `Hud` owns — placeholder state today, a `useBoltState` subscription in `Hud` once the server models land)
+  - **HUD**: the full-panel screens (`screens/*`) receive `nav` and `look` as props from `FullPanel`, never subscribing themselves
   - **Workspace**: CandleView (observes Candles state, spawns/removes 3D models)
 
 ### Pattern B + C: Combination
@@ -87,18 +87,31 @@ Does view need server communication?
 
 ```
 Source/ReplicatedFirst/views/
-+-- HudApp.client.luau          -- Entry point, mounts React tree into PlayerGui
-+-- StatusBarView.luau           -- Always-visible status bar component
-+-- FavoursView.luau             -- Favours modal body content
-+-- CandlesView.luau             -- Candles modal body content
-+-- components/                  -- Shared building blocks
-|   +-- CurrencyChip.luau       -- Gold/treasure display chip
-|   +-- HudButton.luau          -- Toggle button with active state
-|   +-- ModalWindow.luau        -- Reusable modal window frame
-|   +-- FavourTile.luau         -- Individual favour card
++-- HudApp.client.luau           -- Entry point: creates its own "HudApp" ScreenGui, mounts Hud into it
++-- Hud.luau                     -- Root component: SkinRoot, navigation, look state; WorldHud or FullPanel
++-- WorldHud.luau                -- HUD over the world: tab bar, Basket (+ Robux badge), Create / Save / Reset, World options toggle
++-- WorldOptionsView.luau        -- World options side panel (static for now)
++-- panel/
+|   +-- FullPanel.luau           -- The one full-screen panel: tabs, close, left column, content area, screen routing
+|   +-- Breadcrumbs.luau         -- Back button + crumb row for the navigation stack
++-- screens/                     -- What the panel shows (placeholder data for now)
+|   +-- CatalogueScreen.luau     -- Catalogue tab root
+|   +-- ItemScreen.luau          -- Item page
+|   +-- StoresScreen.luau        -- { Root, Store }
+|   +-- OutfitsScreen.luau       -- { Root, Outfit }
+|   +-- ListScreens.luau         -- { Basket, Wearing }
+|   +-- Parts.luau               -- Shared parts: Thumb, PriceTag, ItemCard, ListRow, CardGrid, Heading
+|   +-- PlaceholderData.luau     -- Placeholder catalogue/stores/outfits
+|   +-- usePlaceholderLook.luau  -- Placeholder worn/basket state until the server models land
++-- components/                  -- Skin kit components (see "Skin kit" below)
 +-- hooks/
     +-- useBoltState.luau        -- Bolt RemoteProperty --> React state bridge
+    +-- useNavigation.luau       -- Full-panel root + breadcrumb stack
+    +-- useLocalSize.luau        -- Measure a GuiObject in local/design units (AbsoluteSize ÷ canvas scale)
+    +-- useSpring / useTransition / ... -- Animation hooks (see "Animation")
 ```
+
+The workspace views (`BazaarView`, `CandleView`, `CashMachineView`, `ShrineView` `.client.luau`) live in the same folder and are unaffected by the HUD structure.
 
 ### Skin kit (Ripple Avatar Creator)
 
@@ -122,12 +135,13 @@ Source/ReplicatedFirst/views/
 |   +-- TextTab.luau             -- underlined text tab
 |   +-- Chip.luau                -- outlined filter chip
 |   +-- Icon.luau                -- Material Symbols Rounded glyph (one image per icon)
+|   +-- ShadowText.luau          -- single-line label sized from useTextWidth, optional text-shadow
 +-- hooks/
 |   +-- useSkin.luau             -- px / stroke / textPx / fromScreen for the current sizing mode
 |   +-- useInteraction.luau      -- hover + press state (touch-safe)
 |   +-- useGlassBlur.luau        -- client-only scene blur behind full-screen panels
 |   +-- useSystemBarInset.luau   -- real-pixel area of Roblox's top-bar buttons
-+-- gallery/                     -- TEMPORARY Task 1 HUD mock, mounted by HudApp until Task 2's shell
+|   +-- useTextWidth.luau        -- measured text width (TextService, cached) for explicit text sizing
 ```
 
 - **Design pixels everywhere.** Components take the design's own px values
@@ -153,56 +167,58 @@ Source/ReplicatedFirst/views/
 
 ### HudApp.client.luau -- Entry Point
 
-HudApp is the single LocalScript that mounts the entire HUD. It:
-
-1. Subscribes to Bolt state via `useBoltState`
-2. Holds the `activeModal` state for modal coordination
-3. Passes data and callbacks down to child components as props
-4. Renders one ScreenGui containing all HUD elements
+HudApp is the single LocalScript that mounts the entire HUD. It creates its **own** ScreenGui and renders `Hud` into it:
 
 ```lua
-local function HudApp()
-    local activeModal, setActiveModal = React.useState(nil :: string?)
+local Hud = require(script.Parent:WaitForChild("Hud"))
 
-    -- Subscribe to server state via useBoltState
-    local inventory = useBoltState(Network.State.Inventory, INVENTORY_DEFAULT)
-    local favoursDict = useBoltState(Network.State.Favours, FAVOURS_DEFAULT)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HudApp"
+screenGui.DisplayOrder = 100
+screenGui.IgnoreGuiInset = true
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-    local toggleModal = React.useCallback(function(modalName: string)
-        setActiveModal(function(current: string?)
-            if current == modalName then
-                return nil
-            end
-            return modalName
-        end)
-    end, {})
+local root = ReactRoblox.createRoot(screenGui)
+root:render(React.createElement(Hud))
+```
 
-    local closeModal = React.useCallback(function()
-        setActiveModal(nil)
-    end, {})
+**Never `createRoot(PlayerGui)`.** React clears its container's existing children on first render, so mounting straight into PlayerGui deletes every other ScreenGui already there.
 
-    return e("ScreenGui", {
-        Name = "HudApp",
-        DisplayOrder = 100,
-        IgnoreGuiInset = true,
-        ResetOnSpawn = false,
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-    }, {
-        StatusBar = e(StatusBarView, {
-            gold = inventory.gold,
-            treasure = inventory.treasure,
-            activeModal = activeModal,
-            onToggleModal = toggleModal,
-        }),
-        Modal = modalElement, -- built from activeModal state
-    })
+### Hud.luau -- Root Component
+
+`Hud` is the root of the React tree. It:
+
+1. Wraps everything in `SkinRoot` with the project's sizing decision (`sizing = "fill"`, `axis = "height"`, `glass = "blur"`)
+2. Owns navigation state (`hooks/useNavigation`) and, until the server models land, the placeholder look (`screens/usePlaceholderLook`: what's worn / in the basket)
+3. Renders `WorldHud` while the panel is closed and `panel/FullPanel` while it is open
+4. Drives the scene blur behind the panel through a small `BlurDriver` that calls `hooks/useGlassBlur`
+
+```lua
+local function BlurDriver(props: { active: boolean })
+	local skin = useSkin()
+	useGlassBlur(props.active and skin.glass == "blur")
+	return nil
 end
 
--- Mount into PlayerGui
-local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-local root = ReactRoblox.createRoot(playerGui)
-root:render(e(HudApp))
+local function Hud()
+	local nav = useNavigation()
+	local look = usePlaceholderLook()
+
+	return e(SkinRoot, {
+		sizing = "fill",
+		axis = "height",
+		glass = "blur",
+	}, {
+		Blur = e(BlurDriver, { active = nav.isOpen }),
+		World = if nav.isOpen then nil else e(WorldHud, { nav = nav, look = look, tabs = TABS }),
+		Panel = if nav.isOpen then e(FullPanel, { nav = nav, look = look, tabs = TABS }) else nil,
+	})
+end
 ```
+
+When real server state arrives, `Hud` is where the `useBoltState` subscriptions go; the values are passed down as props like `look` is today.
 
 ### useBoltState Hook
 
@@ -210,6 +226,7 @@ root:render(e(HudApp))
 
 ```lua
 -- API: useBoltState(remoteProperty, initialValue) -> currentValue
+-- Illustrative: call it in Hud (the root) and pass the value down as props.
 local inventory = useBoltState(Network.State.Inventory, {
     ownerId = "",
     gold = 0,
@@ -248,52 +265,59 @@ Key points:
 
 ### Props Pattern
 
-HudApp subscribes to server state and passes data down as props. Child components are pure renderers that receive their data through props:
+`Hud` owns the state and passes it down as props. `WorldHud`, `FullPanel` and every screen are pure renderers that receive `nav` (the `useNavigation` result) and `look` (worn / basket state) through props:
 
 ```lua
--- HudApp passes inventory data and callbacks to StatusBarView
-StatusBar = e(StatusBarView, {
-    gold = inventory.gold,
-    treasure = inventory.treasure,
-    activeModal = activeModal,
-    onToggleModal = toggleModal,
-})
+-- Hud passes navigation + look down
+World = if nav.isOpen then nil else e(WorldHud, { nav = nav, look = look, tabs = TABS }),
 
--- StatusBarView declares its props type
+-- WorldHud declares its props type
 export type Props = {
-    gold: number,
-    treasure: number,
-    activeModal: string?,
-    onToggleModal: (string) -> (),
+	nav: any,
+	look: any,
+	tabs: { any },
 }
 ```
 
-### Modal Management
+### Full Panel and Navigation
 
-Modals are coordinated via `activeModal` state in HudApp. Only one modal can be open at a time:
+There are no modals. Everything beyond the world HUD opens in **one** full-screen panel, `panel/FullPanel.luau`: tab bar and close button, a left column (avatar preview card with the Wearing bar, Basket card), and a content area showing breadcrumbs (`panel/Breadcrumbs.luau`) and then the current screen.
 
-- `activeModal = nil` -- no modal visible
-- `activeModal = "favours"` -- Favours modal visible
-- `activeModal = "candles"` -- Candles modal visible
+What the panel shows is driven by `hooks/useNavigation.luau`, held in `Hud`:
 
-Toggling is handled by `toggleModal`, which sets `activeModal` to the modal name or `nil` if it is already active. The `closeModal` callback sets `activeModal` to `nil`.
+- `root` -- `"Catalogue" | "Stores" | "Outfits" | "Basket" | "Wearing"`, or `nil` when the panel is closed (`isOpen = root ~= nil`)
+- `stack` -- deeper pages for the breadcrumbs; each entry is `{ kind, id, label }` and carries its own crumb label
+- `toggleTab(tab)` -- open a tab with an empty stack; tapping the tab that's already open closes the panel
+- `openRoot(root)` -- open Basket / Wearing (no toggle)
+- `push(entry)`, `replaceTop(entry)`, `popTo(depth)`, `back()`, `close()`
 
-The shared `ModalWindow` component (`components/ModalWindow.luau`) provides the frame, title bar, currency display, and close button. Modal body content is passed in via the `bodyContent` prop:
+**Adding a screen:**
+
+1. Create the component in `views/screens/` taking `{ nav, look, ... }` props. Build it from the skin kit and `screens/Parts` (size text with `ShadowText` / `useTextWidth`, design px through `useSkin().px`).
+2. Route it in `currentScreen` in `panel/FullPanel.luau` -- either a new `nav.root` value or a new stack-entry `kind`:
 
 ```lua
-if activeModal == "favours" then
-    modalElement = e(ModalWindow, {
-        title = "Favours",
-        subtitle = `{favourCount} \u{00B7} BLESSINGS EARNED AT THE SHRINE`,
-        gold = inventory.gold,
-        treasure = inventory.treasure,
-        onClose = closeModal,
-        bodyContent = e(FavoursView, {
-            favoursData = favoursDict,
-        }),
-    })
+local function currentScreen(nav: any, look: any)
+	local top = nav.top
+	if top then
+		if top.kind == "item" then
+			return e(ItemScreen, { nav = nav, look = look, itemId = top.id })
+		elseif top.kind == "store" then
+			return e(StoresScreen.Store, { nav = nav, look = look, storeId = top.id })
+		-- ... add your kind here
+		end
+	end
+	if nav.root == "Catalogue" then
+		return e(CatalogueScreen, { nav = nav, look = look })
+	-- ... roots
+	end
+	return nil
 end
 ```
+
+3. Navigate to it with `useNavigation`: `nav.push({ kind = "store", id = store.id, label = store.name })` from another screen, or `nav.toggleTab` / `nav.openRoot` for a root.
+
+`FullPanel` keys the screen by root + stack depth + top label, so per-screen state (category, sort, scroll) resets when you navigate. Panel open/close motion arrives in a later task via the existing `useTransition` / `useSpring` hooks.
 
 ## Animation
 
@@ -346,7 +370,7 @@ local displayAmount = useSpringNumber(props.amount, { force = 120, dampening = 2
 
 Enter/leave transitions with stagger. Manages delayed unmount so leaving elements animate out before removal.
 
-**Boolean mode** (single item show/hide — modals):
+**Boolean mode** (single item show/hide — panels):
 
 ```lua
 local transitions = useTransition(isVisible, {
@@ -373,7 +397,7 @@ local transitions = useTransition(items, {
 
 Returns an array of `{ item, key, springProps, phase }`. Each `springProps` table contains bindings. `phase` is `"entering"`, `"entered"`, or `"leaving"`.
 
-Separate `leaveConfig` allows fast overdamped exits while keeping bouncy entrances. `AnimatedModal` (`components/AnimatedModal.luau`) wraps this for the modal use case.
+Separate `leaveConfig` allows fast overdamped exits while keeping bouncy entrances. Use `useTransition` directly in the component that shows/hides (boolean mode keeps it mounted through the `"leaving"` phase); the full panel's open/close motion will be built this way.
 
 ### useDrag (useDrag.luau)
 
@@ -401,8 +425,6 @@ views/hooks/
   useTransition.luau      — Enter/leave/stagger transitions
   useDrag.luau            — Drag with momentum + spring-back
   useViewportScale.luau   — Viewport-height scale factor for residual pixels
-views/components/
-  AnimatedModal.luau      — Delayed-unmount modal wrapper using useTransition
 ```
 
 ## Responsive Scaling
@@ -446,9 +468,14 @@ end
 
 ## Creating a HUD View
 
+Decide where it lives first:
+
+- **A page the player navigates to** (a list, a detail page, a store) → a **screen** in `views/screens/`, shown inside the full panel. This is the usual case.
+- **Something over the world** (a button, an indicator, a side panel like World options) → a component rendered by `WorldHud.luau`.
+
 ### Step 1: Create the Component
 
-Create a new ModuleScript in `Source/ReplicatedFirst/views/YourView.luau`:
+Create a ModuleScript, e.g. `Source/ReplicatedFirst/views/screens/YourScreen.luau`. Compose the skin kit: design px go through `useSkin().px`, text is sized with `ShadowText` / `useTextWidth` (no `AutomaticSize` under the canvas), measured layout uses `useLocalSize`:
 
 ```lua
 --!strict
@@ -457,70 +484,49 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 
+local views = script.Parent.Parent
+local hooks = views:WaitForChild("hooks")
+local components = views:WaitForChild("components")
+local Tokens = require(views:WaitForChild("Tokens"))
+local useSkin = require(hooks:WaitForChild("useSkin"))
+local ShadowText = require(components:WaitForChild("ShadowText"))
+
 local e = React.createElement
 
-export type Props = {
-    someData: string,
-    onAction: () -> (),
-}
-
-local function YourView(props: Props)
-    return e("Frame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-    }, {
-        Label = e("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 30),
-            Text = props.someData,
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.new(1, 1, 1),
-            Font = Enum.Font.GothamMedium,
-            TextSize = 14,
-        }),
-    })
+local function YourScreen(props: { nav: any, look: any })
+	local skin = useSkin()
+	return e("Frame", {
+		Name = "YourScreen",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+	}, {
+		Title = e("Frame", {
+			Size = UDim2.new(1, 0, 0, skin.px(24)),
+			BackgroundTransparency = 1,
+		}, {
+			Text = e(ShadowText, { text = "Your screen", style = Tokens.type.cardTitle }),
+		}),
+	})
 end
 
-return YourView
+return YourScreen
 ```
 
-### Step 2: Add to HudApp
+### Step 2: Route and Navigate to It
 
-Import the component in `HudApp.client.luau` and add it to the render tree:
+For a screen, add a branch to `currentScreen` in `panel/FullPanel.luau` (a new stack-entry `kind`, or a new root) and navigate with `useNavigation` from wherever the player opens it -- `nav.push({ kind = "yours", id = someId, label = "Your screen" })`. See "Full Panel and Navigation" above.
 
-```lua
-local YourView = require(viewsFolder:WaitForChild("YourView"))
-
--- Inside HudApp function, add to the ScreenGui children:
-YourView = e(YourView, {
-    someData = inventory.gold,
-    onAction = someCallback,
-}),
-```
-
-If your view is a modal, wrap it in `ModalWindow` and gate it on `activeModal`:
-
-```lua
-elseif activeModal == "yourModal" then
-    modalElement = e(ModalWindow, {
-        title = "Your Modal",
-        onClose = closeModal,
-        bodyContent = e(YourView, {
-            someData = someData,
-        }),
-    })
-```
+For a world-HUD element, render it from `WorldHud.luau` and pass what it needs from `WorldHud`'s `nav` / `look` props.
 
 ### Step 3: Add State (if needed)
 
-If your view needs server state, add a `useBoltState` call in HudApp and pass the data down as props:
+If your view needs server state, add a `useBoltState` call in `Hud.luau` and pass the data down as props (through `WorldHud` / `FullPanel` to the screen):
 
 ```lua
+-- Illustrative: Network.State.YourModel is hypothetical
 local yourData = useBoltState(Network.State.YourModel, { defaultField = "" })
 
--- Pass to component
-YourView = e(YourView, {
-    someData = yourData.defaultField,
-}),
+Panel = if nav.isOpen then e(FullPanel, { nav = nav, look = look, yourData = yourData, tabs = TABS }) else nil,
 ```
 
 ## Creating a Workspace View
@@ -636,83 +642,54 @@ Key points:
 - Sends intent to server via Bolt ReliableEvent
 - Handles both existing and dynamically added instances via `task.spawn`
 
-## Example: StatusBarView (HUD, Pattern C)
+## Example: WorldHud Basket Badge (HUD, Pattern C)
 
-`Source/ReplicatedFirst/views/StatusBarView.luau` -- React component receiving state as props:
+`Source/ReplicatedFirst/views/WorldHud.luau` -- the Basket button and its Robux badge, rendered purely from props (trimmed):
 
 ```lua
---!strict
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
-
-local componentsFolder = script.Parent:WaitForChild("components")
-local CurrencyChip = require(componentsFolder:WaitForChild("CurrencyChip"))
-local HudButton = require(componentsFolder:WaitForChild("HudButton"))
-
-local e = React.createElement
-
 export type Props = {
-    gold: number,
-    treasure: number,
-    activeModal: string?,
-    onToggleModal: (string) -> (),
+	nav: any,
+	look: any,
+	tabs: { any },
 }
 
-local function StatusBarView(props: Props)
-    local onToggleFavours = React.useCallback(function()
-        props.onToggleModal("favours")
-    end, { props.onToggleModal })
+local function WorldHud(props: Props)
+	local skin = useSkin()
+	local basket = Tokens.size.basket
+	local total = props.look.basketTotal
 
-    local onToggleCandles = React.useCallback(function()
-        props.onToggleModal("candles")
-    end, { props.onToggleModal })
-
-    return e("Frame", {
-        AnchorPoint = Vector2.new(0.5, 0),
-        Position = UDim2.new(0.5, 0, 0, 20),
-        AutomaticSize = Enum.AutomaticSize.X,
-        Size = UDim2.new(0, 0, 0, 44),
-        BackgroundColor3 = Color3.fromRGB(18, 20, 24),
-        BackgroundTransparency = 0.22,
-    }, {
-        -- Layout, padding, corner, stroke...
-        GoldChip = e(CurrencyChip, {
-            currencyType = "gold",
-            amount = props.gold,
-            layoutOrder = 1,
-        }),
-        TreasureChip = e(CurrencyChip, {
-            currencyType = "treasure",
-            amount = props.treasure,
-            layoutOrder = 3,
-        }),
-        FavoursButton = e(HudButton, {
-            label = "Favours",
-            icon = "\u{2B50}",
-            isActive = props.activeModal == "favours",
-            onActivated = onToggleFavours,
-            layoutOrder = 5,
-        }),
-        CandlesButton = e(HudButton, {
-            label = "Candles",
-            icon = "\u{1F56F}",
-            isActive = props.activeModal == "candles",
-            onActivated = onToggleCandles,
-            layoutOrder = 6,
-        }),
-    })
-end
-
-return StatusBarView
+	-- ... inside the bottom-left button row:
+	Basket = e(PillButton, {
+		variant = "round",
+		size = basket.size,
+		icon = "shopping_basket",
+		iconSize = basket.icon,
+		glowRadius = basket.glow,
+		layoutOrder = 1,
+		zIndex = 2,
+		onActivated = function()
+			props.nav.openRoot("Basket")
+		end,
+		-- Design: badge sits top -8px, right -18px of the 84 button.
+		badge = if total > 0
+			then e(Badge, {
+				kind = "count",
+				tone = "orange",
+				icon = "toll",
+				text = tostring(total),
+				anchorPoint = Vector2.new(1, 0),
+				position = UDim2.fromOffset(skin.px(18), -skin.px(8)),
+				zIndex = 6,
+			})
+			else nil,
+	}),
 ```
 
 Key points:
 - Pure function component -- receives all data via props, no direct state subscriptions
-- `gold` and `treasure` come from HudApp, which observes `Network.State.Inventory` via `useBoltState`
-- Modal toggling uses `onToggleModal` callback prop (no BindableEvents)
-- Composes shared components: `CurrencyChip`, `HudButton`
+- `look.basketTotal` comes from `Hud`; today that's `usePlaceholderLook`, later a `useBoltState` subscription in `Hud` -- `WorldHud` doesn't change
+- Navigation is a callback on the `nav` prop (`openRoot("Basket")` opens the full panel on the Basket list) -- no BindableEvents
+- Sizes come from `Tokens` in design px and go through `skin.px`; the button and badge are skin-kit components (`PillButton`, `Badge`)
 
 ## Model Scopes and State Formats
 
@@ -729,7 +706,7 @@ inventoryState:Observe(function(data: Network.InventoryState)
     updateLabels(data.gold, data.treasure)
 end)
 
--- In a HUD view (via useBoltState in HudApp):
+-- In a HUD view (via useBoltState in Hud, the root component):
 local inventory = useBoltState(Network.State.Inventory, {
     ownerId = "",
     gold = 0,
@@ -782,9 +759,9 @@ favoursState:Observe(function(allFavours: FavoursStateDictionary)
     end
 end)
 
--- In a HUD view (via useBoltState in HudApp):
+-- In a HUD view (via useBoltState in Hud, the root component):
 local favoursDict = useBoltState(Network.State.Favours, {} :: { [string]: Network.FavoursState })
--- favoursDict is the full dictionary, passed as props to FavoursView
+-- favoursDict is the full dictionary, passed down as props to the screen that lists it
 ```
 
 ### ServerEntity Scope (e.g., CandlesModel)
@@ -837,7 +814,10 @@ end)
 ## File Locations
 
 - **HUD entry point**: `Source/ReplicatedFirst/views/HudApp.client.luau`
-- **HUD components**: `Source/ReplicatedFirst/views/StatusBarView.luau`, `FavoursView.luau`, `CandlesView.luau`
+- **HUD root**: `Source/ReplicatedFirst/views/Hud.luau` (world HUD: `WorldHud.luau`, `WorldOptionsView.luau`)
+- **Full panel**: `Source/ReplicatedFirst/views/panel/` (`FullPanel.luau`, `Breadcrumbs.luau`)
+- **Panel screens + shared parts**: `Source/ReplicatedFirst/views/screens/`
+- **Skin kit**: `Source/ReplicatedFirst/views/Tokens.luau`, `SkinAssets.luau`, `SkinContext.luau`
 - **Shared UI components**: `Source/ReplicatedFirst/views/components/`
 - **React hooks**: `Source/ReplicatedFirst/views/hooks/`
 - **Workspace views**: `Source/ReplicatedFirst/views/*.client.luau` (BazaarView, CandleView, CashMachineView, ShrineView)
@@ -851,30 +831,30 @@ The naming convention distinguishes the two types:
 
 ### 1. Keep Components Small
 
-Split HUD views into focused components. Use the `components/` folder for shared building blocks (CurrencyChip, HudButton, ModalWindow). Each component should do one thing.
+Split HUD views into focused components. Use the `components/` folder for shared skin-kit building blocks (PillButton, GlassPanel, Badge, ShadowText, ...) and `screens/Parts.luau` for pieces shared between screens (ItemCard, ListRow, CardGrid, ...). Each component should do one thing.
 
 ### 2. Use Hooks for State
 
-Use `useBoltState` to subscribe to server state in HudApp. Do not call `Observe()` directly inside React components -- let HudApp manage subscriptions and pass data down as props.
+Use `useBoltState` to subscribe to server state in `Hud` (the root component). Do not call `Observe()` directly inside React components -- let `Hud` manage subscriptions and pass data down as props.
 
 ### 3. Props for Data Flow
 
-Pass data and callbacks as props from HudApp to child components. This keeps components pure and testable:
+Pass data and callbacks as props from `Hud` to child components. This keeps components pure and testable:
 
 ```lua
 -- Good: component receives data as props
-local function StatusBarView(props: Props)
-    return e(CurrencyChip, { amount = props.gold })
+local function BasketCount(props: { look: any })
+    return e(ShadowText, { text = #props.look.basket .. " items", style = Tokens.type.small })
 end
 
--- Bad: component subscribes to state directly
-local function StatusBarView()
-    local inventory = useBoltState(Network.State.Inventory, default)
-    return e(CurrencyChip, { amount = inventory.gold })
+-- Bad: component subscribes to state directly (illustrative: Network.State.Basket is hypothetical)
+local function BasketCount()
+    local basket = useBoltState(Network.State.Basket, default)
+    return e(ShadowText, { text = #basket.items .. " items", style = Tokens.type.small })
 end
 ```
 
-Centralizing subscriptions in HudApp avoids duplicate Observe subscriptions and makes state flow easy to trace.
+Centralizing subscriptions in `Hud` avoids duplicate Observe subscriptions and makes state flow easy to trace.
 
 ### 4. Use WaitForChild in Workspace Views
 
@@ -898,10 +878,9 @@ For React components, export a `Props` type:
 
 ```lua
 export type Props = {
-    gold: number,
-    treasure: number,
-    activeModal: string?,
-    onToggleModal: (string) -> (),
+    nav: useNavigation.Navigation,
+    look: usePlaceholderLook.Look,
+    onClose: () -> (),
 }
 ```
 
@@ -946,7 +925,7 @@ Use `task.spawn` to avoid one failing setup blocking the rest.
 
 ### Views <-- Models
 - Views observe state changes broadcast by Models via Bolt RemoteProperty (`Network.State.*:Observe()`)
-- HUD views receive this data as React props (HudApp calls `useBoltState`, passes data down)
+- HUD views receive this data as React props (`Hud` calls `useBoltState`, passes data down)
 - Workspace views call `Observe()` directly in their setup functions
 
 ### Complete Flow Example

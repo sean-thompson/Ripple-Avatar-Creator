@@ -1,0 +1,423 @@
+--!strict
+
+--[[
+	Parts
+
+	Building blocks shared by the full-panel screens (design frames 5b–5h):
+
+	  Thumb      tinted placeholder tile (the design's colour-washed card art)
+	  PriceTag   "Owned" / "Free" / toll icon + price
+	  ItemCard   catalogue card: thumb with wearing/in-basket markers, name, price
+	  ListRow    Basket/Wearing/Outfit row: thumb, name, sub-line, price, actions
+	  CardGrid   scrolling grid with an explicit column count — cells and scroll
+	             extent sized from measured width (no AutomaticCanvasSize, which
+	             mis-sizes under the canvas UIScale)
+	  Heading    section title with optional "See all"-style trailing element
+
+	Item art is a placeholder tint until real thumbnails arrive (Task 8).
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
+
+local views = script.Parent.Parent
+local components = views:WaitForChild("components")
+local hooks = views:WaitForChild("hooks")
+local Tokens = require(views:WaitForChild("Tokens"))
+local useSkin = require(hooks:WaitForChild("useSkin"))
+local useInteraction = require(hooks:WaitForChild("useInteraction"))
+local useLocalSize = require(hooks:WaitForChild("useLocalSize"))
+local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
+local Badge = require(components:WaitForChild("Badge"))
+local Icon = require(components:WaitForChild("Icon"))
+local ShadowText = require(components:WaitForChild("ShadowText"))
+local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
+
+local e = React.createElement
+
+local Parts = {}
+
+local CARD_BASE = Color3.fromHex("#1c1c1c")
+local FREE_GREEN = Color3.fromHex("#9be37a")
+
+-- CSS linear-gradient(160deg, <colour>55, #1c1c1c 75%) → UIGradient at
+-- Rotation 70 (CSS angle - 90), colour at ~33% over the card base.
+local function tint(colour: Color3): ColorSequence
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, CARD_BASE:Lerp(colour, 0.33)),
+		ColorSequenceKeypoint.new(0.75, CARD_BASE),
+		ColorSequenceKeypoint.new(1, CARD_BASE),
+	})
+end
+
+function Parts.swatch(colourName: string): Color3
+	return (Tokens.swatch :: any)[colourName] or Tokens.swatch.Orange
+end
+
+export type ThumbProps = {
+	colour: Color3,
+	radius: number?,
+	size: UDim2?,
+	position: UDim2?,
+	anchorPoint: Vector2?,
+	hovered: boolean?,
+	selected: boolean?,
+	caption: string?,
+	layoutOrder: number?,
+	zIndex: number?,
+	children: any,
+}
+
+function Parts.Thumb(props: ThumbProps)
+	local skin = useSkin()
+	local z = props.zIndex or 1
+	local caption = props.caption
+	return e("Frame", {
+		Name = "Thumb",
+		Size = props.size or UDim2.fromScale(1, 1),
+		Position = props.position,
+		AnchorPoint = props.anchorPoint,
+		LayoutOrder = props.layoutOrder or 0,
+		BackgroundColor3 = Tokens.color.white,
+		BorderSizePixel = 0,
+		ZIndex = z,
+	}, {
+		Corner = e("UICorner", { CornerRadius = UDim.new(0, skin.px(props.radius or Tokens.radius.itemCard)) }),
+		Gradient = e("UIGradient", { Color = tint(props.colour), Rotation = 70 }),
+		Ring = e("UIStroke", {
+			Color = if props.selected or props.hovered then Tokens.color.accentText else Tokens.color.white,
+			Transparency = if props.selected then 0 elseif props.hovered then 1 - 0.7 else 1 - 0.1,
+			Thickness = skin.stroke(if props.selected then 2 else 1),
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}),
+		Caption = if caption
+			then e("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Text = caption,
+				TextColor3 = Tokens.color.white,
+				TextTransparency = Tokens.alpha.textDim,
+				TextSize = skin.textPx(11),
+				FontFace = Tokens.font(700),
+				ZIndex = z,
+			})
+			else nil,
+		Children = e(React.Fragment, nil, props.children),
+	})
+end
+
+export type PriceProps = { item: PlaceholderData.Item, size: number?, layoutOrder: number? }
+
+function Parts.PriceTag(props: PriceProps)
+	local skin = useSkin()
+	local item = props.item
+	local size = props.size or 12.5
+	local label, colour, transparency
+	if item.owned then
+		label, colour, transparency = "Owned", Tokens.color.white, Tokens.alpha.textDim
+	elseif item.price == 0 then
+		label, colour, transparency = "Free", FREE_GREEN, 0
+	else
+		label, colour, transparency = tostring(item.price), Tokens.color.accentText, 0
+	end
+	local showToll = not item.owned and item.price > 0
+	-- Sized to its content so it sits next to whatever follows it in a row.
+	local textWidth = useTextWidth(label, Tokens.font(900), skin.textPx(size))
+	local tollWidth = if showToll then skin.px(size + 2.5) + skin.px(2) else 0
+	return e("Frame", {
+		Name = "Price",
+		Size = UDim2.fromOffset(tollWidth + textWidth, skin.px(size + 4)),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.layoutOrder or 0,
+	}, {
+		Layout = e("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, skin.px(2)),
+		}),
+		Toll = if showToll then e(Icon, { name = "toll", size = size + 2.5, color = colour, layoutOrder = 1 }) else nil,
+		Label = e(ShadowText, {
+			text = label,
+			style = { size = size, weight = 900 },
+			color = colour,
+			transparency = transparency,
+			shadow = false,
+			layoutOrder = 2,
+		}),
+	})
+end
+
+export type ItemCardProps = {
+	item: PlaceholderData.Item,
+	wearing: boolean,
+	inBasket: boolean,
+	onActivated: () -> (),
+	layoutOrder: number?,
+}
+
+function Parts.ItemCard(props: ItemCardProps)
+	local skin = useSkin()
+	local interaction = useInteraction()
+	local item = props.item
+	local nameSize = skin.textPx(13)
+
+	return e("TextButton", {
+		Name = "ItemCard",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Text = "",
+		LayoutOrder = props.layoutOrder or 0,
+		[React.Event.Activated] = props.onActivated,
+		[React.Event.MouseEnter] = interaction.onEnter,
+		[React.Event.MouseLeave] = interaction.onLeave,
+	}, {
+		Thumb = e(Parts.Thumb, {
+			colour = Parts.swatch(item.colour),
+			caption = string.lower(item.sub),
+			hovered = interaction.hovered,
+			-- Square: the thumb is as tall as the card is wide.
+			size = UDim2.fromScale(1, 1),
+		}, {
+			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1, DominantAxis = Enum.DominantAxis.Width }),
+			Markers = e("Frame", {
+				Position = UDim2.fromOffset(skin.px(6), skin.px(6)),
+				Size = UDim2.fromOffset(skin.px(52), skin.px(24)),
+				BackgroundTransparency = 1,
+				ZIndex = 2,
+			}, {
+				Layout = e("UIListLayout", {
+					FillDirection = Enum.FillDirection.Horizontal,
+					SortOrder = Enum.SortOrder.LayoutOrder,
+					Padding = UDim.new(0, skin.px(4)),
+				}),
+				Wearing = if props.wearing
+					then e(Badge, { kind = "marker", tone = "orange", icon = "checkroom", layoutOrder = 1, zIndex = 2 })
+					else nil,
+				InBasket = if props.inBasket
+					then e(Badge, { kind = "marker", tone = "white", icon = "shopping_basket", layoutOrder = 2, zIndex = 2 })
+					else nil,
+			}),
+		}),
+		Meta = e("Frame", {
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.fromScale(0, 1),
+			Size = UDim2.new(1, 0, 0, skin.px(36)),
+			BackgroundTransparency = 1,
+		}, {
+			Layout = e("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, skin.px(2)) }),
+			Name = e("TextLabel", {
+				Size = UDim2.new(1, 0, 0, nameSize + skin.px(2)),
+				BackgroundTransparency = 1,
+				Text = item.name,
+				TextColor3 = Tokens.color.white,
+				TextSize = nameSize,
+				FontFace = Tokens.font(800),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				LayoutOrder = 1,
+			}),
+			Price = e(Parts.PriceTag, { item = item, layoutOrder = 2 }),
+		}),
+	})
+end
+
+export type ListRowProps = {
+	title: string,
+	subtitle: string?,
+	colour: Color3,
+	trailing: any?, -- elements on the right (price, buttons)
+	leading: any?, -- element before the thumb (e.g. a checkbox)
+	onActivated: (() -> ())?,
+	layoutOrder: number?,
+}
+
+function Parts.ListRow(props: ListRowProps)
+	local skin = useSkin()
+	local interaction = useInteraction()
+	local height = skin.px(64)
+	local thumb = skin.px(48)
+	local leadingWidth = if props.leading then skin.px(34) else 0
+	local trailingWidth = skin.px(250)
+
+	return e("TextButton", {
+		Name = "ListRow",
+		Size = UDim2.new(1, 0, 0, height),
+		BackgroundColor3 = Tokens.color.white,
+		BackgroundTransparency = if interaction.hovered then 1 - 0.07 else 1 - 0.04,
+		AutoButtonColor = false,
+		Text = "",
+		LayoutOrder = props.layoutOrder or 0,
+		[React.Event.Activated] = props.onActivated,
+		[React.Event.MouseEnter] = interaction.onEnter,
+		[React.Event.MouseLeave] = interaction.onLeave,
+	}, {
+		Corner = e("UICorner", { CornerRadius = UDim.new(0, skin.px(14)) }),
+		Stroke = e("UIStroke", {
+			Color = if interaction.hovered then Tokens.color.accentText else Tokens.color.white,
+			Transparency = if interaction.hovered then 1 - 0.6 else 1 - 0.08,
+			Thickness = skin.stroke(1),
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}),
+		Leading = if props.leading
+			then e("Frame", {
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0, skin.px(10), 0.5, 0),
+				Size = UDim2.fromOffset(leadingWidth, leadingWidth),
+				BackgroundTransparency = 1,
+			}, { Child = props.leading })
+			else nil,
+		Thumb = e(Parts.Thumb, {
+			colour = props.colour,
+			radius = 10,
+			anchorPoint = Vector2.new(0, 0.5),
+			position = UDim2.new(0, skin.px(8) + leadingWidth + (if props.leading then skin.px(8) else 0), 0.5, 0),
+			size = UDim2.fromOffset(thumb, thumb),
+		}),
+		Text = e("Frame", {
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, skin.px(8) + leadingWidth + (if props.leading then skin.px(8) else 0) + thumb + skin.px(12), 0.5, 0),
+			Size = UDim2.new(1, -(skin.px(8) + leadingWidth + thumb + skin.px(12) + trailingWidth), 0, skin.px(40)),
+			BackgroundTransparency = 1,
+		}, {
+			Layout = e("UIListLayout", {
+				SortOrder = Enum.SortOrder.LayoutOrder,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				Padding = UDim.new(0, skin.px(2)),
+			}),
+			Title = e("TextLabel", {
+				Size = UDim2.new(1, 0, 0, skin.textPx(15) + skin.px(2)),
+				BackgroundTransparency = 1,
+				Text = props.title,
+				TextColor3 = Tokens.color.white,
+				TextSize = skin.textPx(15),
+				FontFace = Tokens.font(900),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				LayoutOrder = 1,
+			}),
+			Subtitle = if props.subtitle
+				then e("TextLabel", {
+					Size = UDim2.new(1, 0, 0, skin.textPx(12.5) + skin.px(2)),
+					BackgroundTransparency = 1,
+					Text = props.subtitle,
+					TextColor3 = Tokens.color.white,
+					TextTransparency = Tokens.alpha.textDim,
+					TextSize = skin.textPx(12.5),
+					FontFace = Tokens.font(800),
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					LayoutOrder = 2,
+				})
+				else nil,
+		}),
+		Trailing = e("Frame", {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -skin.px(10), 0.5, 0),
+			Size = UDim2.fromOffset(trailingWidth, skin.px(40)),
+			BackgroundTransparency = 1,
+		}, {
+			Layout = e("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal,
+				HorizontalAlignment = Enum.HorizontalAlignment.Right,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+				SortOrder = Enum.SortOrder.LayoutOrder,
+				Padding = UDim.new(0, skin.px(8)),
+			}),
+			Children = e(React.Fragment, nil, props.trailing),
+		}),
+	})
+end
+
+export type CardGridProps = {
+	columns: number,
+	gap: number?, -- design px
+	extraHeight: number?, -- design px added below each square cell (labels)
+	cellAspect: number?, -- width / height of the square part (default 1)
+	layoutOrder: number?,
+	size: UDim2?,
+	position: UDim2?,
+	children: any, -- cells, keyed, with LayoutOrder
+	count: number, -- number of cells (for the scroll extent)
+}
+
+function Parts.CardGrid(props: CardGridProps)
+	local skin = useSkin()
+	local ref = React.useRef(nil :: GuiObject?)
+	local size = useLocalSize(ref)
+	local gap = skin.px(props.gap or 12)
+	local scrollbar = skin.px(14)
+	-- Inset so strokes/glows drawn just outside each cell aren't clipped by
+	-- the ScrollingFrame at the grid's edges (the design pads its grid 2px).
+	local inset = skin.px(3)
+	local columns = props.columns
+	local usable = math.max(0, size.X - scrollbar - inset * 2 - gap * (columns - 1))
+	local cellWidth = math.floor(usable / columns)
+	local cellHeight = math.floor(cellWidth / (props.cellAspect or 1)) + skin.px(props.extraHeight or 0)
+	local rows = math.ceil(props.count / columns)
+	local canvasHeight = rows * cellHeight + math.max(0, rows - 1) * gap + inset * 2
+
+	return e("ScrollingFrame", {
+		Name = "CardGrid",
+		Size = props.size or UDim2.fromScale(1, 1),
+		Position = props.position,
+		LayoutOrder = props.layoutOrder or 0,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.fromOffset(0, canvasHeight),
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = skin.px(8),
+		ScrollBarImageColor3 = Tokens.color.accent,
+		ref = ref,
+	}, {
+		Inset = e("UIPadding", {
+			PaddingTop = UDim.new(0, inset),
+			PaddingBottom = UDim.new(0, inset),
+			PaddingLeft = UDim.new(0, inset),
+			PaddingRight = UDim.new(0, inset),
+		}),
+		Grid = e("UIGridLayout", {
+			CellSize = UDim2.fromOffset(cellWidth, cellHeight),
+			CellPadding = UDim2.fromOffset(gap, gap),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+		Cells = e(React.Fragment, nil, props.children),
+	})
+end
+
+export type HeadingProps = { text: string, trailing: any?, layoutOrder: number? }
+
+function Parts.Heading(props: HeadingProps)
+	local skin = useSkin()
+	return e("Frame", {
+		Name = "Heading",
+		Size = UDim2.new(1, 0, 0, skin.px(24)),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.layoutOrder or 0,
+	}, {
+		Text = e(ShadowText, {
+			text = props.text,
+			style = Tokens.type.cardTitle,
+			shadow = false,
+		}),
+		Trailing = if props.trailing
+			then e("Frame", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.fromScale(1, 0),
+				Size = UDim2.new(0.5, 0, 1, 0),
+				BackgroundTransparency = 1,
+			}, {
+				Layout = e("UIListLayout", {
+					FillDirection = Enum.FillDirection.Horizontal,
+					HorizontalAlignment = Enum.HorizontalAlignment.Right,
+					VerticalAlignment = Enum.VerticalAlignment.Center,
+				}),
+				Child = props.trailing,
+			})
+			else nil,
+	})
+end
+
+return Parts

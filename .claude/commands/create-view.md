@@ -1,7 +1,6 @@
 ---
 description: Create a new Roblox view with automatic pattern detection
 allowed-tools: Bash(find, cat, grep, ls), Read, Write, Edit, Glob
-model: sonnet
 ---
 
 I'll guide you through creating a new Roblox view with automatic pattern detection (A, B, C, or B+C). This project has two distinct view types that follow different architectures.

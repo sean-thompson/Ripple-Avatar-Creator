@@ -1,7 +1,6 @@
 ---
 description: Create a new Roblox service with automatic pattern detection
 allowed-tools: Bash(find, cat, grep), Read, Write, Edit, Glob
-model: sonnet
 ---
 
 I'll guide you through creating a new Roblox service. Services are server-side modules that run automatically to handle background tasks and system events.

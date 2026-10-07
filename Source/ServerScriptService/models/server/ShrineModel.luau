@@ -46,27 +46,4 @@ function ShrineModel:removeTreasure(amount: number): boolean
 	return false
 end
 
--- Debug action descriptors for DebugActionBuilder.
--- Pure data — no imports required. Server scope: no Player arg is prepended.
--- DebugTools arg types: "Player" | "string" | "number" | "boolean"
-ShrineModel.debugActions = {
-	{
-		name = "Donate",
-		description = "Donate treasure to the shrine on behalf of a player",
-		method = "donate",
-		args = {
-			{ Type = "string", Name = "Player User ID", Default = "" },
-			{ Type = "number", Name = "Amount", Default = 100 },
-		},
-	},
-	{
-		name = "Remove Treasure",
-		description = "Remove treasure from the shrine",
-		method = "removeTreasure",
-		args = {
-			{ Type = "number", Name = "Amount", Default = 100 },
-		},
-	},
-}
-
 return ShrineModel

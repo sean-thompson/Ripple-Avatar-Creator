@@ -1,7 +1,6 @@
 ---
 description: Translate an HTML/CSS (or JSX) UI design into a Roblox react-luau view component
 allowed-tools: Bash(ls, find, cat, grep), Read, Write, Edit, Glob, Grep
-model: opus
 ---
 
 I'll translate an HTML/CSS UI design into a Roblox react-luau component that fits this template's view architecture, reusing existing components where possible and flagging anything that needs a new asset.

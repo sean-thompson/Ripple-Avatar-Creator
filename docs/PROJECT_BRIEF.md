@@ -1,7 +1,7 @@
 # Ripple Avatar Creator — Project Brief
 
 The north star for this project. Per-feature detail lives in `features/<slug>/SPEC.md`
-(produced by `/create-spec`) and `features/<slug>/PLAN.md` (produced by `/create-plan`).
+and `features/<slug>/PLAN.md` (worked task by task with `/next-task`).
 Keep this doc short and update it when the vision shifts.
 
 ## What we're making
@@ -74,7 +74,7 @@ CAC's public feature set, as a starting checklist to keep / change / cut:
   They're the worked examples in `docs/` and `.claude/commands/`, so when one is
   removed, update those references in the same change.
 - **Workstream 1 kicks off from a design** made in Claude Design, which seeds the
-  `/create-spec` discussion.
+  phase 1 spec.
 
 ## Open questions
 

@@ -41,9 +41,6 @@
       "controllers": {
         "$path": "Source/ServerScriptService/controllers"
       },
-      "debug": {
-        "$path": "Source/ServerScriptService/debug"
-      },
       "models": {
         "$path": "Source/ServerScriptService/models"
       },

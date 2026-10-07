@@ -208,19 +208,20 @@ Configs are static game data modules that hold tunable values:
 
 ### Claude Slash Commands
 
-Claude Code slash commands are available to scaffold all MVC components without writing boilerplate by hand. Commands live in [`.claude/commands/`](.claude/commands/).
+Claude Code slash commands live in [`.claude/commands/`](.claude/commands/).
 
 | Command | What it does |
 |---|---|
+| `/next-task` | Works the next task in a feature's `features/<slug>/PLAN.md`: build, verify in Studio, hand back for testing, mark done once confirmed |
 | `/create-model` | Scaffolds a server-side `AbstractModel` file with scope, properties, and Network.luau wiring |
 | `/create-controller` | Scaffolds a server-side `AbstractController` file with actions, validation, and Network.luau wiring |
 | `/create-service` | Scaffolds a server-side service for background tasks (loop-based or event-driven) |
 | `/create-view` | Scaffolds a view -- react-luau component for HUD or imperative LocalScript for workspace |
 | `/create-config` | Scaffolds a config types file and outputs the Studio config module |
+| `/html-to-react-luau` | Translates an HTML/CSS/JSX design into a react-luau view using the skin kit |
+| `/analytics` | Analyses the GA4 analytics data in BigQuery |
 
-Run `/help-me` in Claude Code for a full description of each command.
-
-> **Maintenance:** If you add a new command to `.claude/commands/`, update `.claude/commands/help-me.md` to document it.
+Specs and plans are written in conversation (or plan mode) and kept in `features/<slug>/`.
 
 ### Slash Commands (Admin/Debug Tool)
 

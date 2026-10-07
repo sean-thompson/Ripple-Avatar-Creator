@@ -3,8 +3,14 @@
 --[[
 	HudApp
 
-	Entry point for the react-luau HUD. Mounts a single ScreenGui into PlayerGui
-	containing the StatusBar (always visible) and animated modal windows (Favours, Candles).
+	Entry point for the react-luau HUD. Mounts into its OWN ScreenGui — not
+	createRoot(PlayerGui), because React clears its container's existing
+	children on first render, which deletes any other ScreenGui already there.
+
+	Phase 1 interim: renders the Task 1 skin HUD mock (views/gallery) in place
+	of the template HUD while the real shell is built (Task 2 onwards). The
+	template's StatusBar/Favours/Candles views are no longer mounted; their
+	files are removed in the phase 1 tidy-up.
 ]]
 
 local Players = game:GetService("Players")
@@ -14,75 +20,15 @@ local Packages = ReplicatedStorage:WaitForChild("Packages")
 local React = require(Packages:WaitForChild("React"))
 local ReactRoblox = require(Packages:WaitForChild("ReactRoblox"))
 
-local Network = require(ReplicatedStorage:WaitForChild("Network"))
+local SkinGallery = require(script.Parent:WaitForChild("gallery"):WaitForChild("SkinGallery"))
 
-local viewsFolder = script.Parent
-local useBoltState = require(viewsFolder:WaitForChild("hooks"):WaitForChild("useBoltState"))
-local StatusBarView = require(viewsFolder:WaitForChild("StatusBarView"))
-local AnimatedModal = require(viewsFolder:WaitForChild("components"):WaitForChild("AnimatedModal"))
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HudApp"
+screenGui.DisplayOrder = 100
+screenGui.IgnoreGuiInset = true
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-local e = React.createElement
-
-local INVENTORY_DEFAULT: Network.InventoryState = {
-	ownerId = "",
-	gold = 0,
-	treasure = 0,
-	favourIds = {},
-}
-
-local FAVOURS_DEFAULT: { [string]: Network.FavoursState } = {}
-
-local function HudApp()
-	local activeModal, setActiveModal = React.useState(nil :: string?)
-
-	local inventory = useBoltState(Network.State.Inventory, INVENTORY_DEFAULT)
-	local favoursDict = useBoltState(Network.State.Favours, FAVOURS_DEFAULT)
-
-	local toggleModal = React.useCallback(function(modalName: string)
-		setActiveModal(function(current: string?)
-			if current == modalName then
-				return nil
-			end
-			return modalName
-		end)
-	end, {})
-
-	local closeModal = React.useCallback(function()
-		setActiveModal(nil)
-	end, {})
-
-	-- Count total favours for subtitle
-	local favourCount = 0
-	for _ in favoursDict do
-		favourCount += 1
-	end
-
-	return e("ScreenGui", {
-		Name = "HudApp",
-		DisplayOrder = 100,
-		IgnoreGuiInset = true,
-		ResetOnSpawn = false,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	}, {
-		StatusBar = e(StatusBarView, {
-			gold = inventory.gold,
-			treasure = inventory.treasure,
-			activeModal = activeModal,
-			onToggleModal = toggleModal,
-		}),
-		Modal = e(AnimatedModal, {
-			isOpen = activeModal ~= nil,
-			modalType = activeModal,
-			gold = inventory.gold,
-			treasure = inventory.treasure,
-			favoursData = favoursDict,
-			favourCount = favourCount,
-			onClose = closeModal,
-		}),
-	})
-end
-
--- Mount into PlayerGui
-local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-local root = ReactRoblox.createRoot(playerGui)
-root:render(e(HudApp))
+local root = ReactRoblox.createRoot(screenGui)
+root:render(React.createElement(SkinGallery))

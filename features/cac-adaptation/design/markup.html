@@ -1,0 +1,487 @@
+<x-dc>
+<helmet data-dc-atomics=""><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><style>/* @font-face rules removed: Nunito 600-900 + Material Symbols Rounded (see source bundle) */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+</style><style>body{margin:0;background:#e9e6e1;font-family:Nunito,system-ui,sans-serif}a{color:#c45500}a:hover{color:#ff7a00}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 12px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:700 15px/1.2 Nunito,system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:600 13px/1.3 Nunito,system-ui,sans-serif;color:rgba(0,0,0,.6)}.dv-opt:target .dv-oid{background:#ff7a00;color:#fff}.dv-next{margin:22px 0 0;font:13px/1.5 Nunito,system-ui,sans-serif;color:rgba(0,0,0,.55)}input[type=range]{accent-color:#ff8a1a}input::placeholder{color:rgba(255,255,255,.4)}*{scrollbar-width:thin;scrollbar-color:#ff8a1a rgba(255,255,255,.06)}::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-track{background:rgba(255,255,255,.05);border-radius:5px;box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}::-webkit-scrollbar-thumb{background:linear-gradient(90deg,#ffc27a,#ff8a1a 48%,#ec6500 52%,#ff9a3a);border-radius:5px;border:1px solid #6a2a00}::-webkit-scrollbar-thumb:horizontal{background:linear-gradient(180deg,#ffc27a,#ff8a1a 48%,#ec6500 52%,#ff9a3a)}::-webkit-scrollbar-corner{background:transparent}input[type=range].dual{-webkit-appearance:none;appearance:none;position:absolute;left:0;right:0;top:0;width:100%;height:28px;margin:0;background:none;pointer-events:none}input[type=range].dual::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:24px;height:24px;border-radius:12px;background:linear-gradient(180deg,#fff,#cfcfcf);border:1px solid #000;box-shadow:0 1px 3px rgba(0,0,0,.6);cursor:pointer}input[type=range].dual::-moz-range-thumb{pointer-events:auto;width:22px;height:22px;border-radius:11px;background:linear-gradient(180deg,#fff,#cfcfcf);border:1px solid #000;cursor:pointer}input[type=number]::-webkit-inner-spin-button{opacity:.4}</style></helmet>
+<section class="dv-turn" id="t5">
+<div class="dv-thd"><a class="dv-tid" href="#t5">5</a><span class="dv-tname">Stores, outfit screen, sharing, Basket + Wearing screens</span></div>
+<div style="max-width:1000px;margin:0 0 24px;font-size:13.5px;line-height:1.55;color:rgba(0,0,0,.65);display:flex;flex-direction:column;gap:6px">
+<div>Follows on from <a href="Avatar Creator iPad.dc.html">round 4</a>. There are now <b style="color:#1a1a1a">two lists</b>: <b style="color:#1a1a1a">Wearing</b> (what's on your avatar) and <b style="color:#1a1a1a">Basket</b> (things you mean to buy). Each card shows an orange <b style="color:#1a1a1a">checkroom</b> badge if you're wearing it and a white <b style="color:#1a1a1a">basket</b> badge if it's in your basket. The card menu is Try · Basket · Buy · View.</div>
+<div><b style="color:#1a1a1a">Breadcrumbs</b> appear once you go deeper than a tab (e.g. Outfits › Neon Rider › Varsity Jacket). Tap any crumb to jump back. <b style="color:#1a1a1a">Price</b> is now a min/max filter. <b style="color:#1a1a1a">Stores</b> are a vertical column of horizontal sections: an item viewer, carousels and collections. Stores and outfits each have a share code you reveal by tapping. It comes with a copy box and a QR that opens the same screen in the game.</div>
+<div>Get to <b style="color:#1a1a1a">Basket</b> from the basket button bottom-left (HUD) or the basket card in any screen. Get to <b style="color:#1a1a1a">Wearing</b> by tapping the avatar preview, or your avatar in the world.</div>
+</div>
+<div class="dv-opts">
+<sc-for list="{{ frames }}" as="o" hint-placeholder-count="7">
+<div class="dv-opt" id="{{ o.id }}">
+<div class="dv-olabel"><a class="dv-oid" href="#{{ o.id }}">{{ o.id }}</a>{{ o.title }}</div>
+<div style="padding:16px;background:#0a0a0a;border-radius:42px;box-shadow:0 24px 60px rgba(0,0,0,.25),inset 0 0 0 1px #2a2a2a">
+<div style="position:relative;width:1180px;height:820px;border-radius:26px;overflow:hidden;background:#000;font-family:Nunito,system-ui,sans-serif;color:#fff;user-select:none">
+
+<div style="position:absolute;inset:0;background:{{ skyBg }};filter:{{ sceneFilter }}">
+<div style="position:absolute;inset:0 0 44% 0;background-image:radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),radial-gradient(1px 1px at 28% 32%,#fff,transparent),radial-gradient(1.5px 1.5px at 44% 12%,#fff,transparent),radial-gradient(1px 1px at 61% 26%,#fff,transparent),radial-gradient(1.5px 1.5px at 77% 9%,#fff,transparent),radial-gradient(1px 1px at 88% 34%,#fff,transparent),radial-gradient(1px 1px at 6% 40%,#fff,transparent),radial-gradient(1.5px 1.5px at 52% 38%,#fff,transparent);opacity:{{ starsOp }}"></div>
+<div style="position:absolute;left:{{ orbLeft }};top:{{ orbTop }};width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:{{ orbColor }};box-shadow:0 0 60px 18px {{ orbGlow }};opacity:{{ orbOp }}"></div>
+<div style="position:absolute;inset:0 0 40% 0;background:radial-gradient(90px 30px at 18% 30%,rgba(255,255,255,.85),transparent 70%),radial-gradient(130px 36px at 24% 28%,rgba(255,255,255,.7),transparent 70%),radial-gradient(160px 40px at 70% 20%,rgba(255,255,255,.75),transparent 70%),radial-gradient(100px 28px at 78% 24%,rgba(255,255,255,.8),transparent 70%);opacity:{{ cloudsOp }}"></div>
+<div style="position:absolute;left:-120%;right:-120%;top:56%;height:160%;transform-origin:50% 0;transform:perspective(520px) rotateX(64deg);background:{{ floorBg }}"></div>
+<div style="position:absolute;left:0;right:0;top:50%;height:12%;background:linear-gradient(180deg,transparent,{{ hazeColor }},transparent)"></div>
+<div style="position:absolute;left:50%;top:78%;width:150px;height:32px;margin-left:-75px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);opacity:{{ shadowOp }}"></div>
+</div>
+<div sc-camel-on-click="{{ o.openWearing }}" title="Tap to see what you're wearing" style="position:absolute;left:50%;top:34%;width:120px;height:230px;margin-left:-60px;border-radius:18px;cursor:pointer;background:repeating-linear-gradient(135deg,rgba(255,255,255,.22) 0 7px,rgba(255,255,255,.08) 7px 14px);border:1px dashed rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font:600 11px ui-monospace,Menlo,monospace;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)" style-hover="border-color:#ffa64d">avatar</div>
+<div style="position:absolute;left:20px;top:14px;width:160px;height:36px;border-radius:18px;border:1px dashed rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.85);background:rgba(0,0,0,.25)">roblox system bar</div>
+
+<div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;border-radius:27px;overflow:hidden;border:1px solid #000;box-shadow:0 3px 10px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.12)">
+<sc-for list="{{ o.tabs }}" as="t" hint-placeholder-count="3"><div sc-camel-on-click="{{ t.onClick }}" style="height:52px;width:172px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:{{ t.bg }};box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset -1px 0 0 rgba(0,0,0,.8),inset -2px 0 0 rgba(255,255,255,.08);font-weight:900;font-size:18px;text-shadow:0 1px 1px rgba(0,0,0,.6)" style-hover="filter:brightness(1.18)"><span style="font-family:'Material Symbols Rounded';font-size:24px;font-weight:400">{{ t.icon }}</span>{{ t.label }}</div></sc-for>
+</div>
+<div style="position:absolute;left:28px;bottom:28px;display:flex;gap:12px;align-items:flex-end">
+<div sc-camel-on-click="{{ o.openBasket }}" title="Basket" style="position:relative;width:84px;height:84px;border-radius:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px rgba(255,255,255,.08),0 3px 8px rgba(0,0,0,.45)" style-hover="box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 18px rgba(255,138,26,.9)" style-active="transform:scale(.94)"><span style="font-family:'Material Symbols Rounded';font-size:42px">shopping_basket</span>
+<sc-if value="{{ basketBadge }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:-8px;right:-18px;height:26px;padding:0 9px 0 5px;border-radius:13px;display:flex;align-items:center;gap:2px;font-size:15px;font-weight:900;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)"><span style="font-family:'Material Symbols Rounded';font-size:17px">toll</span>{{ basketBadge }}</div></sc-if>
+</div>
+<sc-for list="{{ o.actions }}" as="a" hint-placeholder-count="3"><div sc-camel-on-click="{{ a.onClick }}" title="{{ a.label }}" style="width:64px;height:64px;border-radius:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px rgba(255,255,255,.08),0 3px 8px rgba(0,0,0,.45)" style-hover="box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 14px rgba(255,138,26,.85)" style-active="transform:scale(.94)"><span style="font-family:'Material Symbols Rounded';font-size:30px">{{ a.icon }}</span></div></sc-for>
+</div>
+<div sc-camel-on-click="{{ o.toggleWorld }}" title="World options" style="position:absolute;right:28px;bottom:28px;width:64px;height:64px;border-radius:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ o.worldBg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px rgba(0,0,0,.45)" style-hover="filter:brightness(1.18)"><span style="font-family:'Material Symbols Rounded';font-size:30px">landscape</span></div>
+
+<sc-if value="{{ o.worldOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;right:28px;top:88px;bottom:112px;width:340px;border-radius:22px;background:linear-gradient(180deg,rgba(60,60,60,.72),rgba(10,10,10,.86));backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:center;gap:8px;padding:14px 14px 12px 18px"><span style="font-family:'Material Symbols Rounded';font-size:22px;color:#ff9a3a">landscape</span><div style="flex:1;font-weight:900;font-size:18px">World options</div><div sc-camel-on-click="{{ o.toggleWorld }}" style="width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)"><span style="font-family:'Material Symbols Rounded';font-size:20px">close</span></div></div>
+<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent)"></div>
+<div style="flex:1;overflow-y:auto;overflow-x:hidden;min-width:0;padding:14px 18px 18px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;font-weight:800;font-size:14px"><span style="flex:1">Time of day</span><span style="color:#ffa64d;font-variant-numeric:tabular-nums">{{ timeLabel }}</span></div><input type="range" min="0" max="24" step="0.25" value="{{ time }}" sc-camel-on-change="{{ setTime }}" style="width:100%;margin:0;box-sizing:border-box"></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font-weight:800;font-size:14px">Sky</div><div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px"><sc-for list="{{ skies }}" as="k" hint-placeholder-count="4"><div sc-camel-on-click="{{ k.onClick }}" style="height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:13px;background:{{ k.bg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)">{{ k.label }}</div></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font-weight:800;font-size:14px">Floor</div><div style="display:flex;gap:10px"><sc-for list="{{ floors }}" as="f" hint-placeholder-count="5"><div sc-camel-on-click="{{ f.onClick }}" style="width:36px;height:36px;border-radius:18px;cursor:pointer;background:{{ f.c }};box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -6px 8px rgba(0,0,0,.25),{{ f.ring }}"></div></sc-for></div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px"><sc-for list="{{ patterns }}" as="p" hint-placeholder-count="3"><div sc-camel-on-click="{{ p.onClick }}" style="height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:13px;background:{{ p.bg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)">{{ p.label }}</div></sc-for></div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;font-weight:800;font-size:14px"><span style="flex:1">Lighting</span><span style="color:#ffa64d">{{ bright }}%</span></div><input type="range" min="50" max="150" step="5" value="{{ bright }}" sc-camel-on-change="{{ setBright }}" style="width:100%;margin:0;box-sizing:border-box">
+<div style="display:flex;align-items:center;font-weight:700;font-size:14px"><span style="flex:1">Shadows</span><div sc-camel-on-click="{{ toggleShadows }}" style="position:relative;width:50px;height:28px;border-radius:14px;cursor:pointer;background:{{ shadowsTrack }};border:1px solid #000;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)"><div style="position:absolute;top:2px;left:{{ shadowsKnob }};width:22px;height:22px;border-radius:11px;background:linear-gradient(180deg,#fff,#cfcfcf);box-shadow:0 1px 3px rgba(0,0,0,.5);transition:left .15s"></div></div></div></div>
+<div style="display:flex;gap:6px;align-items:flex-start;font-size:13px;line-height:1.4;color:rgba(255,255,255,.7)"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:#ffa64d">flight</span>Double-jump to fly. Use it to find a quiet spot.</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.fullOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% -30%,#3a3a3a 0%,#151515 55%,#070707 100%)">
+<div style="position:absolute;left:20px;top:14px;width:160px;height:36px;border-radius:18px;border:1px dashed rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.85);background:rgba(0,0,0,.25)">roblox system bar</div>
+<div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;border-radius:27px;overflow:hidden;border:1px solid #000;box-shadow:0 3px 10px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.12)">
+<sc-for list="{{ o.tabs }}" as="t" hint-placeholder-count="3"><div sc-camel-on-click="{{ t.onClick }}" style="height:52px;width:172px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:{{ t.bg }};box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset -1px 0 0 rgba(0,0,0,.8),inset -2px 0 0 rgba(255,255,255,.08);font-weight:900;font-size:18px;text-shadow:0 1px 1px rgba(0,0,0,.6)" style-hover="filter:brightness(1.18)"><span style="font-family:'Material Symbols Rounded';font-size:24px;font-weight:400">{{ t.icon }}</span>{{ t.label }}</div></sc-for>
+</div>
+<div sc-camel-on-click="{{ o.closeFull }}" title="Back to world" style="position:absolute;top:16px;right:28px;width:52px;height:52px;border-radius:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px rgba(0,0,0,.45)" style-hover="box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 12px rgba(255,138,26,.85)"><span style="font-family:'Material Symbols Rounded';font-size:28px">close</span></div>
+
+<div style="position:absolute;top:84px;left:28px;right:28px;bottom:24px;display:flex;gap:16px">
+<div style="width:250px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div sc-camel-on-click="{{ o.openWearing }}" style="position:relative;flex:1;border-radius:22px;cursor:pointer;border:1px solid {{ o.wearBorder }};background:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 7px,rgba(255,255,255,.02) 7px 14px),linear-gradient(180deg,#3b2a1c 0%,#1a120c 60%,#ff7a00 150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font:600 11px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.75)" style-hover="border-color:rgba(255,166,77,.8)">avatar preview
+<div sc-camel-on-click="{{ o.undo }}" title="Undo" style="position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)"><span style="font-family:'Material Symbols Rounded';font-size:24px">undo</span></div>
+<div style="position:absolute;left:10px;right:10px;bottom:10px;height:44px;border-radius:22px;display:flex;align-items:center;gap:6px;padding:0 10px 0 14px;font:900 14px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,rgba(70,70,70,.85),rgba(8,8,8,.9));border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)"><span style="font-family:'Material Symbols Rounded';font-size:19px;color:#ffa64d">checkroom</span><span style="flex:1">Wearing · {{ wornCount }}</span><span style="font-family:'Material Symbols Rounded';font-size:20px">chevron_right</span></div>
+</div>
+<div sc-camel-on-click="{{ o.openBasket }}" style="height:112px;flex:none;border-radius:18px;cursor:pointer;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.03));border:1px solid {{ o.basketBorder }};box-shadow:inset 0 1px 0 rgba(255,255,255,.15);display:flex;flex-direction:column;justify-content:space-between;padding:12px 12px 12px 14px" style-hover="border-color:rgba(255,166,77,.8)">
+<div style="display:flex;align-items:center;gap:6px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#ffa64d">shopping_basket</span><span style="font-weight:900;font-size:16px;flex:1">Basket</span><span style="font-weight:800;font-size:13px;color:rgba(255,255,255,.6)">{{ basketCountLabel }}</span></div>
+<div style="height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center;gap:4px;font-weight:900;font-size:15px;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 1px rgba(100,30,0,.6)">{{ basketCta }}<span style="font-family:'Material Symbols Rounded';font-size:20px">chevron_right</span></div>
+</div>
+</div>
+
+<div style="position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)">
+
+<sc-if value="{{ o.hasCrumbs }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:10px;flex:none">
+<sc-if value="{{ o.canBack }}" hint-placeholder-val="{{ false }}"><div sc-camel-on-click="{{ o.back }}" style="width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 12px rgba(255,138,26,.85)"><span style="font-family:'Material Symbols Rounded';font-size:22px">arrow_back</span></div></sc-if>
+<div style="display:flex;align-items:center;gap:4px;min-width:0;flex:1;overflow:hidden;white-space:nowrap">
+<sc-for list="{{ o.crumbs }}" as="cr" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:4px;flex:none"><sc-if value="{{ cr.sep }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:rgba(255,255,255,.35)">chevron_right</span></sc-if><div sc-camel-on-click="{{ cr.onClick }}" style="font-weight:{{ cr.weight }};font-size:15px;color:{{ cr.color }};cursor:pointer;white-space:nowrap" style-hover="color:#ffa64d">{{ cr.label }}</div></div></sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.isCatRoot }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:flex-end;gap:16px">
+<div style="flex:1;min-width:0;display:flex;gap:20px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,.1)"><sc-for list="{{ catTabs }}" as="c" hint-placeholder-count="8"><div sc-camel-on-click="{{ c.onClick }}" style="flex:none;height:42px;display:flex;align-items:center;cursor:pointer;font-weight:900;font-size:15.5px;color:{{ c.color }};box-shadow:{{ c.line }}" style-hover="color:#fff">{{ c.label }}</div></sc-for></div>
+<div style="width:230px;flex:none;height:40px;border-radius:20px;background:#0a0a0a;border:1px solid #000;box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12);display:flex;align-items:center;gap:6px;padding:0 14px;margin-bottom:2px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:rgba(255,255,255,.55)">search</span><input value="{{ q }}" sc-camel-on-change="{{ setQ }}" placeholder="Search catalogue" style="flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font:700 14.5px Nunito,system-ui,sans-serif"></div>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ subTabs }}" as="c" hint-placeholder-count="5"><div sc-camel-on-click="{{ c.onClick }}" style="height:34px;padding:0 16px;border-radius:17px;display:flex;align-items:center;cursor:pointer;font-weight:800;font-size:13.5px;color:{{ c.color }};background:{{ c.bg }};border:1px solid {{ c.border }}" style-hover="border-color:rgba(255,166,77,.7)">{{ c.label }}</div></sc-for></div>
+<div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;min-width:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;align-content:start;padding:2px">
+<sc-for list="{{ o.cards }}" as="it" hint-placeholder-count="18"><div sc-camel-on-click="{{ it.onClick }}" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;min-width:0;width:100%;font-family:Nunito,system-ui,sans-serif;color:#fff">
+<div style="position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),{{ it.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.6)" style-hover="box-shadow:inset 0 0 0 1px rgba(255,166,77,.7)">{{ it.label }}
+<div style="position:absolute;top:6px;left:6px;display:flex;gap:4px">
+<sc-if value="{{ it.wearing }}" hint-placeholder-val="{{ false }}"><div title="Wearing" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#fff">checkroom</span></div></sc-if>
+<sc-if value="{{ it.inBasket }}" hint-placeholder-val="{{ false }}"><div title="In basket" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffffff,#d6d6d6);border:1px solid #000"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#111">shopping_basket</span></div></sc-if>
+</div>
+<sc-if value="{{ it.menu }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;padding:9px;display:flex;flex-direction:column;justify-content:center;gap:5px;background:rgba(0,0,0,.7);backdrop-filter:blur(6px)">
+<div sc-camel-on-click="{{ it.tryIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)"><span style="font-family:'Material Symbols Rounded';font-size:16px">{{ it.tryIcon }}</span>{{ it.tryLabel }}</div>
+<div style="display:flex;gap:5px">
+<div sc-camel-on-click="{{ it.basketIt }}" title="{{ it.basketLabel }}" style="flex:1;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:17px">{{ it.basketIcon }}</span></div>
+<div sc-camel-on-click="{{ it.buyIt }}" style="flex:1.4;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:2px;font:900 13px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)">{{ it.buyLabel }}</div>
+</div>
+<div sc-camel-on-click="{{ it.viewIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:16px">visibility</span>View</div>
+</div>
+</sc-if>
+</div>
+<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div>
+<div style="display:flex;align-items:center;gap:2px;font-weight:900;font-size:12.5px;color:{{ it.priceColor }}"><sc-if value="{{ it.showToll }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:15px">toll</span></sc-if>{{ it.priceLabel }}</div>
+</div></sc-for>
+<sc-if value="{{ catEmpty }}" hint-placeholder-val="{{ false }}"><div style="grid-column:1/-1;padding:40px 0;text-align:center;font-weight:800;font-size:14px;color:rgba(255,255,255,.55)">Nothing matches these filters.</div></sc-if>
+</div>
+<div style="height:52px;flex:none;margin:0 -6px -4px;padding:0 6px;border-radius:16px;display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(70,70,70,.6) 0%,rgba(24,24,24,.8) 48%,rgba(0,0,0,.85) 52%,rgba(16,16,16,.85) 100%);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)">
+<div style="width:320px;height:38px;border-radius:19px;background:#0a0a0a;border:1px solid #000;box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.1);display:flex;align-items:center;gap:6px;padding:0 14px"><span style="font-family:'Material Symbols Rounded';font-size:19px;color:rgba(255,255,255,.55)">link</span><input placeholder="Paste item link or ID" style="flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font:700 14px Nunito,system-ui,sans-serif"></div>
+<div style="flex:1"></div>
+<div sc-camel-on-click="{{ o.openColour }}" style="height:38px;padding:0 14px 0 10px;border-radius:19px;display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:900;font-size:14px;background:{{ o.colourBtnBg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.2)"><div style="width:18px;height:18px;border-radius:9px;background:{{ colourSwatch }};box-shadow:0 0 0 1.5px rgba(255,255,255,.8)"></div>{{ colourLabel }}<span style="font-family:'Material Symbols Rounded';font-size:18px">expand_less</span></div>
+<div sc-camel-on-click="{{ o.openPrice }}" style="height:38px;padding:0 14px 0 10px;border-radius:19px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:900;font-size:14px;background:{{ o.priceBtnBg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.2)"><span style="font-family:'Material Symbols Rounded';font-size:18px">toll</span>{{ priceLabel }}<span style="font-family:'Material Symbols Rounded';font-size:18px">expand_less</span></div>
+</div>
+</div>
+<sc-if value="{{ o.colourOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;right:170px;bottom:76px;width:248px;padding:12px;border-radius:18px;background:linear-gradient(180deg,rgba(70,70,70,.94),rgba(12,12,12,.97));border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px">
+<div style="font-weight:900;font-size:14px">Colour</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px"><sc-for list="{{ o.colours }}" as="c" hint-placeholder-count="9"><div sc-camel-on-click="{{ c.onClick }}" title="{{ c.label }}" style="aspect-ratio:1;border-radius:50%;cursor:pointer;background:{{ c.bg }};box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -5px 8px rgba(0,0,0,.25),{{ c.ring }};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px">{{ c.text }}</div></sc-for></div>
+</div>
+</sc-if>
+<sc-if value="{{ o.priceOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;right:16px;bottom:76px;width:290px;padding:14px;border-radius:18px;background:linear-gradient(180deg,rgba(70,70,70,.94),rgba(12,12,12,.97));border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center"><span style="font-weight:900;font-size:14px;flex:1">Price (Robux)</span><span sc-camel-on-click="{{ clearPrice }}" style="font-weight:800;font-size:13px;color:#ffa64d;cursor:pointer">Clear</span></div>
+<div style="display:flex;align-items:baseline;font-weight:900;font-size:20px;color:#ffa64d"><span style="font-family:'Material Symbols Rounded';font-size:20px;align-self:center">toll</span><span>{{ pminText }}</span><span style="color:rgba(255,255,255,.4);padding:0 6px">–</span><span>{{ pmaxText }}</span></div>
+<div style="position:relative;height:28px">
+<div style="position:absolute;left:0;right:0;top:10px;height:8px;border-radius:4px;background:#0a0a0a;box-shadow:inset 0 1px 2px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.1)"></div>
+<div style="position:absolute;top:10px;height:8px;border-radius:4px;left:{{ pFillL }};right:{{ pFillR }};background:linear-gradient(180deg,#ffc27a,#ff8a1a 48%,#ec6500 52%,#ff9a3a)"></div>
+<input class="dual" type="range" min="0" max="400" step="5" value="{{ pminV }}" sc-camel-on-change="{{ setPmin }}">
+<input class="dual" type="range" min="0" max="400" step="5" value="{{ pmaxV }}" sc-camel-on-change="{{ setPmax }}">
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ pricePresets }}" as="p" hint-placeholder-count="4"><div sc-camel-on-click="{{ p.onClick }}" style="height:32px;padding:0 12px;border-radius:16px;display:flex;align-items:center;cursor:pointer;font-weight:800;font-size:13px;color:{{ p.color }};background:{{ p.bg }};border:1px solid {{ p.border }}">{{ p.label }}</div></sc-for></div>
+<div style="font-size:12.5px;font-weight:700;color:rgba(255,255,255,.6)">{{ catCountLabel }}</div>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ o.isItem }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;gap:22px">
+<div style="width:320px;height:320px;flex:none;border-radius:20px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 8px,rgba(255,255,255,.02) 8px 16px),{{ o.v.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font:600 11px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.65)">3D item preview</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding-top:4px">
+<div style="font-weight:900;font-size:32px;line-height:1.05;text-wrap:pretty">{{ o.v.name }}</div>
+<div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;color:rgba(255,255,255,.8)"><div style="width:28px;height:28px;border-radius:14px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.2) 0 4px,rgba(255,255,255,.06) 4px 8px)"></div>by {{ o.v.creator }}</div>
+<div style="display:flex;gap:6px">
+<sc-if value="{{ o.v.wearing }}" hint-placeholder-val="{{ false }}"><div style="height:26px;padding:0 10px 0 6px;border-radius:13px;display:flex;align-items:center;gap:4px;font-weight:900;font-size:12.5px;background:rgba(255,138,26,.18);color:#ffb36b;border:1px solid rgba(255,138,26,.6)"><span style="font-family:'Material Symbols Rounded';font-size:16px">checkroom</span>Wearing</div></sc-if>
+<sc-if value="{{ o.v.inBasket }}" hint-placeholder-val="{{ false }}"><div style="height:26px;padding:0 10px 0 6px;border-radius:13px;display:flex;align-items:center;gap:4px;font-weight:900;font-size:12.5px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.35)"><span style="font-family:'Material Symbols Rounded';font-size:16px">shopping_basket</span>In basket</div></sc-if>
+</div>
+<div style="height:1px;background:rgba(255,255,255,.12)"></div>
+<div style="display:flex;align-items:center;gap:4px;font-weight:900;font-size:26px;color:{{ o.v.priceColor }}"><sc-if value="{{ o.v.showToll }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:28px">toll</span></sc-if>{{ o.v.priceLabel }}</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<div sc-camel-on-click="{{ o.v.tryIt }}" style="height:48px;padding:0 20px 0 16px;border-radius:24px;display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:900;font-size:16px;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 8px rgba(0,0,0,.4);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)"><span style="font-family:'Material Symbols Rounded';font-size:22px">{{ o.v.tryIcon }}</span>{{ o.v.tryLabel }}</div>
+<div sc-camel-on-click="{{ o.v.basketIt }}" style="height:48px;padding:0 20px 0 16px;border-radius:24px;display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:900;font-size:16px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px rgba(0,0,0,.4)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:22px">{{ o.v.basketIcon }}</span>{{ o.v.basketLabel }}</div>
+<div sc-camel-on-click="{{ o.v.buyIt }}" style="height:48px;padding:0 20px 0 16px;border-radius:24px;display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:900;font-size:16px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px rgba(0,0,0,.4)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:22px">toll</span>{{ o.v.buyLabel }}</div>
+<div sc-camel-on-click="{{ o.v.fav }}" title="Favourite" style="width:48px;height:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5);color:{{ o.v.favColor }}"><span style="font-family:'Material Symbols Rounded';font-size:24px">star</span></div>
+</div>
+<div style="display:grid;grid-template-columns:90px 1fr;gap:6px 12px;font-size:14px"><span style="color:rgba(255,255,255,.55);font-weight:700">Type</span><span style="font-weight:800">{{ o.v.main }} · {{ o.v.sub }}</span><span style="color:rgba(255,255,255,.55);font-weight:700">Colour</span><span style="font-weight:800">{{ o.v.colour }}</span><span style="color:rgba(255,255,255,.55);font-weight:700">Favourites</span><span style="font-weight:800">{{ o.v.favs }}</span></div>
+</div>
+</div>
+<div style="font-weight:900;font-size:17px">More like this</div>
+<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px"><sc-for list="{{ o.v.more }}" as="it" hint-placeholder-count="6"><div sc-camel-on-click="{{ it.onClick }}" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;min-width:0;width:100%;font-family:Nunito,system-ui,sans-serif;color:#fff">
+<div style="position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),{{ it.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.6)" style-hover="box-shadow:inset 0 0 0 1px rgba(255,166,77,.7)">{{ it.label }}
+<div style="position:absolute;top:6px;left:6px;display:flex;gap:4px">
+<sc-if value="{{ it.wearing }}" hint-placeholder-val="{{ false }}"><div title="Wearing" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#fff">checkroom</span></div></sc-if>
+<sc-if value="{{ it.inBasket }}" hint-placeholder-val="{{ false }}"><div title="In basket" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffffff,#d6d6d6);border:1px solid #000"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#111">shopping_basket</span></div></sc-if>
+</div>
+<sc-if value="{{ it.menu }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;padding:9px;display:flex;flex-direction:column;justify-content:center;gap:5px;background:rgba(0,0,0,.7);backdrop-filter:blur(6px)">
+<div sc-camel-on-click="{{ it.tryIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)"><span style="font-family:'Material Symbols Rounded';font-size:16px">{{ it.tryIcon }}</span>{{ it.tryLabel }}</div>
+<div style="display:flex;gap:5px">
+<div sc-camel-on-click="{{ it.basketIt }}" title="{{ it.basketLabel }}" style="flex:1;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:17px">{{ it.basketIcon }}</span></div>
+<div sc-camel-on-click="{{ it.buyIt }}" style="flex:1.4;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:2px;font:900 13px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)">{{ it.buyLabel }}</div>
+</div>
+<div sc-camel-on-click="{{ it.viewIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:16px">visibility</span>View</div>
+</div>
+</sc-if>
+</div>
+<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div>
+<div style="display:flex;align-items:center;gap:2px;font-weight:900;font-size:12.5px;color:{{ it.priceColor }}"><sc-if value="{{ it.showToll }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:15px">toll</span></sc-if>{{ it.priceLabel }}</div>
+</div></sc-for></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.isStoreRoot }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:flex-end;gap:16px">
+<div style="flex:1;min-width:0;display:flex;gap:22px;border-bottom:1px solid rgba(255,255,255,.1)"><sc-for list="{{ storeTabs }}" as="c" hint-placeholder-count="5"><div sc-camel-on-click="{{ c.onClick }}" style="flex:none;height:42px;display:flex;align-items:center;cursor:pointer;font-weight:900;font-size:15.5px;color:{{ c.color }};box-shadow:{{ c.line }}" style-hover="color:#fff">{{ c.label }}</div></sc-for></div>
+<div style="width:250px;flex:none;height:40px;border-radius:20px;background:#0a0a0a;border:1px solid #000;box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12);display:flex;align-items:center;gap:6px;padding:0 14px;margin-bottom:2px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:rgba(255,255,255,.55)">search</span><input value="{{ sq }}" sc-camel-on-change="{{ setSq }}" placeholder="Search or enter store code" style="flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font:700 14.5px Nunito,system-ui,sans-serif"></div>
+</div>
+<sc-if value="{{ o.storeHome }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:20px;padding-right:4px">
+<sc-for list="{{ o.storeRows }}" as="row" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:10px;min-width:0;width:100%;flex:none">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-weight:900;font-size:18px;flex:1">{{ row.title }}</span><span sc-camel-on-click="{{ row.seeAll }}" style="font-weight:800;font-size:13.5px;color:#ffa64d;cursor:pointer">See all</span></div>
+<div style="display:flex;gap:14px;overflow-x:auto;min-width:0;width:100%;scroll-snap-type:x mandatory;padding-bottom:8px">
+<sc-for list="{{ row.cards }}" as="st" hint-placeholder-count="6">
+<div sc-camel-on-click="{{ st.onClick }}" style="width:150px;flex:none;scroll-snap-align:start;display:flex;flex-direction:column;gap:4px;cursor:pointer;min-width:0">
+<sc-if value="{{ st.isCreate }}" hint-placeholder-val="{{ false }}"><div style="aspect-ratio:1;border-radius:14px;border:1.5px dashed rgba(255,166,77,.7);display:flex;align-items:center;justify-content:center;color:#ffa64d;background:rgba(255,138,26,.06)" style-hover="background:rgba(255,138,26,.14)"><span style="font-family:'Material Symbols Rounded';font-size:34px">add_business</span></div></sc-if>
+<sc-if value="{{ st.isStore }}" hint-placeholder-val="{{ true }}"><div style="position:relative;aspect-ratio:1;border-radius:14px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),#1e1e1e;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.55)" style-hover="box-shadow:inset 0 0 0 1px rgba(255,166,77,.7)">store logo<sc-if value="{{ st.fav }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;right:6px;color:#ffa64d;font-family:'Material Symbols Rounded';font-size:20px">star</span></sc-if><sc-if value="{{ st.ad }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:6px;top:6px;padding:1px 6px;border-radius:6px;background:rgba(0,0,0,.7);font:900 10px Nunito,sans-serif;color:rgba(255,255,255,.8)">AD</span></sc-if></div></sc-if>
+<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ st.name }}</div>
+<div style="font-weight:800;font-size:12px;color:rgba(255,255,255,.6)">{{ st.meta }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ o.storeGrid }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;min-width:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;align-content:start;padding:2px">
+<sc-for list="{{ o.stores }}" as="st" hint-placeholder-count="12">
+<div sc-camel-on-click="{{ st.onClick }}" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;min-width:0">
+<sc-if value="{{ st.isCreate }}" hint-placeholder-val="{{ false }}"><div style="aspect-ratio:1;border-radius:14px;border:1.5px dashed rgba(255,166,77,.7);display:flex;align-items:center;justify-content:center;color:#ffa64d;background:rgba(255,138,26,.06)" style-hover="background:rgba(255,138,26,.14)"><span style="font-family:'Material Symbols Rounded';font-size:34px">add_business</span></div></sc-if>
+<sc-if value="{{ st.isStore }}" hint-placeholder-val="{{ true }}"><div style="position:relative;aspect-ratio:1;border-radius:14px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),#1e1e1e;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.55)" style-hover="box-shadow:inset 0 0 0 1px rgba(255,166,77,.7)">store logo<sc-if value="{{ st.fav }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:6px;right:6px;color:#ffa64d;font-family:'Material Symbols Rounded';font-size:20px">star</span></sc-if><sc-if value="{{ st.ad }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:6px;top:6px;padding:1px 6px;border-radius:6px;background:rgba(0,0,0,.7);font:900 10px Nunito,sans-serif;color:rgba(255,255,255,.8)">AD</span></sc-if></div></sc-if>
+<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ st.name }}</div>
+<div style="font-weight:800;font-size:12px;color:rgba(255,255,255,.6)">{{ st.meta }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.isStore }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:18px;padding-right:2px">
+<div style="display:flex;align-items:center;gap:10px;flex:none;min-width:0;width:100%">
+<div style="width:72px;height:72px;flex:none;border-radius:18px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.12) 0 6px,rgba(255,255,255,.03) 6px 12px),#262626;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font:600 9px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.55)">logo</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="font-weight:900;font-size:26px;line-height:1.1">{{ o.st.name }}</div><div style="font-weight:800;font-size:13.5px;color:rgba(255,255,255,.65)">by {{ o.st.creator }} · {{ o.st.rating }}% liked · {{ o.st.visits }} visits</div></div>
+<div sc-camel-on-click="{{ o.st.fav }}" style="height:44px;padding:0 16px 0 12px;border-radius:22px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:21px;color:{{ o.st.favColor }}">star</span>{{ o.st.favLabel }}</div>
+<div sc-camel-on-click="{{ o.st.share }}" style="height:44px;padding:0 16px 0 12px;border-radius:22px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:21px">ios_share</span>Share</div>
+</div>
+<sc-for list="{{ o.st.sections }}" as="sec" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:10px;flex:none;min-width:0;width:100%">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-weight:900;font-size:18px;flex:1">{{ sec.title }}</span><sc-if value="{{ sec.seeAll }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ sec.seeAll }}" style="font-weight:800;font-size:13.5px;color:#ffa64d;cursor:pointer">See all</span></sc-if></div>
+<sc-if value="{{ sec.isHero }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;height:230px;min-width:0;border-radius:20px;overflow:hidden;display:flex;background:linear-gradient(110deg,rgba(255,138,26,.22),rgba(255,255,255,.03) 60%);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)">
+<div sc-camel-on-click="{{ sec.hero.view }}" style="width:230px;flex:none;cursor:pointer;background:repeating-linear-gradient(135deg,rgba(255,255,255,.1) 0 8px,rgba(255,255,255,.02) 8px 16px),{{ sec.hero.tint }};display:flex;align-items:center;justify-content:center;font:600 10.5px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.65)">item viewer</div>
+<div style="flex:1;min-width:0;padding:22px 24px;display:flex;flex-direction:column;gap:10px;justify-content:center">
+<div style="font-weight:800;font-size:12.5px;color:#ffb36b;letter-spacing:.04em">FEATURED · {{ sec.hero.pos }}</div>
+<div sc-camel-on-click="{{ sec.hero.view }}" style="font-weight:900;font-size:28px;line-height:1.05;cursor:pointer">{{ sec.hero.name }}</div>
+<div style="display:flex;align-items:center;gap:3px;font-weight:900;font-size:18px;color:{{ sec.hero.priceColor }}">{{ sec.hero.priceLabel }}</div>
+<div style="display:flex;gap:8px">
+<div sc-camel-on-click="{{ sec.hero.tryIt }}" style="height:42px;padding:0 16px 0 12px;border-radius:21px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 1px rgba(100,30,0,.6)"><span style="font-family:'Material Symbols Rounded';font-size:19px">{{ sec.hero.tryIcon }}</span>{{ sec.hero.tryLabel }}</div>
+<div sc-camel-on-click="{{ sec.hero.basketIt }}" style="height:42px;padding:0 16px 0 12px;border-radius:21px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)"><span style="font-family:'Material Symbols Rounded';font-size:19px">{{ sec.hero.basketIcon }}</span>{{ sec.hero.basketLabel }}</div>
+</div>
+</div>
+<div style="position:absolute;right:14px;bottom:14px;display:flex;gap:6px">
+<div sc-camel-on-click="{{ sec.hero.prev }}" style="width:38px;height:38px;border-radius:19px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)"><span style="font-family:'Material Symbols Rounded';font-size:22px">chevron_left</span></div>
+<div sc-camel-on-click="{{ sec.hero.next }}" style="width:38px;height:38px;border-radius:19px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)"><span style="font-family:'Material Symbols Rounded';font-size:22px">chevron_right</span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ sec.isRow }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;gap:12px;overflow-x:auto;min-width:0;width:100%;scroll-snap-type:x mandatory;padding-bottom:8px"><sc-for list="{{ sec.cards }}" as="it" hint-placeholder-count="6"><div style="width:132px;flex:none;scroll-snap-align:start"><div sc-camel-on-click="{{ it.onClick }}" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;min-width:0;width:100%;font-family:Nunito,system-ui,sans-serif;color:#fff">
+<div style="position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),{{ it.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.6)" style-hover="box-shadow:inset 0 0 0 1px rgba(255,166,77,.7)">{{ it.label }}
+<div style="position:absolute;top:6px;left:6px;display:flex;gap:4px">
+<sc-if value="{{ it.wearing }}" hint-placeholder-val="{{ false }}"><div title="Wearing" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#fff">checkroom</span></div></sc-if>
+<sc-if value="{{ it.inBasket }}" hint-placeholder-val="{{ false }}"><div title="In basket" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffffff,#d6d6d6);border:1px solid #000"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#111">shopping_basket</span></div></sc-if>
+</div>
+<sc-if value="{{ it.menu }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;padding:9px;display:flex;flex-direction:column;justify-content:center;gap:5px;background:rgba(0,0,0,.7);backdrop-filter:blur(6px)">
+<div sc-camel-on-click="{{ it.tryIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)"><span style="font-family:'Material Symbols Rounded';font-size:16px">{{ it.tryIcon }}</span>{{ it.tryLabel }}</div>
+<div style="display:flex;gap:5px">
+<div sc-camel-on-click="{{ it.basketIt }}" title="{{ it.basketLabel }}" style="flex:1;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:17px">{{ it.basketIcon }}</span></div>
+<div sc-camel-on-click="{{ it.buyIt }}" style="flex:1.4;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:2px;font:900 13px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)">{{ it.buyLabel }}</div>
+</div>
+<div sc-camel-on-click="{{ it.viewIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:16px">visibility</span>View</div>
+</div>
+</sc-if>
+</div>
+<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div>
+<div style="display:flex;align-items:center;gap:2px;font-weight:900;font-size:12.5px;color:{{ it.priceColor }}"><sc-if value="{{ it.showToll }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:15px">toll</span></sc-if>{{ it.priceLabel }}</div>
+</div></div></sc-for></div>
+</sc-if>
+<sc-if value="{{ sec.isColl }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-width:0"><sc-for list="{{ sec.colls }}" as="cl" hint-placeholder-count="3"><div sc-camel-on-click="{{ cl.onClick }}" style="height:110px;border-radius:16px;cursor:pointer;padding:14px;display:flex;flex-direction:column;justify-content:flex-end;background:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 8px,rgba(255,255,255,.02) 8px 16px),{{ cl.bg }};border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)" style-hover="border-color:rgba(255,166,77,.8)"><div style="font-weight:900;font-size:17px">{{ cl.name }}</div><div style="font-weight:800;font-size:12.5px;color:rgba(255,255,255,.7)">{{ cl.count }}</div></div></sc-for></div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.isColl }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;min-width:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;align-content:start;padding:2px"><sc-for list="{{ o.collCards }}" as="it" hint-placeholder-count="12"><div sc-camel-on-click="{{ it.onClick }}" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;min-width:0;width:100%;font-family:Nunito,system-ui,sans-serif;color:#fff">
+<div style="position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),{{ it.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.6)" style-hover="box-shadow:inset 0 0 0 1px rgba(255,166,77,.7)">{{ it.label }}
+<div style="position:absolute;top:6px;left:6px;display:flex;gap:4px">
+<sc-if value="{{ it.wearing }}" hint-placeholder-val="{{ false }}"><div title="Wearing" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#fff">checkroom</span></div></sc-if>
+<sc-if value="{{ it.inBasket }}" hint-placeholder-val="{{ false }}"><div title="In basket" style="width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ffffff,#d6d6d6);border:1px solid #000"><span style="font-family:'Material Symbols Rounded';font-size:15px;color:#111">shopping_basket</span></div></sc-if>
+</div>
+<sc-if value="{{ it.menu }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;padding:9px;display:flex;flex-direction:column;justify-content:center;gap:5px;background:rgba(0,0,0,.7);backdrop-filter:blur(6px)">
+<div sc-camel-on-click="{{ it.tryIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)"><span style="font-family:'Material Symbols Rounded';font-size:16px">{{ it.tryIcon }}</span>{{ it.tryLabel }}</div>
+<div style="display:flex;gap:5px">
+<div sc-camel-on-click="{{ it.basketIt }}" title="{{ it.basketLabel }}" style="flex:1;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:17px">{{ it.basketIcon }}</span></div>
+<div sc-camel-on-click="{{ it.buyIt }}" style="flex:1.4;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:2px;font:900 13px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)">{{ it.buyLabel }}</div>
+</div>
+<div sc-camel-on-click="{{ it.viewIt }}" style="height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:4px;font:900 13.5px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:16px">visibility</span>View</div>
+</div>
+</sc-if>
+</div>
+<div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div>
+<div style="display:flex;align-items:center;gap:2px;font-weight:900;font-size:12.5px;color:{{ it.priceColor }}"><sc-if value="{{ it.showToll }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:15px">toll</span></sc-if>{{ it.priceLabel }}</div>
+</div></sc-for></div>
+</sc-if>
+
+<sc-if value="{{ o.isOutfitRoot }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:flex-end;gap:16px">
+<div style="flex:1;min-width:0;display:flex;gap:22px;border-bottom:1px solid rgba(255,255,255,.1)"><sc-for list="{{ outfitTabs }}" as="c" hint-placeholder-count="3"><div sc-camel-on-click="{{ c.onClick }}" style="flex:none;height:42px;display:flex;align-items:center;cursor:pointer;font-weight:900;font-size:15.5px;color:{{ c.color }};box-shadow:{{ c.line }}" style-hover="color:#fff">{{ c.label }}</div></sc-for></div>
+<div style="width:270px;flex:none;height:40px;border-radius:20px;background:#0a0a0a;border:1px solid #000;box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12);display:flex;align-items:center;gap:6px;padding:0 14px;margin-bottom:2px"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:rgba(255,255,255,.55)">search</span><input value="{{ oq }}" sc-camel-on-change="{{ setOq }}" placeholder="{{ outfitPh }}" style="flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font:700 14.5px Nunito,system-ui,sans-serif"></div>
+</div>
+<div style="flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;align-content:start;padding:2px">
+<sc-for list="{{ o.outfitCards }}" as="oc" hint-placeholder-count="10">
+<div sc-camel-on-click="{{ oc.onClick }}" style="display:flex;flex-direction:column;gap:4px;cursor:pointer;min-width:0">
+<sc-if value="{{ oc.isSave }}" hint-placeholder-val="{{ false }}"><div style="aspect-ratio:1;border-radius:14px;border:1.5px dashed rgba(255,166,77,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#ffa64d;background:rgba(255,138,26,.06);font-weight:900;font-size:13px" style-hover="background:rgba(255,138,26,.14)"><span style="font-family:'Material Symbols Rounded';font-size:36px">add_circle</span>Save what I'm wearing</div></sc-if>
+<sc-if value="{{ oc.isOutfit }}" hint-placeholder-val="{{ true }}"><div style="aspect-ratio:1;border-radius:14px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),#1e1e1e;box-shadow:{{ oc.ring }};display:flex;align-items:center;justify-content:center;font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.55)" style-hover="box-shadow:inset 0 0 0 1px rgba(255,166,77,.7)">outfit</div></sc-if>
+<div style="font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ oc.name }}</div>
+<div style="font-weight:700;font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ oc.sub }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.isOutfit }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;gap:20px">
+<div style="width:300px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="flex:1;border-radius:20px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 8px,rgba(255,255,255,.02) 8px 16px),linear-gradient(180deg,#2a2a2a,#151515);box-shadow:{{ o.ov.ring }};display:flex;align-items:center;justify-content:center;font:600 11px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.65)">outfit preview (large)</div>
+<div style="display:flex;flex-direction:column;gap:2px"><div style="font-weight:900;font-size:24px;line-height:1.1">{{ o.ov.name }}</div><div style="font-weight:800;font-size:13.5px;color:rgba(255,255,255,.65)">{{ o.ov.by }}</div></div>
+<div style="display:flex;gap:8px">
+<div sc-camel-on-click="{{ o.ov.wearAll }}" style="flex:1;height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:15px;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 8px rgba(0,0,0,.4);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)"><span style="font-family:'Material Symbols Rounded';font-size:20px">checkroom</span>Wear all</div>
+<div sc-camel-on-click="{{ o.ov.share }}" title="Share" style="width:46px;height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:22px">ios_share</span></div>
+</div>
+</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px"><span style="font-weight:900;font-size:17px;flex:1">{{ o.ov.countLabel }}</span><span sc-camel-on-click="{{ o.ov.toggleAll }}" style="font-weight:800;font-size:13.5px;color:#ffa64d;cursor:pointer">{{ o.ov.toggleAllLabel }}</span></div>
+<div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ o.ov.rows }}" as="r" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+<div sc-camel-on-click="{{ r.toggle }}" style="width:28px;height:28px;flex:none;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:{{ r.checkBg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)"><span style="font-family:'Material Symbols Rounded';font-size:19px;opacity:{{ r.checkOp }}">check</span></div>
+<div sc-camel-on-click="{{ r.open }}" style="width:52px;height:52px;flex:none;border-radius:11px;cursor:pointer;background:repeating-linear-gradient(135deg,rgba(255,255,255,.12) 0 5px,rgba(255,255,255,.03) 5px 10px),{{ r.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)"></div>
+<div sc-camel-on-click="{{ r.open }}" style="flex:1;min-width:0;cursor:pointer;display:flex;flex-direction:column;gap:2px"><span style="font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span><span style="font-weight:900;font-size:12.5px;color:{{ r.priceColor }}">{{ r.priceText }}</span></div>
+<sc-if value="{{ r.wearing }}" hint-placeholder-val="{{ false }}"><span title="Wearing" style="font-family:'Material Symbols Rounded';font-size:20px;color:#ffa64d">checkroom</span></sc-if>
+<sc-if value="{{ r.inBasket }}" hint-placeholder-val="{{ false }}"><span title="In basket" style="font-family:'Material Symbols Rounded';font-size:20px;color:#fff">shopping_basket</span></sc-if>
+<span sc-camel-on-click="{{ r.open }}" style="font-family:'Material Symbols Rounded';font-size:22px;color:rgba(255,255,255,.5);cursor:pointer">chevron_right</span>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:8px;flex:none">
+<div sc-camel-on-click="{{ o.ov.wearSel }}" style="flex:1;height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:20px">checkroom</span>Wear selected</div>
+<div sc-camel-on-click="{{ o.ov.basketSel }}" style="flex:1;height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:20px">add_shopping_cart</span>Add to basket</div>
+<div sc-camel-on-click="{{ o.ov.buySel }}" style="flex:1;height:46px;border-radius:23px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:20px">toll</span>{{ o.ov.buyLabel }}</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.isBasket }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;gap:20px">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto">
+<sc-for list="{{ o.basketRows }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 12px 10px 10px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+<div sc-camel-on-click="{{ r.open }}" style="width:64px;height:64px;flex:none;border-radius:12px;cursor:pointer;background:repeating-linear-gradient(135deg,rgba(255,255,255,.12) 0 5px,rgba(255,255,255,.03) 5px 10px),{{ r.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)"></div>
+<div sc-camel-on-click="{{ r.open }}" style="flex:1;min-width:0;cursor:pointer;display:flex;flex-direction:column;gap:2px"><span style="font-weight:900;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span><span style="font-weight:700;font-size:12.5px;color:rgba(255,255,255,.6)">{{ r.sub }}</span><span style="font-weight:900;font-size:13.5px;color:{{ r.priceColor }}">{{ r.priceText }}</span></div>
+<div sc-camel-on-click="{{ r.tryIt }}" style="height:38px;padding:0 14px 0 10px;border-radius:19px;display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:900;font-size:13.5px;background:{{ r.tryBg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.2)"><span style="font-family:'Material Symbols Rounded';font-size:18px">checkroom</span>{{ r.tryLabel }}</div>
+<div sc-camel-on-click="{{ r.remove }}" title="Remove from basket" style="width:38px;height:38px;border-radius:19px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.7)" style-hover="background:rgba(255,255,255,.1);color:#fff"><span style="font-family:'Material Symbols Rounded';font-size:21px">delete</span></div>
+</div>
+</sc-for>
+<sc-if value="{{ basketEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:60px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.6)"><span style="font-family:'Material Symbols Rounded';font-size:44px;color:#ffa64d">shopping_basket</span><div style="font-weight:900;font-size:17px;color:#fff">Your basket is empty</div><div style="font-size:14px">Tap the basket on any item to save it here.</div></div></sc-if>
+</div>
+<div style="width:280px;flex:none;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);align-self:flex-start">
+<div style="font-weight:900;font-size:17px">Summary</div>
+<div style="display:flex;font-weight:700;font-size:14px;color:rgba(255,255,255,.75)"><span style="flex:1">Items</span><span>{{ basketN }}</span></div>
+<div style="display:flex;font-weight:700;font-size:14px;color:rgba(255,255,255,.75)"><span style="flex:1">Already owned</span><span>{{ basketOwnedN }}</span></div>
+<div style="height:1px;background:rgba(255,255,255,.12)"></div>
+<div style="display:flex;align-items:center;font-weight:900;font-size:18px"><span style="flex:1">Total</span><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#ffa64d">toll</span><span style="color:#ffa64d">{{ basketTotal }}</span></div>
+<div sc-camel-on-click="{{ o.buyBasket }}" style="height:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:16px;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 8px rgba(0,0,0,.4);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)">Buy all</div>
+<div sc-camel-on-click="{{ o.tryBasket }}" style="height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:14px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:19px">checkroom</span>Try on everything</div>
+<div sc-camel-on-click="{{ o.wornToBasket }}" style="height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:14px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:19px">add_shopping_cart</span>Add what I'm wearing</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.isWearing }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;gap:20px">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto">
+<sc-for list="{{ o.wornRows }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:12px;padding:10px 12px 10px 10px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">
+<div sc-camel-on-click="{{ r.open }}" style="width:64px;height:64px;flex:none;border-radius:12px;cursor:pointer;background:repeating-linear-gradient(135deg,rgba(255,255,255,.12) 0 5px,rgba(255,255,255,.03) 5px 10px),{{ r.tint }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)"></div>
+<div sc-camel-on-click="{{ r.open }}" style="flex:1;min-width:0;cursor:pointer;display:flex;flex-direction:column;gap:2px"><span style="font-weight:900;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span><span style="font-weight:700;font-size:12.5px;color:rgba(255,255,255,.6)">{{ r.sub }}</span><span style="font-weight:900;font-size:13.5px;color:{{ r.priceColor }}">{{ r.priceText }}</span></div>
+<sc-if value="{{ r.canBasket }}" hint-placeholder-val="{{ false }}"><div sc-camel-on-click="{{ r.basketIt }}" style="height:38px;padding:0 14px 0 10px;border-radius:19px;display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:900;font-size:13.5px;background:{{ r.basketBg }};border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.2)"><span style="font-family:'Material Symbols Rounded';font-size:18px">{{ r.basketIcon }}</span>{{ r.basketLabel }}</div></sc-if>
+<div sc-camel-on-click="{{ r.takeOff }}" style="height:38px;padding:0 14px 0 10px;border-radius:19px;display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:900;font-size:13.5px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.45)" style-hover="filter:brightness(1.2)"><span style="font-family:'Material Symbols Rounded';font-size:18px">remove</span>Take off</div>
+</div>
+</sc-for>
+<sc-if value="{{ wornEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:60px 20px;text-align:center;font-weight:800;font-size:15px;color:rgba(255,255,255,.6)">You're not wearing anything. Try something from the Catalogue.</div></sc-if>
+</div>
+<div style="width:280px;flex:none;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);align-self:flex-start">
+<div style="font-weight:900;font-size:17px">What you're wearing</div>
+<div style="display:flex;font-weight:700;font-size:14px;color:rgba(255,255,255,.75)"><span style="flex:1">Items</span><span>{{ wornCount }}</span></div>
+<div style="display:flex;font-weight:700;font-size:14px;color:rgba(255,255,255,.75)"><span style="flex:1">Not owned</span><span>{{ wornUnownedN }} · {{ wornUnownedCost }} R$</span></div>
+<div sc-camel-on-click="{{ o.unownedToBasket }}" style="height:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:15px;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 3px 8px rgba(0,0,0,.4);text-shadow:0 1px 1px rgba(100,30,0,.6)" style-hover="filter:brightness(1.1)"><span style="font-family:'Material Symbols Rounded';font-size:20px">add_shopping_cart</span>Add unowned to basket</div>
+<div sc-camel-on-click="{{ o.saveOutfit }}" style="height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:14px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:19px">bookmark_add</span>Save as outfit</div>
+<div sc-camel-on-click="{{ o.takeOffAll }}" style="height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:900;font-size:14px;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)" style-hover="filter:brightness(1.25)"><span style="font-family:'Material Symbols Rounded';font-size:19px">delete_sweep</span>Take everything off</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.shareOpen }}" hint-placeholder-val="{{ false }}">
+<div sc-camel-on-click="{{ o.closeShare }}" style="position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center">
+<div sc-camel-on-click="{{ stop }}" style="width:540px;border-radius:24px;background:linear-gradient(180deg,rgba(64,64,64,.96),rgba(14,14,14,.98));border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 20px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;align-items:center;gap:8px;padding:16px 16px 14px 20px"><span style="font-family:'Material Symbols Rounded';font-size:22px;color:#ff9a3a">ios_share</span><div style="flex:1;font-weight:900;font-size:19px">{{ o.sh.title }}</div><div sc-camel-on-click="{{ o.closeShare }}" style="width:38px;height:38px;border-radius:19px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(180deg,#4a4a4a 0%,#1d1d1d 48%,#050505 52%,#161616 100%);border:1px solid #000;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)"><span style="font-family:'Material Symbols Rounded';font-size:21px">close</span></div></div>
+<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent)"></div>
+<div style="display:flex;gap:20px;padding:20px">
+<div style="width:180px;flex:none;display:flex;flex-direction:column;align-items:center;gap:8px">
+<div style="position:relative;width:180px;height:180px;border-radius:14px;background:#fff;padding:12px;box-sizing:border-box">
+<div style="width:100%;height:100%;display:grid;grid-template-columns:repeat(21,1fr);filter:{{ o.sh.qrBlur }}"><sc-for list="{{ o.sh.cells }}" as="q" hint-placeholder-count="441"><div style="background:{{ q.c }}"></div></sc-for></div>
+<sc-if value="{{ o.sh.hidden }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:40px;color:#111">lock</span></div></sc-if>
+</div>
+<div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.6);text-align:center;line-height:1.35">Scan to open this {{ o.sh.kind }} in the game</div>
+</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+<div style="font-weight:900;font-size:20px;line-height:1.15">{{ o.sh.name }}</div>
+<div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6)">Share code</span>
+<div style="display:flex;gap:8px"><input readonly="readonly" value="{{ o.sh.code }}" style="flex:1;min-width:0;height:44px;border-radius:14px;background:#0a0a0a;border:1px solid #000;box-shadow:inset 0 2px 4px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.12);color:#fff;padding:0 14px;font:800 18px ui-monospace,Menlo,monospace;letter-spacing:.12em;outline:none;box-sizing:border-box">
+<div sc-camel-on-click="{{ o.sh.action }}" style="height:44px;padding:0 16px 0 12px;border-radius:22px;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:900;font-size:14.5px;background:linear-gradient(180deg,#ffc27a 0%,#ff8a1a 48%,#ec6500 52%,#ff9a3a 100%);border:1px solid #6a2a00;box-shadow:inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 1px rgba(100,30,0,.6);white-space:nowrap"><span style="font-family:'Material Symbols Rounded';font-size:19px">{{ o.sh.actionIcon }}</span>{{ o.sh.actionLabel }}</div></div></div>
+<div style="font-size:13px;line-height:1.45;color:rgba(255,255,255,.7)">Friends can type this code into the {{ o.sh.where }} search, or scan the QR, to jump straight to this {{ o.sh.kind }}.</div>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.buyOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center">
+<div style="width:420px;border-radius:14px;background:#232527;border:1px dashed rgba(255,255,255,.35);display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 24px 24px;font-family:system-ui,sans-serif">
+<div style="font:600 10px ui-monospace,Menlo,monospace;color:rgba(255,255,255,.5)">roblox purchase prompt · system UI</div>
+<div style="font-weight:700;font-size:18px">{{ o.buy.title }}</div>
+<div style="width:120px;height:120px;border-radius:10px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 7px,rgba(255,255,255,.02) 7px 14px),{{ o.buy.tint }}"></div>
+<div style="font-size:15px;text-align:center;line-height:1.4">{{ o.buy.text }}</div>
+<div style="display:flex;gap:10px;width:100%">
+<div sc-camel-on-click="{{ o.closeBuy }}" style="flex:1;height:44px;border-radius:8px;border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px">Cancel</div>
+<div sc-camel-on-click="{{ o.confirmBuy }}" style="flex:1;height:44px;border-radius:8px;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;gap:3px;cursor:pointer;font-size:15px;font-weight:700"><span style="font-family:'Material Symbols Rounded';font-size:18px">toll</span>{{ o.buy.price }}</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ o.toast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:50%;top:84px;transform:translateX(-50%);height:40px;padding:0 18px 0 12px;border-radius:20px;display:flex;align-items:center;gap:7px;font-weight:800;font-size:15px;background:linear-gradient(180deg,rgba(70,70,70,.92),rgba(8,8,8,.95));border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 16px rgba(0,0,0,.45);white-space:nowrap;z-index:5"><span style="font-family:'Material Symbols Rounded';font-size:20px;color:#ffa64d">check_circle</span>{{ o.toast }}</div>
+</sc-if>
+</div>
+</div>
+<div style="max-width:1212px;font-size:12.5px;line-height:1.5;color:rgba(0,0,0,.55)">{{ o.note }}</div>
+</div>
+</sc-for>
+</div>
+<p class="dv-next">Try next: "design creating and editing your own store" · "show the Basket on phone" · "add a recently viewed row to the Catalogue"</p>
+</section>
+</x-dc>

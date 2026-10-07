@@ -10,7 +10,7 @@
 - Template architecture only: Models / Controllers / Views / Services / Configs per `docs/*_GUIDE.md`. New intents/states are added to `Source/ReplicatedStorage/Network.luau` (NetworkConfig plus type exports) before the controller/model/view that use them. No new pattern where an existing one fits.
 - HUD state flows through `HudApp` (`useBoltState` subscriptions, props/callbacks down, no BindableEvents). Navigation/UI-only state (open panel, tab, breadcrumb stack, toasts, buy prompt) is React state in `HudApp`, the same way `activeModal` is today.
 - HUD tasks translate the design with `/html-to-react-luau` (structure and styling), then wire state with `/create-view`. Each HUD sub-task names the design frame it implements. Visual divergences from the design (for example glass blur, which Roblox UI cannot do) are listed explicitly, never silent.
-- Every new model gets `debugActions` where useful (DebugTools); slash commands are auto-discovered, so no extra work beyond naming methods well.
+- Slash commands are auto-discovered from model methods and controller actions, so testing hooks need no extra work beyond naming methods well.
 - Config modules are Studio-created (types under `Source/ReplicatedStorage/Config/ConfigTypes/` via `/create-config`); each task that adds one includes the Studio step.
 - Instances found with `WaitForChild` (CLAUDE.md convention); `FindFirstChild` only for genuinely optional ones.
 - Controller handlers validate everything from the client (item ids against the catalogue, list sizes, rate limits) and follow the ACTIONS-table / `dispatchAction` shape of the existing controllers. Analytics for controller actions is automatic; custom events use `AnalyticsService:trackEvent` as each task lands.
@@ -174,7 +174,7 @@
   - [TODO] 7.4 Service: `services/game/CatalogueService.luau` (event-driven with an in-memory cache; add a loop only if cache expiry demands it) wrapping the API with throttling and retry/backoff. `/create-service`.
   - [TODO] 7.5 Network/Model/Controller: `Catalogue` controller (Search, LoadMore, GetDetails) and a `CatalogueModel` (UserSession) that syncs the latest page to the owner. If 7.1 chooses client-direct, replace this with a client Pattern A module plus a server validation hook for try-on (Task 5 already validates ids). `/create-model`, `/create-controller`.
   - [TODO] 7.6 Slot/type mapping: map catalogue asset types to the slot config from Task 5.2 so browse, wear and the Wearing screen share one definition.
-  - [TODO] 7.7 Server-side playtest via slash commands/DebugTools: query each category, apply price/colour filters, observe cache hits and rate-limit behaviour.
+  - [TODO] 7.7 Server-side playtest via slash commands: query each category, apply price/colour filters, observe cache hits and rate-limit behaviour.
 
 ### Task 8: Catalogue browsing UI
 - **Status:** [TODO]
@@ -383,7 +383,7 @@
   - [TODO] 17.4 Model: `models/user/MyStoresModel.luau` (User, owned store ids and favourite store ids may live in `FavouritesModel` from Task 9) and a Stores browse model (UserSession). `/create-model`.
   - [TODO] 17.5 Controller: `Stores` controller (BrowseCategory, OpenStore, Favourite, Rate, ResolveCode). `/create-controller`.
   - [TODO] 17.6 Collections derivation (Bestsellers, New arrivals, rule-based collections) computed server-side from store items and cached.
-  - [TODO] 17.7 Slash-command/DebugTools playtest: seed stores, query categories, check rate limits.
+  - [TODO] 17.7 Slash-command playtest: seed stores, query categories, check rate limits.
 
 ### Task 18: Stores UI, home, store page, collections, favourites, store share
 - **Status:** [TODO]

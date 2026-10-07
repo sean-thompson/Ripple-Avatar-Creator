@@ -8,8 +8,9 @@ vision and workstreams**; per-feature specs and plans live in `features/<slug>/`
 
 It's built on Dubit's MVC-based Roblox template (Rojo-synced Luau). For depth, see
 `README.md` and the per-layer guides in `docs/` (MODEL, CONTROLLER, VIEW, SERVICES,
-CONFIG, BOLT_API), and the scaffolding skills in `.claude/commands/`. Workflow per
-feature: `/create-spec` → `/create-plan` → `/next-task`.
+CONFIG, BOLT_API), and the scaffolding skills in `.claude/commands/`. Each feature
+has a `SPEC.md` and a task-ordered `PLAN.md` in `features/<slug>/`; work it task
+by task with `/next-task`.
 
 ## Conventions
 

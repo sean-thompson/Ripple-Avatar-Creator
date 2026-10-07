@@ -1,7 +1,6 @@
 ---
 description: Create a new Roblox config with type definitions
 allowed-tools: Bash(find, cat, grep, ls), Read, Write, Edit, Glob
-model: sonnet
 ---
 
 I'll guide you through creating a new Roblox config that follows this project's config pattern with type-safe definitions.

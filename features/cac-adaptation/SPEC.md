@@ -205,11 +205,10 @@ settles the sizing approach.
 
 ## Risks & open questions
 
-- **Sizing: relative vs absolute.** The template's layouts are mostly relative
-  to their container (scale) plus `useViewportScale` for pixel-only
-  properties. The alternative is authoring at the 1180×820 design size under
-  one UIScale. Roblox-native UI (top bar, purchase prompts) is fixed-size
-  regardless. Decide in the first slice after testing iPad, desktop and phone.
+- ~~**Sizing: relative vs absolute.**~~ Decided in Task 1: author at the
+  1180×820 design size under one UIScale, canvas stretched to the screen's
+  aspect (`fill`), scaled by viewport height. Roblox-native UI stays
+  fixed-size; lay out against its measured inset.
 - **Catalogue data source and rate limits:** browsing the full Roblox catalogue
   live (search, category, price, colour) depends on what Roblox's in-experience
   catalogue APIs expose and how fast they can be called. Colour isn't

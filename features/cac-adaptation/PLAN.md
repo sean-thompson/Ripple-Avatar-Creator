@@ -21,7 +21,7 @@
 ## Tasks
 
 ### Task 1: Skin foundation and sizing decision
-- **Status:** [TODO]
+- **Status:** [DONE]
 - **Why here:** The whole spec is judged on feel. Tokens, fonts, icons and the base component kit must exist before any screen is built, and the sizing decision (relative vs absolute) changes how every later component is authored, so it is made first, on real devices.
 - **Depends on:** none
 - **Refs:** Constraints (Template architecture, Devices); Build order (first-playable slice: final skin, "settles the sizing approach"); Risks (Sizing: relative vs absolute); Success criteria (It feels good)
@@ -31,13 +31,15 @@
   - Fonts and icons render with no placeholder glyphs; any divergence from the design is listed.
 - **Associated UI:** Design tokens and chrome across all frames (5a to 5h); pills (tabs, Basket, Create avatar, Save to Roblox, Reset), glass panels, badges.
 - **Sub-tasks:**
-  - [TODO] 1.1 Investigate and decide font and icon delivery. Nunito is available as a Roblox font family (evaluate `FontFace` weights 600-900); Material Symbols Rounded is not a Roblox font, so evaluate a white-fill PNG sprite sheet or per-icon images tinted with `ImageColor3` (per the skill's Phase 3 asset flow). Produce the upload checklist for the icons the design uses (apparel, storefront, checkroom, shopping cart variants, flight, restart_alt, cloud_upload, person_add, etc.). Record as an open question for sign-off.
-  - [TODO] 1.2 Create a shared design-tokens module under `Source/ReplicatedFirst/views/` (colours incl. the BK and OR gradient stops, radii, strokes, type scale, spring presets, glow/press values) so no screen holds magic numbers. Follow the skill's guidance to centralise repeated values.
-  - [TODO] 1.3 Build the base skin components in `Source/ReplicatedFirst/views/components/` with `/html-to-react-luau`, reusing the template hooks: glossy pill button (reshaping `HudButton`; black default, orange active, hover glow, 0.94 press scale via `useSpring`), icon component, glass panel (translucent fill + stroke), badge, text tab (underline active), chip. `UIGradient` on white-BG frames (skill pitfall 1).
-  - [TODO] 1.4 Decide how "glass" is rendered, since UI blur is unsupported: translucent fill only, or evaluate a client-side Lighting `BlurEffect`/`DepthOfField` while the full panel is open. List the divergence either way (open question).
-  - [TODO] 1.5 Sizing spike: author the gallery both ways (per-element `UDim2.fromScale` + `useViewportScale`; and a 1180x820 canvas under one `UIScale` per the skill's Pattern 2), test on desktop, iPad and phone emulation (including narrow-aspect and notch/safe-area cases), pick one per ScreenGui root, record the decision and reasons in the open questions section and in `docs/VIEW_GUIDE.md` "Responsive Scaling".
-  - [TODO] 1.6 Reserve the top-left system-bar area per device (design shows a 160x36 placeholder) and verify nothing overlaps Roblox's native top bar on any device.
-  - [TODO] 1.7 Playtest checkpoint: gallery open on three device classes; sign-off on look before the shell is built.
+  - [DONE] 1.1 Investigate and decide font and icon delivery. Nunito is available as a Roblox font family (evaluate `FontFace` weights 600-900); Material Symbols Rounded is not a Roblox font, so evaluate a white-fill PNG sprite sheet or per-icon images tinted with `ImageColor3` (per the skill's Phase 3 asset flow). Produce the upload checklist for the icons the design uses (apparel, storefront, checkroom, shopping cart variants, flight, restart_alt, cloud_upload, person_add, etc.). Record as an open question for sign-off.
+  - [DONE] 1.2 Create a shared design-tokens module under `Source/ReplicatedFirst/views/` (colours incl. the BK and OR gradient stops, radii, strokes, type scale, spring presets, glow/press values) so no screen holds magic numbers. Follow the skill's guidance to centralise repeated values.
+  - [DONE] 1.3 Build the base skin components in `Source/ReplicatedFirst/views/components/` with `/html-to-react-luau`, reusing the template hooks: glossy pill button (reshaping `HudButton`; black default, orange active, hover glow, 0.94 press scale via `useSpring`), icon component, glass panel (translucent fill + stroke), badge, text tab (underline active), chip. `UIGradient` on white-BG frames (skill pitfall 1).
+  - [DONE] 1.4 Decide how "glass" is rendered, since UI blur is unsupported: translucent fill only, or evaluate a client-side Lighting `BlurEffect`/`DepthOfField` while the full panel is open. List the divergence either way (open question).
+  - [DONE] 1.5 Sizing spike: author the gallery both ways (per-element `UDim2.fromScale` + `useViewportScale`; and a 1180x820 canvas under one `UIScale` per the skill's Pattern 2), test on desktop, iPad and phone emulation (including narrow-aspect and notch/safe-area cases), pick one per ScreenGui root, record the decision and reasons in the open questions section and in `docs/VIEW_GUIDE.md` "Responsive Scaling".
+  - [DONE] 1.6 Reserve the top-left system-bar area per device (design shows a 160x36 placeholder) and verify nothing overlaps Roblox's native top bar on any device.
+  - [DONE] 1.7 Playtest checkpoint: gallery open on three device classes; sign-off on look before the shell is built.
+- **Outcome:**
+  > Sizing: `fill` (design px under one UIScale, canvas stretched to the screen's aspect) scaled by viewport **height**. Glass: **blur** (scene blur behind full-screen panels, design alphas). Icons: one 128px white PNG per Material Symbols glyph (IDs in `SkinAssets`). Learned the hard way: React clears its container's children on first render (never `createRoot(PlayerGui)`); `AutomaticSize` text mis-sizes under the canvas UIScale (use `useTextWidth`); a text shadow must be a lower-ZIndex sibling, not a child; clamp spring alphas used for glow/hover (overshoot flashes). The gallery's control strip was dropped; `HudApp` now mounts the gallery HUD mock as the interim HUD (pulled forward from Task 2), and the template HUD is no longer mounted.
 
 ### Task 2: HUD shell and full-panel frame (placeholder content)
 - **Status:** [TODO]
@@ -54,11 +56,11 @@
 - **Associated UI:** 5a HUD; full-panel frame of 5b, 5f, 5g (left column, tabs, breadcrumb bar); World options toggle (side panel opens in Task 4).
 - **Replication:** UI-only state (open panel, tab, breadcrumb stack). No world entity. Client React state in `HudApp`; nothing replicated.
 - **Sub-tasks:**
-  - [TODO] 2.1 Rewrite `Source/ReplicatedFirst/views/HudApp.client.luau`: world HUD, full-panel host, navigation state (tab + breadcrumb stack, push/pop/popTo, close). Consider a navigation hook in `views/hooks/`. Use `/create-view`.
+  - [TODO] 2.1 Rewrite `Source/ReplicatedFirst/views/HudApp.client.luau`: world HUD, full-panel host, navigation state (tab + breadcrumb stack, push/pop/popTo, close). Mount into its own ScreenGui inside a `SkinRoot` — NOT `createRoot(PlayerGui)`: React clears its container's children on first render, which deleted other ScreenGuis in Task 1. Consider a navigation hook in `views/hooks/`. Use `/create-view`.
   - [TODO] 2.2 World HUD view (`/html-to-react-luau`, frame 5a): tab pills, Basket button with badge, action pills, World options toggle, system-bar reservation. Placeholder badge value from local state until Task 10.
   - [TODO] 2.3 Full-panel frame component (`/html-to-react-luau`, frames 5b/5f/5g chrome): left column (preview placeholder, Undo, Wearing bar, Basket card), right content area, breadcrumb/back row, close. Reuse `useTransition`/`AnimatedModal` shape; reshape `ModalWindow` rather than adding a parallel frame.
   - [TODO] 2.4 Placeholder screens for Catalogue, Stores, Outfits, Basket, Wearing and one deeper level per tab to exercise breadcrumbs.
-  - [TODO] 2.5 Remove the template HUD examples in this task: `StatusBarView.luau`, `FavoursView.luau`, `CandlesView.luau`, `components/FavourTile.luau`, and `CurrencyChip.luau` unless reshaped into the Robux/count chip; strip the Favours/Candles configs from `AnimatedModal`. Update `docs/VIEW_GUIDE.md` (HUD file structure, Props/Modal examples, StatusBarView example), `README.md` (view examples), `.claude/commands/create-view.md` and `.claude/commands/html-to-react-luau.md` references to point at the new shell components.
+  - [TODO] 2.5 Remove the template HUD examples in this task: `StatusBarView.luau`, `FavoursView.luau`, `CandlesView.luau`, `components/FavourTile.luau`, `components/HudButton.luau` (superseded by `PillButton` in Task 1), the Task 1 `views/gallery/` folder, and `CurrencyChip.luau` unless reshaped into the Robux/count chip; strip the Favours/Candles configs from `AnimatedModal`. Update `docs/VIEW_GUIDE.md` (HUD file structure, Props/Modal examples, StatusBarView example), `README.md` (view examples), `.claude/commands/create-view.md` and `.claude/commands/html-to-react-luau.md` references to point at the new shell components.
   - [TODO] 2.6 Playtest checkpoint on desktop, iPad and phone emulation: every tab, breadcrumb depth, close, and no overlap with the Roblox top bar.
 
 ### Task 3: Motion, sound, toasts and buy-prompt frame
@@ -470,9 +472,9 @@
 
 Each needs a user decision (or a recorded finding) before or during the named task. None has been decided in this plan.
 
-1. **Sizing, relative vs absolute (Task 1).** Per-element scale with `useViewportScale`, or author at 1180x820 under one UIScale. Decided after testing iPad, desktop and phone; Roblox-native fixed-size UI is a factor.
-2. **Fonts and icons (Task 1).** Material Symbols Rounded is not a Roblox font. Options: icon sprite sheet, per-icon images, or a different icon set. Needs the user to approve and upload assets.
-3. **Glass panels (Task 1).** Roblox UI cannot blur. Options: translucent fill only (listed divergence), or a client Lighting blur/depth-of-field while the panel is open.
+1. ~~**Sizing (Task 1).**~~ Decided: `fill`, scaled by height.
+2. ~~**Fonts and icons (Task 1).**~~ Decided: Nunito (built in); one image per Material Symbols icon.
+3. ~~**Glass panels (Task 1).**~~ Decided: blur behind full-screen panels.
 4. **Sound direction and asset source (Task 3).** No sound design exists. Needs a style, a source (authored, bought, generated) and licensing.
 5. **Flight in a shared world (Task 4).** Collisions, griefing and where "quiet spots" are depend on world layout, which isn't designed. Phase-1 defaults are provisional.
 6. **Undo scope (Task 5).** Avatar changes only, or basket and outfit actions too.

@@ -100,6 +100,57 @@ Source/ReplicatedFirst/views/
     +-- useBoltState.luau        -- Bolt RemoteProperty --> React state bridge
 ```
 
+### Skin kit (Ripple Avatar Creator)
+
+The project's visual language lives in a small kit, built in Task 1 of
+`features/cac-adaptation/PLAN.md` from the Claude Design mock in
+`features/cac-adaptation/design/`. New HUD work should compose these rather than
+restyling from scratch:
+
+```
+Source/ReplicatedFirst/views/
++-- Tokens.luau                  -- every colour, gradient, radius, size, type style, spring preset
++-- SkinAssets.luau              -- the one module holding image asset IDs (icons)
++-- SkinContext.luau             -- sizing mode, glass mode, scale (provided by SkinRoot)
++-- components/
+|   +-- SkinRoot.luau            -- viewport root; owns the sizing decision; provides SkinContext
+|   +-- PillButton.luau          -- glossy round/pill button: hover glow, 0.94 press, active orange
+|   +-- PillTabs.luau            -- segmented top tab bar
+|   +-- GlossFace.luau           -- the black/orange split-gradient fill both of the above use
+|   +-- GlassPanel.luau          -- dark / bar / light glass surfaces
+|   +-- Badge.luau               -- count badge (Robux) and marker badges (wearing / in basket)
+|   +-- TextTab.luau             -- underlined text tab
+|   +-- Chip.luau                -- outlined filter chip
+|   +-- Icon.luau                -- Material Symbols Rounded glyph (one image per icon)
++-- hooks/
+|   +-- useSkin.luau             -- px / stroke / textPx / fromScreen for the current sizing mode
+|   +-- useInteraction.luau      -- hover + press state (touch-safe)
+|   +-- useGlassBlur.luau        -- client-only scene blur behind full-screen panels
+|   +-- useSystemBarInset.luau   -- real-pixel area of Roblox's top-bar buttons
++-- gallery/                     -- TEMPORARY Task 1 HUD mock, mounted by HudApp until Task 2's shell
+```
+
+- **Design pixels everywhere.** Components take the design's own px values
+  (1180×820 canvas) and convert through `useSkin().px`, so the
+  relative-vs-canvas sizing decision lives only in `SkinRoot`.
+- **Fonts:** Nunito ships with Roblox: `Tokens.font(weight)` maps design weights
+  600/700/800/900 to `Enum.FontWeight` SemiBold/Bold/ExtraBold/Heavy.
+- **Icons:** one white 128px PNG per Material Symbols Rounded glyph
+  (`assets/ui/icons/`, rebuilt by `tools/build_icons.py`), tinted with
+  `ImageColor3`. Image asset IDs live in `SkinAssets`; an icon with no ID draws
+  a deliberate placeholder.
+- **No `AutomaticSize` for text under a `SkinRoot` canvas.** Under an ancestor
+  `UIScale`, Roblox auto-sizes text from its on-screen bounds, so anything that
+  auto-sizes after the scale is applied comes out scale× too wide (it shifted
+  the tab labels in a freshly opened panel). Size text explicitly with
+  `hooks/useTextWidth` — `ShadowText`, `TextTab`, `Chip` and `Badge` already do.
+- **Gradients:** always on a white `BackgroundColor3` (pitfall 1). Gradient
+  colours can't be sprung, so "active" crossfades a second face's
+  transparency.
+- **Roblox's top bar** is fixed-size in real pixels: lay out against
+  `useSystemBarInset()` converted with `useSkin().fromScreen`, never a scaled
+  design-px guess.
+
 ### HudApp.client.luau -- Entry Point
 
 HudApp is the single LocalScript that mounts the entire HUD. It:
@@ -388,6 +439,8 @@ end
 **Caveat — `useViewportScale` is height-axis only.** It tracks viewport *height*, so it stays proportional only for elements that also scale with height (e.g. corner-pinned pieces in a viewport-filling root). It is **wrong** for pixels inside an aspect-locked, width-dominant container (a centred modal with `UIAspectRatioConstraint` + `DominantAxis.Width`) — there, drive scale off the container's own measured `AbsoluteSize`. The `/html-to-react-luau` skill (pitfalls #12–13) has the full treatment, including the "Canvas + `UIScale`" pattern for fixed-pixel modals.
 
 **Prefer computed `TextSize` over `TextScaled` for `vh`-based fonts.** `TextScaled` fills the label's container (layout-dependent); a `vh` font size is a literal viewport fraction. Compute `TextSize` from `useViewportScale` as above. Use `TextScaled` only when text lives inside a uniformly scaled fixed-pixel canvas.
+
+> **Ripple Avatar Creator sizing decision: `fill`, scaled by height.** HUD content is authored in design pixels on the 1180×820 canvas inside `SkinRoot`, which applies one `UIScale` (viewport height ÷ 820) to a canvas stretched to the screen's aspect, so corner-pinned pieces reach the real edges. Chosen over `relative` (per-element pixels) and `fit` (letterboxed) after testing in Task 1. Under this mode: don't use `AutomaticSize` for text (see Skin kit), and convert real-pixel measurements (Roblox's top bar) with `useSkin().fromScreen`. Glass decision: scene blur behind full-screen panels.
 
 > **Starting from a design?** Run `/html-to-react-luau` to translate an HTML/CSS/JSX mockup (or screenshot) into a react-luau component that follows these rules, then wire its state with `/create-view`.
 

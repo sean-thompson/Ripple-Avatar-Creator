@@ -334,6 +334,8 @@ This template has no shared `Pressable` primitive. For interactive elements:
 
 ## Design references (this template ships no brand system)
 
+> **Ripple Avatar Creator has one now:** use `views/Tokens.luau` and the skin components (`PillButton`, `PillTabs`, `GlassPanel`, `Badge`, `TextTab`, `Chip`, `Icon`, `SkinRoot`): see "Skin kit" in `docs/VIEW_GUIDE.md`. The generic guidance below still applies to anything the kit doesn't cover. (Full rewrite of this section: Task 2.5.)
+
 - **No brand palette / font is bundled.** Derive colours and fonts from the design itself. Centralise any value you use more than once (a local `COLORS`/`TOKENS` table in the file, or a shared module if it spans files) rather than scattering magic `Color3`s.
 - **Drop shadow**: a black `UIStroke` at `Transparency = 0.7–0.8`, `Thickness = 6–10`, `ApplyStrokeMode = Border` — the canonical "soft halo". Not a separate Frame.
 - **Multi-tone assets** (e.g. an orange-filled + gold-bordered star): one white-fill PNG per tone, layered at runtime as stacked `ImageLabel`s each with its own `ImageColor3`. Never flatten a 2-colour SVG to a single silhouette — the colour distinction is lost forever and you can only restore one tone at runtime.

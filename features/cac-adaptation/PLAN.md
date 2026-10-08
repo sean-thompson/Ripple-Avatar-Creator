@@ -161,8 +161,8 @@
   - [DONE] 8.3 Item card component with badges and the tap menu; menu actions wired to the local stand-in look (swapped to Avatar intents in Task 5), basket callbacks (stubbed to local state until Task 10) and buy-prompt frame (Task 3, confirm stubbed until Task 11).
   - [DONE] 8.4 Paste link/ID: parse catalogue URLs and bare IDs client-side, resolve the item through the Task 7 path, open the item page (Task 9) or show not-found inline at the search field.
   - [DONE] 8.5 Wire `HudApp` subscription to `Catalogue` and `Avatar` states; debounce search; pagination/load more on scroll.
-  - [TODO] 8.6 Analytics: search, filter and view events (item id, category) via the controller or `trackEvent`. *Deferred to Task 21 (analytics completeness); user closed Task 8 without it.*
-  - [TODO] 8.7 Playtest: find an item in fewer taps than CAC (record the count), filter combos, rapid try-on/take-off, phone layout. *Partly done in Studio (filter combos, rapid try/take-off on the stand-in); the CAC tap-count comparison and a phone pass are still open, see Task 21.*
+  - [DONE] 8.6 Analytics: search, filter and view events (item id, category) via the controller or `trackEvent`. *Closed as a duplicate (user, 2026-10-08): picked up by Task 21's analytics completeness.*
+  - [DONE] 8.7 Playtest: find an item in fewer taps than CAC (record the count), filter combos, rapid try-on/take-off, phone layout. *Done (user, 2026-10-08).*
   - [TODO] 8.8 Stretch: consider a 3D preview (ViewportFrame) as an option on the item page, e.g. a toggle between the thumbnail and a rotatable model. Weigh phone cost; may fold into Task 6's preview rig. *Still open (stretch).*
 - **Build in three hand-backs (agreed 2026-10-08):** (1) card menu, load more, paste link/ID in the design's bottom bar; (2) filter bar: Sort, Colour, Price, Filters (creator, sales type, availability) as upward popovers; (3) colour classification + live-server check. Analytics (8.6) last.
 - **Outcome:**

@@ -46,7 +46,8 @@ export type Item = {
 	description: string,
 	favourites: number,
 	thumbnail: string,
-	colour: string, -- dominant colour name; "" until colour analysis lands (Task 8)
+	colour: string, -- dominant colour name; "" until ItemColour has read the thumbnail
+	colours: { string }, -- every colour with a big enough share (ItemColour)
 	owned: boolean, -- false until ownership checks land (Task 11)
 }
 
@@ -213,13 +214,17 @@ local function toItem(raw: any): Item
 		favourites = raw.FavoriteCount or 0,
 		thumbnail = `rbxthumb://type={if isBundle then "BundleThumbnail" else "Asset"}&id={raw.Id}&w={size}&h={size}`,
 		colour = "",
+		colours = {},
 		owned = false,
 	}
-	-- Keep the existing object, so anything holding it stays current.
+	-- Keep the existing object, so anything holding it stays current (and
+	-- keep colours ItemColour has already worked out).
 	local existing = seen[item.id]
 	if existing then
 		for k, v in item :: any do
-			(existing :: any)[k] = v
+			if k ~= "colour" and k ~= "colours" then
+				(existing :: any)[k] = v
+			end
 		end
 		return existing
 	end

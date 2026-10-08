@@ -27,6 +27,7 @@ local ShadowText = require(components:WaitForChild("ShadowText"))
 local Parts = require(script.Parent:WaitForChild("Parts"))
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
 local CatalogueClient = require(views:WaitForChild("catalogue"):WaitForChild("CatalogueClient"))
+local ItemColour = require(views:WaitForChild("catalogue"):WaitForChild("ItemColour"))
 local HudContext = require(views:WaitForChild("HudContext"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 
@@ -99,6 +100,25 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	local skin = useSkin()
 	local hud = React.useContext(HudContext)
 	local item = PlaceholderData.item(props.itemId)
+	local _colourVersion, setColourVersion = React.useState(0)
+
+	-- Work out the item's colour (for the Colour line) if we don't know it.
+	React.useEffect(function()
+		if item.colour ~= "" or item.thumbnail == "" then
+			return nil
+		end
+		local connection = ItemColour.changed:Connect(function()
+			if ItemColour.isDone(item) then
+				setColourVersion(function(v: number)
+					return v + 1
+				end)
+			end
+		end)
+		ItemColour.classify(item)
+		return function()
+			connection:Disconnect()
+		end
+	end, { item.id })
 	local wearing = props.look.isWorn(item.id)
 	local inBasket = props.look.inBasket(item.id)
 	local preview = skin.px(250)

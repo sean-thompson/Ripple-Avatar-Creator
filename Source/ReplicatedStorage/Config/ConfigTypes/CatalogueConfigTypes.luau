@@ -53,6 +53,9 @@ export type CatalogueConfig = {
     priceStep: number,
     pricePresets: { PricePreset },
     salesTypes: { SalesTypeOption }, -- Filters popover; the first is the default
+    colours: { string }, -- Colour popover, in order; names match the thumbnail buckets
+    colourTarget: number, -- with a colour picked, keep loading pages until this many match…
+    colourMaxPages: number, -- …or this many pages have been looked through
     includeOffSale: boolean,
     cacheSeconds: number, -- how long a query's results are reused
     searchDebounce: number, -- seconds of no typing before a keyword search runs

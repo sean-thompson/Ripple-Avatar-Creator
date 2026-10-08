@@ -93,6 +93,7 @@ for index, raw in RAW_ITEMS do
 		favourites = 0,
 		thumbnail = "",
 		colour = raw[5] :: string,
+		colours = { raw[5] :: string },
 		owned = string.find(flags, "o", 1, true) ~= nil,
 	} :: Item)
 end

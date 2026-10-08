@@ -12,7 +12,7 @@
 	one open at a time, Backspace closes it). The grid loads the next page as
 	it scrolls near the end. The bottom bar takes a pasted marketplace link
 	or id and opens that item, shows how many items are loaded, and holds the
-	Sort / Price / Filters buttons; each opens its popover upward
+	Sort / Colour / Price / Filters buttons; each opens its popover upward
 	(CatalogueFilters). One overlay at a time: opening a popover closes a card
 	menu and vice versa, and Backspace closes whichever is open first.
 
@@ -36,6 +36,7 @@ local PillButton = require(components:WaitForChild("PillButton"))
 local GlassPanel = require(components:WaitForChild("GlassPanel"))
 local Parts = require(script.Parent:WaitForChild("Parts"))
 local useCatalogue = require(hooks:WaitForChild("useCatalogue"))
+local useColourFilter = require(hooks:WaitForChild("useColourFilter"))
 local useBackInput = require(hooks:WaitForChild("useBackInput"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 local CatalogueFilters = require(script.Parent:WaitForChild("CatalogueFilters"))
@@ -49,6 +50,7 @@ local MESSAGES = {
 	loading = "Loading…",
 	error = "The catalogue isn't answering right now. Try again in a moment.",
 	empty = "No items found",
+	unavailable = "The colour filter isn't available here (thumbnails can't be read).",
 }
 
 local PASTE_MESSAGES = {
@@ -68,7 +70,7 @@ local function CatalogueScreen(props: { nav: any, look: any })
 	local pasteFocused, setPasteFocused = React.useState(false)
 	local filters, setFilters = React.useState(CatalogueFilters.defaults)
 	local popover, setPopover = React.useState(nil :: CatalogueFilters.Popover?)
-	local catalogue = useCatalogue({
+	local results = useCatalogue({
 		category = category,
 		chip = if sub == "All" then nil else sub,
 		keyword = query,
@@ -80,6 +82,8 @@ local function CatalogueScreen(props: { nav: any, look: any })
 		salesType = filters.salesType,
 		includeOffSale = filters.includeOffSale,
 	})
+	-- Colour narrows the loaded results client-side (thumbnail colours).
+	local catalogue = useColourFilter(results, filters.colour)
 	local hud = React.useContext(HudContext)
 	local menuId, setMenuId = React.useState(nil :: number?)
 
@@ -245,6 +249,7 @@ local function CatalogueScreen(props: { nav: any, look: any })
 	end
 	local message = if count > 0 then nil
 		elseif catalogue.status == "ready" then MESSAGES.empty
+		elseif catalogue.status == "loading" and filters.colour ~= "" then `Finding {string.lower(filters.colour)} items…`
 		else MESSAGES[catalogue.status]
 	-- The catalogue doesn't report a total, so "60+" while more pages remain.
 	local countLabel = if count == 0 then "" else `{count}{if catalogue.exhausted then "" else "+"} items`
@@ -252,10 +257,12 @@ local function CatalogueScreen(props: { nav: any, look: any })
 	local sortLabel = CatalogueFilters.sortLabel(filters)
 	local priceLabel = CatalogueFilters.priceLabel(filters)
 	local filtersLabel = CatalogueFilters.filtersLabel(filters)
+	local colourLabel = CatalogueFilters.colourLabel(filters)
 	local filterButtonsWidth = CatalogueFilters.useButtonWidth(sortLabel)
+		+ CatalogueFilters.useButtonWidth(colourLabel)
 		+ CatalogueFilters.useButtonWidth(priceLabel)
 		+ CatalogueFilters.useButtonWidth(filtersLabel)
-		+ skin.px(8) * 3
+		+ skin.px(8) * 4
 
 	local searchWidth = skin.px(230)
 	local tabsHeight = skin.px(Tokens.size.textTabHeight)
@@ -463,11 +470,20 @@ local function CatalogueScreen(props: { nav: any, look: any })
 						togglePopover("sort")
 					end,
 				}),
+				Colour = e(CatalogueFilters.FilterButton, {
+					label = colourLabel,
+					active = filters.colour ~= "",
+					open = popover == "colour",
+					layoutOrder = 3,
+					onActivated = function()
+						togglePopover("colour")
+					end,
+				}),
 				Price = e(CatalogueFilters.FilterButton, {
 					label = priceLabel,
 					active = filters.minPrice ~= nil or filters.maxPrice ~= nil,
 					open = popover == "price",
-					layoutOrder = 3,
+					layoutOrder = 4,
 					onActivated = function()
 						togglePopover("price")
 					end,
@@ -476,7 +492,7 @@ local function CatalogueScreen(props: { nav: any, look: any })
 					label = filtersLabel,
 					active = CatalogueFilters.activeCount(filters) > 0,
 					open = popover == "filters",
-					layoutOrder = 4,
+					layoutOrder = 5,
 					onActivated = function()
 						togglePopover("filters")
 					end,
@@ -496,6 +512,16 @@ local function CatalogueScreen(props: { nav: any, look: any })
 			else nil,
 		FiltersPopover = if popover == "filters"
 			then e(CatalogueFilters.FiltersPopover, { filters = filters, set = setFilter, bottom = barSpace })
+			else nil,
+		ColourPopover = if popover == "colour"
+			then e(CatalogueFilters.ColourPopover, {
+				filters = filters,
+				set = setFilter,
+				bottom = barSpace,
+				onPicked = function()
+					setPopover(nil)
+				end,
+			})
 			else nil,
 		Message = if message
 			then e("TextLabel", {

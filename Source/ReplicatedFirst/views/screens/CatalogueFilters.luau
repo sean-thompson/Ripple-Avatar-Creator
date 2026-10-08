@@ -14,11 +14,14 @@
 	  PricePopover        two-handle Robux range, presets, Clear
 	  FiltersPopover      creator (anyone / Roblox / a typed name), sales type,
 	                      include off-sale
+	  ColourPopover       Any + the colour swatches (client-side filter,
+	                      useColourFilter)
 
 	  sortLabel / priceLabel / filtersLabel  the bar buttons' text
 
-	Everything maps onto CatalogSearchParams (CatalogueClient.Query); the
-	colour filter is separate (Task 8, part 3). Sizes are fixed per popover
+	Everything but colour maps onto CatalogSearchParams
+	(CatalogueClient.Query); colour filters the loaded results by their
+	thumbnails' colours (ItemColour). Sizes are fixed per popover
 	rather than automatic (AutomaticSize mis-sizes under the canvas UIScale).
 ]]
 
@@ -54,9 +57,10 @@ export type Filters = {
 	creator: string, -- "" = anyone
 	salesType: string, -- Enum.SalesTypeFilter name
 	includeOffSale: boolean,
+	colour: string, -- "" = any
 }
 
-export type Popover = "sort" | "price" | "filters"
+export type Popover = "sort" | "price" | "filters" | "colour"
 
 local TITLE = { size = 14, weight = 900 }
 local SECTION = { size = 13, weight = 800 }
@@ -71,6 +75,7 @@ function CatalogueFilters.defaults(): Filters
 		creator = "",
 		salesType = CatalogueConfig.salesTypes[1].filter,
 		includeOffSale = CatalogueConfig.includeOffSale,
+		colour = "",
 	}
 end
 
@@ -118,6 +123,10 @@ function CatalogueFilters.activeCount(f: Filters): number
 		count += 1
 	end
 	return count
+end
+
+function CatalogueFilters.colourLabel(f: Filters): string
+	return if f.colour == "" then "Colour" else f.colour
 end
 
 function CatalogueFilters.filtersLabel(f: Filters): string
@@ -540,6 +549,90 @@ function CatalogueFilters.FiltersPopover(props: PopoverProps)
 				end,
 			}),
 		}),
+	})
+end
+
+local SWATCH = 36
+
+local function Swatch(props: { name: string, selected: boolean, onPick: () -> (), layoutOrder: number })
+	local skin = useSkin()
+	local isAny = props.name == ""
+	local function onPress()
+		Sounds.play("tab")
+		props.onPick()
+	end
+	return e("TextButton", {
+		Name = "Swatch",
+		Size = UDim2.fromOffset(skin.px(SWATCH), skin.px(SWATCH)),
+		BackgroundColor3 = if isAny then Color3.fromHex("#333333") else (Tokens.swatch :: any)[props.name] or Tokens.color.white,
+		AutoButtonColor = false,
+		Text = if isAny then "Any" else "",
+		TextColor3 = Tokens.color.white,
+		TextSize = skin.textPx(11),
+		FontFace = Tokens.font(900),
+		LayoutOrder = props.layoutOrder,
+		[React.Event.InputBegan] = Press.began(onPress),
+		[React.Event.Activated] = Press.activated(onPress),
+	}, {
+		Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
+		-- Border mode: on a button a UIStroke otherwise outlines the text.
+		Ring = e("UIStroke", {
+			Color = if props.selected then Tokens.color.accentText else Tokens.color.black,
+			Thickness = skin.stroke(if props.selected then 3 else 1),
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}),
+		Gradient = if isAny
+			then nil
+			else e("UIGradient", {
+				-- inset highlight / shade, as on the design's swatches
+				Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190)),
+				Rotation = 90,
+			}),
+	})
+end
+
+function CatalogueFilters.ColourPopover(props: PopoverProps & { onPicked: () -> () })
+	local skin = useSkin()
+	local f = props.filters
+	local names = { "" }
+	for _, name in CatalogueConfig.colours do
+		table.insert(names, name)
+	end
+	local perRow = 6
+	local rows = math.ceil(#names / perRow)
+	local gap = 10
+
+	local swatches: { [string]: any } = {
+		Grid = e("UIGridLayout", {
+			CellSize = UDim2.fromOffset(skin.px(SWATCH), skin.px(SWATCH)),
+			CellPadding = UDim2.fromOffset(skin.px(gap), skin.px(gap)),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	}
+	for index, name in names do
+		swatches["Swatch" .. index] = e(Swatch, {
+			name = name,
+			selected = f.colour == name,
+			layoutOrder = index,
+			onPick = function()
+				props.set({ colour = name })
+				props.onPicked() -- picking closes the popover, as in the design
+			end,
+		})
+	end
+
+	local gridWidth = perRow * SWATCH + (perRow - 1) * gap
+	return e(CatalogueFilters.Popover, {
+		title = "Colour",
+		width = gridWidth + 28,
+		height = 14 + 20 + 12 + rows * SWATCH + (rows - 1) * gap + 14,
+		bottom = props.bottom,
+	}, {
+		Swatches = e("Frame", {
+			Size = UDim2.fromOffset(skin.px(gridWidth), skin.px(rows * SWATCH + (rows - 1) * gap)),
+			BackgroundTransparency = 1,
+			LayoutOrder = 1,
+		}, swatches),
 	})
 end
 

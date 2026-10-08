@@ -53,6 +53,25 @@ SkinAssets.icons = {
 	visibility = 95037949648164,
 } :: { [string]: number }
 
+-- UI sounds (views/Sounds plays them). 0 = no sound (silent).
+-- Source files + provenance: assets/ui/sounds/ (ObsydianX "Interface SFX
+-- Pack 1", CC0). Upload each as an Audio asset and paste its ID here.
+SkinAssets.sounds = {
+	press = 86214318732742, -- generic button tap
+	tab = 137020234333191, -- tab / chip / text-tab change
+	open = 136825638209267, -- full panel opens
+	close = 104996324201849, -- full panel closes
+	back = 113202025743542, -- back / crumb / take off / remove
+	confirm = 104754532075322, -- add to basket, wear all
+	tryOn = 127245626247954, -- try an item on
+	purchase = 117574271567470, -- purchase succeeded
+	error = 119476330011065, -- blocked action
+	-- Synthesised swipes (tools/build_swipes.py):
+	switch = 131203168288426, -- switch Catalogue / Stores / Outfits while the panel is open
+	worldIn = 84390395665043, -- World options slides on
+	worldOut = 129860135845572, -- World options slides off
+} :: { [string]: number }
+
 -- "rbxassetid://..." for an icon name, or nil if it has no art yet.
 function SkinAssets.iconImage(name: string): string?
 	local id = SkinAssets.icons[name]

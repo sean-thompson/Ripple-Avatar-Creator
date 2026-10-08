@@ -21,9 +21,10 @@ export type Look = {
 	isWorn: (id: number) -> boolean,
 	inBasket: (id: number) -> boolean,
 	toggleWear: (id: number) -> (),
-	wearAll: (ids: { number }) -> (),
+	wearAll: (ids: { number }, name: string?) -> (), -- name: for the toast (Hud)
 	takeOffAll: () -> (),
 	toggleBasket: (id: number) -> (),
+	markOwned: (ids: { number }) -> (),
 	basketTotal: number, -- Robux for unowned basket items
 }
 
@@ -63,6 +64,7 @@ local function usePlaceholderLook(): Look
 	-- Prototype starting state (1-based ids).
 	local worn, setWorn = React.useState({ 6, 13, 26, 34 })
 	local basket, setBasket = React.useState({ 9, 31, 23 })
+	local _ownedVersion, setOwnedVersion = React.useState(0)
 
 	local function isWorn(id: number): boolean
 		return table.find(worn, id) ~= nil
@@ -112,6 +114,25 @@ local function usePlaceholderLook(): Look
 				local result = table.clone(current)
 				table.insert(result, id)
 				return result
+			end)
+		end,
+		-- Pretend purchase (Task 3 feel test; Task 11 does it for real): flags the
+		-- placeholder items owned and drops them from the basket.
+		markOwned = function(ids: { number })
+			for _, id in ids do
+				PlaceholderData.item(id).owned = true
+			end
+			setBasket(function(current: { number })
+				local result = {}
+				for _, id in current do
+					if not table.find(ids, id) then
+						table.insert(result, id)
+					end
+				end
+				return result
+			end)
+			setOwnedVersion(function(n: number)
+				return n + 1
 			end)
 		end,
 		basketTotal = total,

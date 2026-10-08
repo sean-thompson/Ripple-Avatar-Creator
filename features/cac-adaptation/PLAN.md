@@ -66,7 +66,7 @@
   > Shell built: `Hud` (root: SkinRoot fill/height/blur, navigation, placeholder look) → `WorldHud` or `panel/FullPanel` (+ `Breadcrumbs`); `hooks/useNavigation` (roots Catalogue/Stores/Outfits/Basket/Wearing + crumb stack; tapping the open tab closes); placeholder screens in `views/screens/` (Catalogue, Item, Stores root/store, Outfits root/outfit, Basket, Wearing) on `PlaceholderData` + `usePlaceholderLook` (slot rules), shared `Parts` (Thumb, PriceTag, ItemCard, ListRow, CardGrid, Heading). World options panel moved to `WorldOptionsView` (static until Task 4). Deviation agreed: ModalWindow/AnimatedModal deleted rather than reshaped — FullPanel is the one panel frame. Template HUD views, HudButton, CurrencyChip, FavourTile and the gallery deleted; docs/commands updated. Lessons: ScrollingFrames clip strokes drawn outside cells — inset grids/lists ~3px; size grid cells/scroll extents from `useLocalSize`, not AutomaticCanvasSize; labelled buttons keep text out of the press UIScale (text snaps to whole pixels and jitters, and text/shadow snap apart); tapping an active filter chip clears it. Verified on desktop, iPad and phone emulation.
 
 ### Task 3: Motion, sound, toasts and buy-prompt frame
-- **Status:** [TODO]
+- **Status:** [DONE]
 - **Why here:** Second half of the first-playable slice. Motion and sound are the product's differentiator and are tuned on placeholder content before real data makes iteration slower. Completes the slice, so this task ends with a feel review.
 - **Depends on:** 2
 - **Refs:** Scope > HUD (toasts); Scope > Buy prompt; Success criteria (It feels good, State stays small); Risks (Sound direction)
@@ -79,12 +79,14 @@
 - **Associated UI:** Toast (bottom-centre in the frames), buy prompt (`buyOpen` in 5b/5f/5d), panel/tab/badge transitions across 5a to 5h.
 - **Replication:** UI-only; client sounds are local. No world entity.
 - **Sub-tasks:**
-  - [TODO] 3.1 Decide sound direction and asset source (open question): style, whether assets are authored, bought or generated, and licence. List the sound slots needed (tab, open, close, press, toast, add to basket, try on/take off, purchase success, error). Studio step: create the Sound instances/assets under SoundService.
-  - [TODO] 3.2 Add a small client UI-sound helper in `views/hooks/` (a `useSound`-style hook alongside the existing hooks) so components trigger sounds declaratively; honour volume/mute. Use `/create-view`.
-  - [TODO] 3.3 Toast host and queue component (`/html-to-react-luau`), driven by `HudApp` React state, with a `showToast` callback passed down; spring in/out.
-  - [TODO] 3.4 Buy-prompt frame component (`/html-to-react-luau`): title, text, price or Free, tint swatch, Cancel/Confirm, with the confirm callback left as a stub for Task 11.
-  - [TODO] 3.5 Motion pass over the shell from Task 2 using `useSpring`, `useTransition`, `useSpringNumber`, `useDrag` where it fits; record the spring presets in the tokens module; add the press/hover states to every interactive component.
-  - [TODO] 3.6 Feel review and playtest on three device classes. Tune; capture phone-tightness issues for later tasks.
+  - [DONE] 3.1 Decide sound direction and asset source (open question): style, whether assets are authored, bought or generated, and licence. List the sound slots needed (tab, open, close, press, toast, add to basket, try on/take off, purchase success, error). Studio step: create the Sound instances/assets under SoundService.
+  - [DONE] 3.2 Add a small client UI-sound helper in `views/hooks/` (a `useSound`-style hook alongside the existing hooks) so components trigger sounds declaratively; honour volume/mute. Use `/create-view`.
+  - [DONE] 3.3 Toast host and queue component (`/html-to-react-luau`), driven by `HudApp` React state, with a `showToast` callback passed down; spring in/out.
+  - [DONE] 3.4 Buy-prompt frame component (`/html-to-react-luau`): title, text, price or Free, tint swatch, Cancel/Confirm, with the confirm callback left as a stub for Task 11.
+  - [DONE] 3.5 Motion pass over the shell from Task 2 using `useSpring`, `useTransition`, `useSpringNumber`, `useDrag` where it fits; record the spring presets in the tokens module; add the press/hover states to every interactive component.
+  - [DONE] 3.6 Feel review and playtest on three device classes. Tune; capture phone-tightness issues for later tasks.
+- **Outcome:**
+  > Sound: ObsydianX "Interface SFX Pack 1" (CC0), style-3 tones + two cursor tones picked by measurement (brightness/harshness) for a bright-soft arcade feel, trimmed from 6s padding to 0.2–1.5s; the pack has no swipes, so `switch` / `worldIn` / `worldOut` are synthesised by `tools/build_swipes.py`. Files + provenance in `assets/ui/sounds/`, IDs in `SkinAssets.sounds`, volumes in `Tokens.sound`, played by `views/Sounds` (local, throttled, preloaded at startup with icons — first play was slow from downloading). No separate toast sound (every toast follows an action that has one). Panel open/close sounds come from Hud on state change; buttons that open/close it are silent to avoid doubles; switching tabs or Basket/Wearing inside the panel plays `switch`. Toasts: `views/Toast` (latest replaces current, ~1.8s, CanvasGroup fade). Buy prompt: `views/BuyPrompt` (dense glass, tap-outside cancels; confirm does a placeholder purchase until Task 11). Motion: panel fades + body drops (CanvasGroup with render margin), tab bar and close button vanish instantly on close, screens slide in on navigation (`useAppear`), world HUD rises back, World options slides, counts roll; presets in `Tokens.spring`/`Tokens.motion`. HUD actions reachable via `HudContext`. Lesson: a full-size invisible "swallow taps" button must sit at a lower ZIndex than the controls it guards.
 
 ### Task 4: World options (client rendering, persistence) and double-jump flight
 - **Status:** [TODO]
@@ -477,7 +479,7 @@ Each needs a user decision (or a recorded finding) before or during the named ta
 1. ~~**Sizing (Task 1).**~~ Decided: `fill`, scaled by height.
 2. ~~**Fonts and icons (Task 1).**~~ Decided: Nunito (built in); one image per Material Symbols icon.
 3. ~~**Glass panels (Task 1).**~~ Decided: blur behind full-screen panels.
-4. **Sound direction and asset source (Task 3).** No sound design exists. Needs a style, a source (authored, bought, generated) and licensing.
+4. ~~**Sound direction and asset source (Task 3).**~~ Decided: ObsydianX Interface SFX Pack 1 (CC0) + our synthesised swipes; see Task 3 outcome.
 5. **Flight in a shared world (Task 4).** Collisions, griefing and where "quiet spots" are depend on world layout, which isn't designed. Phase-1 defaults are provisional.
 6. **Undo scope (Task 5).** Avatar changes only, or basket and outfit actions too.
 7. **Try-on coverage and failure behaviour (Task 5).** Which item types can be tried on without owning them, and what happens for off-sale or unloadable items and emotes.

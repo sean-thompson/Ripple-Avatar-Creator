@@ -27,6 +27,7 @@ local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 local PillButton = require(components:WaitForChild("PillButton"))
 local Icon = require(components:WaitForChild("Icon"))
+local Sounds = require(views:WaitForChild("Sounds"))
 
 local e = React.createElement
 
@@ -48,7 +49,12 @@ local function Crumb(props: { label: string, isLast: boolean, onActivated: () ->
 		TextSize = textSize,
 		FontFace = font,
 		LayoutOrder = props.layoutOrder,
-		[React.Event.Activated] = props.onActivated,
+		[React.Event.Activated] = function()
+			if not props.isLast then
+				Sounds.play("back")
+			end
+			props.onActivated()
+		end,
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	})
@@ -110,6 +116,7 @@ local function Breadcrumbs(props: Props)
 				icon = "arrow_back",
 				iconSize = back.icon,
 				glowRadius = back.glow,
+				sound = "back",
 				onActivated = props.onBack,
 			})
 			else nil,

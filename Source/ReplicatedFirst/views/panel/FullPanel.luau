@@ -11,13 +11,22 @@
 	  · content area: breadcrumbs/back once deeper than a tab (always on the
 	    Basket / Wearing lists), then the current screen
 
-	Swallows input so nothing underneath reacts. Open/close motion is Task 3.
-	The avatar preview is a placeholder until Task 6.
+	Swallows input so nothing underneath reacts. The avatar preview is a
+	placeholder until Task 6.
+
+	Motion: Hud drives `t` (0 closed → 1 open) — the background fades in and
+	the body drops into place and fades (CanvasGroup); the tab bar stays put so
+	it reads as the same bar as the world HUD's. Each screen slides in when it
+	mounts (keyed by where we are), and the basket/wearing counts roll.
 
 	Props:
 		nav: useNavigation.Navigation
 		look: usePlaceholderLook.Look
 		tabs: { PillTabs.Tab }
+		t: binding?   open progress (default fully open)
+		closing: boolean?   the panel is animating out — drop the tab bar and
+		                    close button at once (the world HUD's own tab bar
+		                    takes over), only the body fades
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,12 +40,15 @@ local screens = views:WaitForChild("screens")
 local Tokens = require(views:WaitForChild("Tokens"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
+local useAppear = require(hooks:WaitForChild("useAppear"))
+local useSpringNumber = require(hooks:WaitForChild("useSpringNumber"))
 local PillButton = require(components:WaitForChild("PillButton"))
 local PillTabs = require(components:WaitForChild("PillTabs"))
 local GlassPanel = require(components:WaitForChild("GlassPanel"))
 local Icon = require(components:WaitForChild("Icon"))
 local ShadowText = require(components:WaitForChild("ShadowText"))
 local Breadcrumbs = require(script.Parent:WaitForChild("Breadcrumbs"))
+local Sounds = require(views:WaitForChild("Sounds"))
 local CatalogueScreen = require(screens:WaitForChild("CatalogueScreen"))
 local ItemScreen = require(screens:WaitForChild("ItemScreen"))
 local StoresScreen = require(screens:WaitForChild("StoresScreen"))
@@ -64,11 +76,12 @@ local function cardButton(onActivated: () -> (), onEnter: () -> (), onLeave: () 
 	})
 end
 
-local function PreviewCard(props: { nav: any, look: any })
+local function PreviewCard(props: { nav: any, look: any, openList: (root: string) -> () })
 	local skin = useSkin()
 	local interaction = useInteraction()
 	local selected = props.nav.root == "Wearing"
 	local undo = Tokens.size.undo
+	local wornCount = useSpringNumber(#props.look.worn, Tokens.spring.count)
 	return e(GlassPanel, {
 		variant = "light",
 		cornerRadius = Tokens.radius.contentPanel,
@@ -77,7 +90,7 @@ local function PreviewCard(props: { nav: any, look: any })
 		size = UDim2.new(1, 0, 1, -skin.px(BASKET_CARD + 12)),
 	}, {
 		Hit = cardButton(function()
-			props.nav.openRoot("Wearing")
+			props.openList("Wearing")
 		end, interaction.onEnter, interaction.onLeave),
 		Placeholder = e("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
@@ -120,7 +133,7 @@ local function PreviewCard(props: { nav: any, look: any })
 				Size = UDim2.new(1, -skin.px(50), 0, skin.textPx(Tokens.type.bodyStrong.size)),
 				BackgroundTransparency = 1,
 			}, {
-				Text = e(ShadowText, { text = "Wearing · " .. #props.look.worn, style = Tokens.type.bodyStrong }),
+				Text = e(ShadowText, { text = "Wearing · " .. wornCount, style = Tokens.type.bodyStrong }),
 			}),
 			Chevron = e(Icon, {
 				name = "chevron_right",
@@ -132,12 +145,12 @@ local function PreviewCard(props: { nav: any, look: any })
 	})
 end
 
-local function BasketCard(props: { nav: any, look: any })
+local function BasketCard(props: { nav: any, look: any, openList: (root: string) -> () })
 	local skin = useSkin()
 	local interaction = useInteraction()
 	local selected = props.nav.root == "Basket"
-	local total = props.look.basketTotal
-	local count = #props.look.basket
+	local total = useSpringNumber(props.look.basketTotal, Tokens.spring.count)
+	local count = useSpringNumber(#props.look.basket, Tokens.spring.count)
 	return e(GlassPanel, {
 		variant = "light",
 		cornerRadius = Tokens.radius.basketCard,
@@ -148,7 +161,7 @@ local function BasketCard(props: { nav: any, look: any })
 		size = UDim2.new(1, 0, 0, skin.px(BASKET_CARD)),
 	}, {
 		Hit = cardButton(function()
-			props.nav.openRoot("Basket")
+			props.openList("Basket")
 		end, interaction.onEnter, interaction.onLeave),
 		Padding = e("UIPadding", {
 			PaddingTop = UDim.new(0, skin.px(12)),
@@ -187,8 +200,9 @@ local function BasketCard(props: { nav: any, look: any })
 			anchorPoint = Vector2.new(0, 1),
 			position = UDim2.fromScale(0, 1),
 			zIndex = 3,
+			sound = false, -- openList plays the switch
 			onActivated = function()
-				props.nav.openRoot("Basket")
+				props.openList("Basket")
 			end,
 		}),
 	})
@@ -219,10 +233,26 @@ local function currentScreen(nav: any, look: any)
 	return nil
 end
 
+-- Slides its screen in from the right when it mounts.
+local function ScreenAppear(props: { children: any })
+	local skin = useSkin()
+	local t = useAppear(Tokens.spring.screen)
+	return e("Frame", {
+		Name = "ScreenAppear",
+		Position = t:map(function(v: number)
+			return UDim2.fromOffset((1 - v) * skin.px(Tokens.motion.screenSlide), 0)
+		end),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+	}, props.children)
+end
+
 export type Props = {
 	nav: any,
 	look: any,
 	tabs: { any },
+	t: any?,
+	closing: boolean?,
 }
 
 local function FullPanel(props: Props)
@@ -236,6 +266,17 @@ local function FullPanel(props: Props)
 	-- Key the screen by where we are so per-screen state (category, sort,
 	-- scroll) resets when navigating to a different page.
 	local screenKey = (nav.root or "") .. "/" .. #nav.stack .. "/" .. (if nav.top then nav.top.label else "")
+	local open = props.t or React.createBinding(1)
+	local baseTransparency = if skin.glass == "blur" then 0.25 else 0
+	local margin = skin.px(6)
+
+	-- Basket / Wearing from inside the open panel: same "switch" as changing tab.
+	local function openList(root: string)
+		if nav.root ~= root then
+			Sounds.play("switch")
+		end
+		nav.openRoot(root)
+	end
 
 	return e("Frame", {
 		Name = "FullPanel",
@@ -243,43 +284,67 @@ local function FullPanel(props: Props)
 		Active = true, -- swallow input so nothing beneath reacts
 		BackgroundColor3 = Tokens.color.white,
 		-- With blur glass, the blurred world shows faintly through.
-		BackgroundTransparency = if skin.glass == "blur" then 0.25 else 0,
+		BackgroundTransparency = open:map(function(t: number)
+			return 1 - (1 - baseTransparency) * math.clamp(t, 0, 1)
+		end),
 		BorderSizePixel = 0,
 		ZIndex = 10,
 	}, {
 		Gradient = e("UIGradient", { Color = Tokens.gradient.fullPanel, Rotation = Tokens.gradient.rotation }),
-		Tabs = e(PillTabs, {
+		Tabs = if props.closing then nil else e(PillTabs, {
 			tabs = props.tabs,
 			activeId = if isList then nil else nav.root,
-			onSelect = nav.toggleTab,
+			sound = false,
+			onSelect = function(id: string)
+				-- Tapping the open tab closes the panel (Hud plays "close");
+				-- any other tab switches windows.
+				if id ~= nav.root then
+					Sounds.play("switch")
+				end
+				nav.toggleTab(id)
+			end,
 			anchorPoint = Vector2.new(0.5, 0),
 			position = UDim2.new(0.5, 0, 0, skin.px(16)),
 			zIndex = 12,
 		}),
-		Close = e(PillButton, {
+		Close = if props.closing then nil else e(PillButton, {
 			variant = "round",
 			size = close.size,
 			icon = "close",
 			iconSize = close.icon,
 			glowRadius = close.glow,
+			sound = false, -- closing the panel plays its own sound
 			anchorPoint = Vector2.new(1, 0),
 			position = UDim2.new(1, -skin.px(Tokens.size.edgeInset), 0, skin.px(16)),
 			onActivated = nav.close,
 			zIndex = 12,
 		}),
-		Body = e("Frame", {
-			Position = UDim2.fromOffset(skin.px(28), skin.px(84)),
-			Size = UDim2.new(1, -skin.px(56), 1, -skin.px(84 + 24)),
+		-- CanvasGroup (for the fade) clips at its bounds, so it's grown by a
+		-- margin and padded back in — card outlines sit just outside their edges.
+		Body = e("CanvasGroup", {
+			Position = open:map(function(t: number)
+				return UDim2.fromOffset(skin.px(28) - margin, skin.px(84) - margin - (1 - t) * skin.px(Tokens.motion.panelDrop))
+			end),
+			Size = UDim2.new(1, -skin.px(56) + margin * 2, 1, -skin.px(84 + 24) + margin * 2),
+			GroupTransparency = open:map(function(t: number)
+				return 1 - math.clamp(t, 0, 1)
+			end),
 			BackgroundTransparency = 1,
 			ZIndex = 11,
 		}, {
+			Margin = e("UIPadding", {
+				PaddingTop = UDim.new(0, margin),
+				PaddingBottom = UDim.new(0, margin),
+				PaddingLeft = UDim.new(0, margin),
+				PaddingRight = UDim.new(0, margin),
+			}),
 			Left = e("Frame", {
 				Size = UDim2.new(0, skin.px(LEFT_WIDTH), 1, 0),
 				BackgroundTransparency = 1,
 				ZIndex = 11,
 			}, {
-				Preview = e(PreviewCard, { nav = nav, look = props.look }),
-				Basket = e(BasketCard, { nav = nav, look = props.look }),
+				Preview = e(PreviewCard, { nav = nav, look = props.look, openList = openList }),
+				Basket = e(BasketCard, { nav = nav, look = props.look, openList = openList }),
 			}),
 			Content = e(GlassPanel, {
 				variant = "light",
@@ -307,7 +372,7 @@ local function FullPanel(props: Props)
 					Size = UDim2.new(1, 0, 1, -crumbsHeight),
 					BackgroundTransparency = 1,
 				}, {
-					[screenKey] = currentScreen(nav, props.look),
+					[screenKey] = e(ScreenAppear, nil, { Screen = currentScreen(nav, props.look) }),
 				}),
 			}),
 		}),

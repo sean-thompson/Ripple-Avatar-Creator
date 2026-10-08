@@ -8,7 +8,7 @@
 	(price or Owned, Basket toggle, Take off) with Add unowned to basket, Save as
 	outfit and Take everything off. Rows open the item page.
 
-	Buy all and Save as outfit are stubs until Tasks 11 and 12.
+	Buy all opens the buy prompt; Save as outfit is a stub until Task 12.
 
 	ListScreens.Basket / ListScreens.Wearing props: nav, look
 ]]
@@ -27,6 +27,7 @@ local GlassPanel = require(components:WaitForChild("GlassPanel"))
 local ShadowText = require(components:WaitForChild("ShadowText"))
 local Parts = require(script.Parent:WaitForChild("Parts"))
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
+local HudContext = require(views:WaitForChild("HudContext"))
 
 local e = React.createElement
 
@@ -40,6 +41,7 @@ local function smallButton(label: string, order: number, active: boolean?, onAct
 		label = label,
 		textStyle = Tokens.type.small,
 		active = active,
+		sound = false, -- row actions change the look, which plays its own sound
 		layoutOrder = order,
 		onActivated = onActivated,
 	})
@@ -128,7 +130,7 @@ local function sidePanel(skin, title: string, lines: { any }, buttons: { any })
 	}, children)
 end
 
-local function wideButton(label: string, icon: string?, order: number, active: boolean?, onActivated: (() -> ())?)
+local function wideButton(label: string, icon: string?, order: number, active: boolean?, onActivated: (() -> ())?, sound: any?)
 	return e(PillButton, {
 		variant = "pill",
 		size = Tokens.size.ctaHeight,
@@ -136,6 +138,7 @@ local function wideButton(label: string, icon: string?, order: number, active: b
 		icon = icon,
 		iconSize = 18,
 		active = active,
+		sound = sound,
 		layoutOrder = order,
 		onActivated = onActivated,
 	})
@@ -143,6 +146,7 @@ end
 
 local function BasketScreen(props: { nav: any, look: any })
 	local skin = useSkin()
+	local hud = React.useContext(HudContext)
 	local look = props.look
 	local rows: { [string]: any } = {}
 	local owned = 0
@@ -183,10 +187,12 @@ local function BasketScreen(props: { nav: any, look: any })
 			summaryLine(skin, "Already owned", tostring(owned), 2),
 			summaryLine(skin, "Total", look.basketTotal .. " R$", 3, true),
 		}, {
-			wideButton("Buy all", "shopping_basket", 10, true),
+			wideButton("Buy all", "shopping_basket", 10, true, function()
+				hud.openBuy(look.basket)
+			end),
 			wideButton("Try on everything", "checkroom", 11, false, function()
 				look.wearAll(look.basket)
-			end),
+			end, false),
 		}),
 	})
 end
@@ -241,9 +247,9 @@ local function WearingScreen(props: { nav: any, look: any })
 						look.toggleBasket(id)
 					end
 				end
-			end),
+			end, false),
 			wideButton("Save as outfit", "bookmark_add", 11, false),
-			wideButton("Take everything off", "delete_sweep", 12, false, look.takeOffAll),
+			wideButton("Take everything off", "delete_sweep", 12, false, look.takeOffAll, false),
 		}),
 	})
 end

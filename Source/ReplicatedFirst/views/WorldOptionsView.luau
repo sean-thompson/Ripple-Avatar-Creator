@@ -12,6 +12,7 @@
 
 	Props:
 		onClose: () -> ()
+		t: binding?   slide progress (0 off the right edge → 1 in place)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,6 +33,7 @@ local e = React.createElement
 
 export type Props = {
 	onClose: () -> (),
+	t: any?,
 }
 
 local SKIES = { "Clear", "Clouds", "Studio", "Void" }
@@ -191,7 +193,10 @@ local function WorldOptionsView(props: Props)
 		cornerRadius = Tokens.radius.sidePanel,
 		shadow = true,
 		anchorPoint = Vector2.new(1, 0),
-		position = UDim2.new(1, -skin.px(Tokens.size.edgeInset), 0, skin.px(88)),
+		position = (props.t or React.createBinding(1)):map(function(t: number)
+			local off = (1 - t) * skin.px(Tokens.size.sidePanelWidth + Tokens.size.edgeInset)
+			return UDim2.new(1, -skin.px(Tokens.size.edgeInset) + off, 0, skin.px(88))
+		end),
 		size = UDim2.new(0, skin.px(Tokens.size.sidePanelWidth), 1, -skin.px(88 + 112)),
 		zIndex = 5,
 	}, {
@@ -218,6 +223,7 @@ local function WorldOptionsView(props: Props)
 				iconSize = Tokens.size.small.icon,
 				anchorPoint = Vector2.new(1, 0),
 				position = UDim2.fromScale(1, 0),
+				sound = false, -- closing plays the swipe-off
 				onActivated = props.onClose,
 			}),
 		}),

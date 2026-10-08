@@ -25,6 +25,7 @@
 		onSelect: (id: string) -> ()
 		tabWidth: number?      design px, default 172
 		height: number?        design px, default 52
+		sound: boolean?        play the "tab" sound on select (default true)
 		position, anchorPoint, layoutOrder, zIndex
 ]]
 
@@ -41,6 +42,7 @@ local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local GlossFace = require(script.Parent:WaitForChild("GlossFace"))
 local Icon = require(script.Parent:WaitForChild("Icon"))
 local ShadowText = require(script.Parent:WaitForChild("ShadowText"))
+local Sounds = require(views:WaitForChild("Sounds"))
 
 local e = React.createElement
 
@@ -52,6 +54,7 @@ export type Props = {
 	onSelect: (id: string) -> (),
 	tabWidth: number?,
 	height: number?,
+	sound: boolean?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
 	layoutOrder: number?,
@@ -65,6 +68,7 @@ type SegmentProps = {
 	width: number,
 	height: number,
 	order: number,
+	sound: boolean,
 	onSelect: (id: string) -> (),
 }
 
@@ -84,6 +88,9 @@ local function Segment(props: SegmentProps)
 		AutoButtonColor = false,
 		Text = "",
 		[React.Event.Activated] = function()
+			if props.sound then
+				Sounds.play("tab")
+			end
 			props.onSelect(props.tab.id)
 		end,
 		[React.Event.MouseEnter] = interaction.onEnter,
@@ -163,6 +170,7 @@ local function PillTabs(props: Props)
 			width = width,
 			height = height,
 			order = index,
+			sound = props.sound ~= false,
 			onSelect = props.onSelect,
 		})
 	end

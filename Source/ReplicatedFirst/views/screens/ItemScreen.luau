@@ -28,6 +28,8 @@ local Parts = require(script.Parent:WaitForChild("Parts"))
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
 local CatalogueClient = require(views:WaitForChild("catalogue"):WaitForChild("CatalogueClient"))
 local ItemColour = require(views:WaitForChild("catalogue"):WaitForChild("ItemColour"))
+local ItemModel = require(views:WaitForChild("catalogue"):WaitForChild("ItemModel"))
+local ItemViewer3D = require(script.Parent:WaitForChild("ItemViewer3D"))
 local HudContext = require(views:WaitForChild("HudContext"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 
@@ -101,6 +103,8 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	local hud = React.useContext(HudContext)
 	local item = PlaceholderData.item(props.itemId)
 	local _colourVersion, setColourVersion = React.useState(0)
+	local show3D, setShow3D = React.useState(false)
+	local has3D = ItemModel.supports(item)
 
 	-- Work out the item's colour (for the Colour line) if we don't know it.
 	React.useEffect(function()
@@ -165,10 +169,31 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	}, {
 		Preview = e(Parts.Thumb, {
 			colour = Parts.swatch(item.colour),
-			image = Parts.image(item),
+			image = if show3D then nil else Parts.image(item),
 			radius = 18,
-			caption = string.lower(item.sub),
+			caption = if show3D then nil else string.lower(item.sub),
 			size = UDim2.fromOffset(preview, preview),
+		}, {
+			Viewer = if show3D then e(ItemViewer3D, { item = item }) else nil,
+			-- Picture / 3D: an alternate view of the item, turnable by dragging.
+			View3D = if has3D
+				then e(PillButton, {
+					variant = "pill",
+					size = 30,
+					width = 58,
+					label = "3D", -- orange while the 3D view is showing
+					textStyle = { size = 13.5, weight = 900 },
+					active = show3D,
+					glowRadius = 0,
+					sound = "tab",
+					anchorPoint = Vector2.new(1, 1),
+					position = UDim2.new(1, -skin.px(10), 1, -skin.px(10)),
+					zIndex = 3,
+					onActivated = function()
+						setShow3D(not show3D)
+					end,
+				})
+				else nil,
 		}),
 		Info = e("Frame", {
 			Position = UDim2.fromOffset(preview + skin.px(20), 0),

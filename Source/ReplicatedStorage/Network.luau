@@ -128,6 +128,7 @@ export type WornItem = {
 	kind: "Asset" | "Bundle",
 	typeName: string, -- AvatarAssetType / BundleType name
 	name: string,
+	owned: boolean?, -- known owned (it came from the player's own avatar)
 }
 
 export type AvatarState = {

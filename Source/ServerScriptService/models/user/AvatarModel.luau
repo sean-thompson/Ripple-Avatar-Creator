@@ -35,6 +35,7 @@ export type WornItem = {
 	kind: "Asset" | "Bundle",
 	typeName: string,
 	name: string,
+	owned: boolean?, -- known owned (it came from the player's own avatar)
 }
 
 export type AvatarModel = typeof(setmetatable({} :: {

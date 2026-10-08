@@ -21,6 +21,8 @@
 	  supports(item)   whether the item gets a 3D view
 	  build(item)      a Model to clone (yields; cached per item); nil if it
 	                   couldn't be built
+	  restPose(model)  put an avatar's parts where its joints say, at rest
+	                   (also used for the panel's avatar preview)
 ]]
 
 local AssetService = game:GetService("AssetService")
@@ -244,6 +246,10 @@ local function solveJoints(avatar: Model)
 		end
 	end
 	attachAccessories(avatar)
+end
+
+function ItemModel.restPose(avatar: Model)
+	solveJoints(avatar)
 end
 
 local function extract(avatar: Model, keep: Keep): Model?

@@ -9,6 +9,7 @@
 	  · the placeholder look (worn / basket) until the server models land,
 	    wrapped so every change confirms itself with a sound
 	  · the buy prompt, reachable anywhere through HudContext
+	  · tapping your own avatar in the world opens Wearing (useTapAvatar)
 	  · back input (mouse back button, Backspace): closes the buy prompt, then
 	    pops a breadcrumb, then closes the panel
 	  · World options (saved + live draft, useWorldOptions) and the renderer
@@ -33,6 +34,7 @@ local useSkin = require(hooks:WaitForChild("useSkin"))
 local useGlassBlur = require(hooks:WaitForChild("useGlassBlur"))
 local useNavigation = require(hooks:WaitForChild("useNavigation"))
 local useBackInput = require(hooks:WaitForChild("useBackInput"))
+local useTapAvatar = require(hooks:WaitForChild("useTapAvatar"))
 local useTransition = require(hooks:WaitForChild("useTransition"))
 local useWorldOptions = require(hooks:WaitForChild("useWorldOptions"))
 local PlaceholderData = require(views:WaitForChild("screens"):WaitForChild("PlaceholderData"))
@@ -116,6 +118,11 @@ local function Hud()
 		end
 		return true
 	end)
+
+	-- Tapping your own avatar in the world opens Wearing (design 5a).
+	useTapAvatar(function()
+		nav.openRoot("Wearing") -- the open sound plays from the effect below
+	end, not nav.isOpen)
 
 	-- Open / close sounds on panel state changes.
 	local wasOpen = React.useRef(false)

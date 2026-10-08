@@ -5,7 +5,8 @@
 
 	Covers the world when a tab, Basket or Wearing is open:
 	  · tab bar (tapping the open tab closes the panel) and close button
-	  · left column: avatar-preview card with Undo and a "Wearing · N" bar
+	  · left column: avatar-preview card (live 3D copy of your character,
+	    AvatarPreview) with Undo and a "Wearing · N" bar
 	    (opens Wearing), and the Basket card with count + CTA (opens Basket);
 	    each card gets the orange border while its screen is open
 	  · content area: breadcrumbs/back once deeper than a tab (always on the
@@ -55,6 +56,8 @@ local ItemScreen = require(screens:WaitForChild("ItemScreen"))
 local StoresScreen = require(screens:WaitForChild("StoresScreen"))
 local OutfitsScreen = require(screens:WaitForChild("OutfitsScreen"))
 local ListScreens = require(screens:WaitForChild("ListScreens"))
+local PlaceholderData = require(screens:WaitForChild("PlaceholderData"))
+local AvatarPreview = require(script.Parent:WaitForChild("AvatarPreview"))
 
 local e = React.createElement
 
@@ -78,6 +81,17 @@ local function cardButton(onActivated: () -> (), onEnter: () -> (), onLeave: () 
 	})
 end
 
+-- The image of a worn avatar background, if any (shown behind the preview).
+local function backdropOf(look: any): string?
+	for _, id in look.worn do
+		local item = PlaceholderData.item(id)
+		if item and item.typeName == "AvatarBackground" then
+			return `rbxthumb://type=Asset&id={item.targetId}&w=420&h=420`
+		end
+	end
+	return nil
+end
+
 local function PreviewCard(props: { nav: any, look: any, openList: (root: string) -> () })
 	local skin = useSkin()
 	local interaction = useInteraction()
@@ -94,14 +108,13 @@ local function PreviewCard(props: { nav: any, look: any, openList: (root: string
 		Hit = cardButton(function()
 			props.openList("Wearing")
 		end, interaction.onEnter, interaction.onLeave),
-		Placeholder = e("TextLabel", {
-			Size = UDim2.fromScale(1, 1),
+		Preview = e("Frame", {
+			Position = UDim2.fromOffset(skin.px(10), skin.px(10)),
+			Size = UDim2.new(1, -skin.px(20), 1, -skin.px(Tokens.size.wearingBar + 30)),
 			BackgroundTransparency = 1,
-			Text = "avatar preview",
-			TextColor3 = Tokens.color.white,
-			TextTransparency = 1 - 0.45,
-			TextSize = skin.textPx(12),
-			FontFace = Tokens.font(700),
+			ZIndex = 2,
+		}, {
+			Avatar = e(AvatarPreview, { backdrop = backdropOf(props.look) }),
 		}),
 		Undo = e(PillButton, {
 			variant = "round",

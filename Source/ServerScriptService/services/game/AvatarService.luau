@@ -190,7 +190,8 @@ local function gearTemplate(assetId: number): Tool?
 	return tool
 end
 
--- The player's own avatar, as a list of wearable items.
+-- The player's own avatar, as a list of wearable items (owned: they're on
+-- the player's Roblox avatar).
 local function itemsOf(description: HumanoidDescription): { WornItem }
 	local items: { WornItem } = {}
 	for _, accessory in description:GetAccessories(true) do
@@ -220,6 +221,9 @@ local function itemsOf(description: HumanoidDescription): { WornItem }
 				end
 			end
 		end
+	end
+	for _, item in items do
+		item.owned = true
 	end
 	-- Names, in one batch.
 	local ids = {}

@@ -132,8 +132,123 @@ local function loose(parts: { BasePart }): Model
 	return model
 end
 
+-- Puts every part where its joints say it goes, working out from the root.
+-- Nothing simulates in a ViewportFrame, and the builder can place parts
+-- before their final meshes (and rig attachments) arrive, so a body can come
+-- out with a head off to one side or a leg adrift — differently each build.
+--
+-- Joints come in two kinds, solved at rest pose:
+--   attachment joints (AnimationConstraint, RigidConstraint — current rigs
+--   and accessories): part1 = attachment0.WorldCFrame * attachment1.CFrame⁻¹
+--   classic joints (enabled Motor6D / Weld): part1 = part0 * C0 * C1⁻¹
+-- A part takes the first joint that reaches it from an already-placed part;
+-- attachment joints are tried before classic ones, whose offsets can be stale.
+type Edge = { a: BasePart, b: BasePart, place: (fromA: boolean) -> () }
+
+local function edgesOf(avatar: Model): { Edge }
+	local attachmentEdges, classicEdges = {}, {}
+	for _, d in avatar:GetDescendants() do
+		if d:IsA("AnimationConstraint") or d:IsA("RigidConstraint") then
+			local a0, a1 = d.Attachment0, d.Attachment1
+			local p0 = a0 and a0.Parent
+			local p1 = a1 and a1.Parent
+			if a0 and a1 and p0 and p1 and p0:IsA("BasePart") and p1:IsA("BasePart") then
+				table.insert(attachmentEdges, {
+					a = p0,
+					b = p1,
+					place = function(fromA: boolean)
+						if fromA then
+							p1.CFrame = a0.WorldCFrame * a1.CFrame:Inverse()
+						else
+							p0.CFrame = a1.WorldCFrame * a0.CFrame:Inverse()
+						end
+					end,
+				})
+			end
+		elseif
+			(d:IsA("Motor6D") or d:IsA("Weld"))
+			and d.Enabled
+			and d.Part0
+			and d.Part1
+			and not d:FindFirstAncestorWhichIsA("Accessory") -- see attachAccessories
+		then
+			local joint = d
+			local p0, p1 = joint.Part0 :: BasePart, joint.Part1 :: BasePart
+			table.insert(classicEdges, {
+				a = p0,
+				b = p1,
+				place = function(fromA: boolean)
+					if fromA then
+						p1.CFrame = p0.CFrame * joint.C0 * joint.C1:Inverse()
+					else
+						p0.CFrame = p1.CFrame * joint.C1 * joint.C0:Inverse()
+					end
+				end,
+			})
+		end
+	end
+	for _, edge in classicEdges do
+		table.insert(attachmentEdges, edge)
+	end
+	return attachmentEdges
+end
+
+-- Accessories go on the way Roblox attaches them: the Handle's attachment
+-- meets the body attachment of the same name (HairAttachment, …). Their
+-- welds in a freshly built model carry stale offsets, so they're ignored.
+local function attachAccessories(avatar: Model)
+	local bodyAttachments: { [string]: Attachment } = {}
+	for _, part in avatar:GetChildren() do
+		if part:IsA("BasePart") then
+			for _, child in part:GetChildren() do
+				if child:IsA("Attachment") then
+					bodyAttachments[child.Name] = child
+				end
+			end
+		end
+	end
+	for _, accessory in avatar:GetChildren() do
+		local handle = accessory:IsA("Accessory") and accessory:FindFirstChild("Handle")
+		if handle and handle:IsA("BasePart") then
+			for _, child in handle:GetChildren() do
+				local target = child:IsA("Attachment") and bodyAttachments[child.Name]
+				if target then
+					handle.CFrame = target.WorldCFrame * (child :: Attachment).CFrame:Inverse()
+					break
+				end
+			end
+		end
+	end
+end
+
+local function solveJoints(avatar: Model)
+	local root = avatar:FindFirstChild("HumanoidRootPart") or avatar.PrimaryPart
+	if not (root and root:IsA("BasePart")) then
+		return
+	end
+	local edges = edgesOf(avatar)
+	local placed: { [BasePart]: boolean } = { [root] = true }
+	local progress = true
+	while progress do
+		progress = false
+		for _, edge in edges do
+			if placed[edge.a] and not placed[edge.b] then
+				edge.place(true)
+				placed[edge.b] = true
+				progress = true
+			elseif placed[edge.b] and not placed[edge.a] then
+				edge.place(false)
+				placed[edge.a] = true
+				progress = true
+			end
+		end
+	end
+	attachAccessories(avatar)
+end
+
 local function extract(avatar: Model, keep: Keep): Model?
 	if keep == "body" then
+		solveJoints(avatar)
 		for _, child in avatar:GetChildren() do
 			if child:IsA("Humanoid") then
 				child.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None

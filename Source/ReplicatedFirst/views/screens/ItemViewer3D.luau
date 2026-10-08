@@ -151,15 +151,19 @@ local function ItemViewer3D(props: { item: any })
 		end
 	end, { props.item.id })
 
+	-- An opaque background in the card's colour: over a transparent one, dark
+	-- items get a pale fringe where their edges blend.
 	return e("ViewportFrame", {
 		Name = "ItemViewer3D",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
+		BackgroundColor3 = Color3.fromHex("#1c1c1c"),
+		BackgroundTransparency = 0,
 		Ambient = Color3.fromRGB(150, 150, 150),
 		LightColor = Color3.fromRGB(255, 255, 255),
 		LightDirection = Vector3.new(-1, -1.5, -1),
 		ref = viewportRef,
 	}, {
+		Corner = e("UICorner", { CornerRadius = UDim.new(0, skin.px(18)) }),
 		Status = if status ~= "ready"
 			then e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),

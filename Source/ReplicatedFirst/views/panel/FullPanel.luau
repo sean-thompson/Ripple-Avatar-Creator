@@ -109,6 +109,9 @@ local function PreviewCard(props: { nav: any, look: any, openList: (root: string
 			icon = "undo",
 			iconSize = undo.icon,
 			glowRadius = undo.glow,
+			disabled = not props.look.canUndo,
+			sound = false, -- look.undo plays it
+			onActivated = props.look.undo,
 			anchorPoint = Vector2.new(1, 0),
 			position = UDim2.new(1, -skin.px(10), 0, skin.px(10)),
 			zIndex = 3,

@@ -11,8 +11,8 @@
 	Hidden while the full panel is open — the design's panel covers it. When it
 	comes back, the bottom buttons rise into place; World options slides in and
 	out from the right; the Basket badge total rolls.
-	Create avatar and Save to Roblox are stubs until Task 11; Reset clears the
-	placeholder look.
+	Create avatar and Save to Roblox are stubs until Task 11; Reset puts the
+	player's own Roblox avatar back on.
 
 	Props:
 		nav, look
@@ -152,7 +152,8 @@ local function WorldHud(props: Props)
 			}),
 			CreateAvatar = actionButton("person_add", 2),
 			SaveToRoblox = actionButton("cloud_upload", 3),
-			Reset = actionButton("restart_alt", 4, props.look.takeOffAll, false),
+			-- Back to the player's own Roblox avatar (undoable).
+			Reset = actionButton("restart_alt", 4, props.look.reset, false),
 		}),
 		WorldToggle = e(PillButton, {
 			variant = "round",

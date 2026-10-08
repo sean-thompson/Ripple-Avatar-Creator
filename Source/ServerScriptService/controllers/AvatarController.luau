@@ -1,0 +1,180 @@
+--!strict
+
+--[[
+	AvatarController
+
+	Try-on requests from the HUD. Items arrive as { targetId, kind } (the
+	catalogue id and "Asset" / "Bundle"); the server looks each one up itself
+	(AvatarService.resolve) and only accepts types AvatarConfig knows how to
+	wear, so a client can't name its own types or put arbitrary assets on.
+	Requests closer together than AvatarConfig.tryOnCooldown are dropped.
+
+	Actions:
+		TryOn(item)        wear it (replacing its slot / stacking per config)
+		TakeOff(item)      take it off
+		WearMany(items)    wear several (an outfit, the basket), up to maxWearMany
+		TakeOffAll()       wear nothing (the body stays)
+		Undo()             step back one change
+		Reset()            back to the player's own Roblox avatar
+
+	Each change re-dresses the character through AvatarService. Try-ons,
+	take-offs and resets are tracked as analytics events with the item's id
+	and type (signals for the phase-3 recommendation engine), on top of the
+	automatic per-action tracking.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local AbstractController = require(script.Parent.AbstractController)
+local AvatarModel = require(script.Parent.Parent.models.user.AvatarModel)
+local AvatarService = require(ServerScriptService.services.game.AvatarService)
+local Network = require(ReplicatedStorage.Network)
+
+local AvatarConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("AvatarConfig"))
+
+local AvatarController = {}
+AvatarController.__index = AvatarController
+setmetatable(AvatarController, AbstractController)
+
+export type AvatarController = typeof(setmetatable({}, AvatarController)) & AbstractController.AbstractController
+
+local lastRequest: { [Player]: number } = {}
+
+-- Lazy, like AbstractController (avoids a load-order dependency).
+local analytics: any = nil
+local function track(player: Player, eventName: string, params: { [string]: any }?)
+	if analytics == nil then
+		local ok, service = pcall(function()
+			return require(script.Parent.Parent.services.framework.AnalyticsService)
+		end)
+		analytics = if ok then service else false
+	end
+	if analytics and analytics.isEnabled then
+		analytics:trackEvent(player, eventName, params)
+	end
+end
+
+local function itemParams(item: AvatarModel.WornItem): { [string]: any }
+	return { item_id = item.targetId, item_kind = item.kind, item_type = item.typeName }
+end
+
+local function wearable(typeName: string): boolean
+	return AvatarConfig.slots[typeName] ~= nil or AvatarConfig.groups[typeName] ~= nil
+end
+
+-- { targetId, kind } from the client -> a looked-up, wearable item (or nil).
+local function resolve(raw: any): AvatarModel.WornItem?
+	if type(raw) ~= "table" then
+		return nil
+	end
+	local targetId, kind = raw.targetId, raw.kind
+	if type(targetId) ~= "number" or targetId ~= targetId or targetId <= 0 or targetId % 1 ~= 0 then
+		return nil
+	end
+	if kind ~= "Asset" and kind ~= "Bundle" then
+		return nil
+	end
+	local item = AvatarService.resolve(targetId, kind)
+	if item and wearable(item.typeName) then
+		return item
+	end
+	return nil
+end
+
+local function tryOn(player: Player, model: any, raw: any)
+	local item = resolve(raw)
+	if item then
+		model:wear(item)
+		AvatarService.apply(player)
+		track(player, "try_on", itemParams(item))
+	end
+end
+
+local function takeOff(player: Player, model: any, raw: any)
+	if type(raw) == "table" and type(raw.targetId) == "number" and (raw.kind == "Asset" or raw.kind == "Bundle") then
+		for _, worn in model.worn do
+			if worn.targetId == raw.targetId and worn.kind == raw.kind then
+				model:takeOff(worn)
+				AvatarService.apply(player)
+				track(player, "take_off", itemParams(worn))
+				return
+			end
+		end
+	end
+end
+
+local function wearMany(player: Player, model: any, raw: any)
+	if type(raw) ~= "table" then
+		return
+	end
+	local items = {}
+	for index, entry in raw do
+		if type(index) ~= "number" or index > AvatarConfig.maxWearMany then
+			continue
+		end
+		local item = resolve(entry)
+		if item then
+			table.insert(items, item)
+		end
+	end
+	if #items > 0 then
+		model:wearMany(items)
+		AvatarService.apply(player)
+		for _, item in items do
+			track(player, "try_on", itemParams(item))
+		end
+	end
+end
+
+local function takeOffAll(player: Player, model: any, _raw: any)
+	model:takeOffAll()
+	AvatarService.apply(player)
+end
+
+local function undo(player: Player, model: any, _raw: any)
+	if model:undo() then
+		AvatarService.apply(player)
+	end
+end
+
+local function reset(player: Player, model: any, _raw: any)
+	model:setWorn(AvatarService.ownLook(player))
+	AvatarService.apply(player)
+	track(player, "reset")
+end
+
+local ACTIONS = {
+	[Network.Actions.Avatar.TryOn] = tryOn,
+	[Network.Actions.Avatar.TakeOff] = takeOff,
+	[Network.Actions.Avatar.WearMany] = wearMany,
+	[Network.Actions.Avatar.TakeOffAll] = takeOffAll,
+	[Network.Actions.Avatar.Undo] = undo,
+	[Network.Actions.Avatar.Reset] = reset,
+}
+
+function AvatarController:executeAction(player: Player, action: Network.AvatarAction, raw: any)
+	local now = os.clock()
+	if now - (lastRequest[player] or 0) < AvatarConfig.tryOnCooldown then
+		return
+	end
+	lastRequest[player] = now
+	local model = AvatarModel.get(tostring(player.UserId))
+	if not model then
+		return
+	end
+	self:dispatchAction(ACTIONS, action, player, player, model, raw)
+end
+
+function AvatarController.new(): AvatarController
+	local self = AbstractController.new("AvatarController") :: any
+	setmetatable(self, AvatarController)
+
+	self.intentEvent.OnServerEvent:Connect(function(player: Player, action: Network.AvatarAction, raw: any)
+		self:executeAction(player, action, raw)
+	end)
+
+	return self :: AvatarController
+end
+
+return AvatarController

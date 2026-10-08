@@ -38,6 +38,7 @@ local Parts = require(script.Parent:WaitForChild("Parts"))
 local useCatalogue = require(hooks:WaitForChild("useCatalogue"))
 local useColourFilter = require(hooks:WaitForChild("useColourFilter"))
 local useBackInput = require(hooks:WaitForChild("useBackInput"))
+local useSessionState = require(hooks:WaitForChild("useSessionState"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 local CatalogueFilters = require(script.Parent:WaitForChild("CatalogueFilters"))
 local HudContext = require(views:WaitForChild("HudContext"))
@@ -63,12 +64,14 @@ local BAR_HEIGHT = 52
 
 local function CatalogueScreen(props: { nav: any, look: any })
 	local skin = useSkin()
-	local category, setCategory = React.useState(CatalogueConfig.categories[1].name)
-	local sub, setSub = React.useState("All")
-	local query, setQuery = React.useState("")
+	-- Where you were browsing survives closing the panel (session memory), as
+	-- going into an item and back does; the grid keeps its scroll too.
+	local category, setCategory = useSessionState("catalogue.category", CatalogueConfig.categories[1].name)
+	local sub, setSub = useSessionState("catalogue.sub", "All")
+	local query, setQuery = useSessionState("catalogue.query", "")
 	local searchFocused, setSearchFocused = React.useState(false)
 	local pasteFocused, setPasteFocused = React.useState(false)
-	local filters, setFilters = React.useState(CatalogueFilters.defaults)
+	local filters, setFilters = useSessionState("catalogue.filters", CatalogueFilters.defaults)
 	local popover, setPopover = React.useState(nil :: CatalogueFilters.Popover?)
 	local results = useCatalogue({
 		category = category,
@@ -373,6 +376,8 @@ local function CatalogueScreen(props: { nav: any, look: any })
 			position = UDim2.fromOffset(0, gridTop),
 			size = UDim2.new(1, 0, 1, -(gridTop + barSpace)),
 			onNearEnd = catalogue.loadMore,
+			-- One remembered scroll per browse (tab / chip / search / filters).
+			scrollKey = table.concat({ category, sub, query, filters.sort, filters.sortWindow, tostring(filters.minPrice), tostring(filters.maxPrice), filters.creator, filters.salesType, tostring(filters.includeOffSale), filters.colour }, "|"),
 		}, cards),
 		Bar = e(GlassPanel, {
 			variant = "bar",

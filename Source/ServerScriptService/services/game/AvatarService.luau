@@ -84,6 +84,9 @@ local MAKEUP: { [string]: Enum.MakeupType } = {
 
 local BODY_PARTS = { "Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg" }
 local BODY_COLOURS = { "HeadColor", "TorsoColor", "LeftArmColor", "RightArmColor", "LeftLegColor", "RightLegColor" }
+local BODY_SCALES = { "HeightScale", "WidthScale", "DepthScale", "HeadScale", "BodyTypeScale", "ProportionScale" }
+-- What a head is: the head mesh, its face and the mood (expression) animation.
+local HEAD_PARTS = { "Head", "Face", "MoodAnimation" }
 local ANIMATIONS =
 	{ "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation" }
 
@@ -310,18 +313,35 @@ local function describe(player: Player, worn: { WornItem }): (HumanoidDescriptio
 			local outfit = bundleOutfit(item.targetId)
 			if outfit then
 				if t == "BodyParts" then
+					-- A full body is everything its outfit defines: parts, head
+					-- (with face and mood), skin, proportions, and any accessories
+					-- that come with it (e.g. a knight's helmet).
 					for _, property in BODY_PARTS do
 						local id = (outfit :: any)[property]
 						if id and id ~= 0 then
 							(description :: any)[property] = id
 						end
 					end
+					-- (A body without a head of its own keeps the player's.)
+					if outfit.Head ~= 0 then
+						for _, property in HEAD_PARTS do
+							(description :: any)[property] = (outfit :: any)[property]
+						end
+					end
 					for _, property in BODY_COLOURS do
 						(description :: any)[property] = (outfit :: any)[property]
 					end
+					for _, property in BODY_SCALES do
+						(description :: any)[property] = (outfit :: any)[property]
+					end
+					for _, accessory in outfit:GetAccessories(true) do
+						addAccessory(accessory.AssetId, accessory.AccessoryType, accessory.IsLayered == true)
+					end
 				elseif t == "DynamicHead" or t == "DynamicHeadAvatar" then
 					if outfit.Head ~= 0 then
-						description.Head = outfit.Head
+						for _, property in HEAD_PARTS do
+							(description :: any)[property] = (outfit :: any)[property]
+						end
 					end
 				elseif t == "Animations" then
 					for _, property in ANIMATIONS do

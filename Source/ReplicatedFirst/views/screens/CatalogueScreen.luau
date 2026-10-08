@@ -1,11 +1,14 @@
 --!strict
 
 --[[
-	CatalogueScreen (design frame 5b root, placeholder data)
+	CatalogueScreen (design frame 5b root)
 
 	Category text tabs + search, sub-category chips, and a 6-column grid of
-	item cards. Tapping a card opens its item page (the card's Try/Basket/Buy
-	menu, colour/price filters and real catalogue data arrive in Task 8).
+	real catalogue items (useCatalogue → CatalogueClient, Task 7). Tabs and
+	chips come from CatalogueConfig; the search box is a catalogue keyword
+	search within the current tab and chip. Tapping a card opens its item
+	page. The card's Try/Basket/Buy menu, colour/price filters, paste a link
+	and load-more arrive in Task 8.
 
 	Props: nav, look
 ]]
@@ -22,38 +25,35 @@ local useSkin = require(hooks:WaitForChild("useSkin"))
 local TextTab = require(components:WaitForChild("TextTab"))
 local Chip = require(components:WaitForChild("Chip"))
 local Icon = require(components:WaitForChild("Icon"))
+local PillButton = require(components:WaitForChild("PillButton"))
 local Parts = require(script.Parent:WaitForChild("Parts"))
-local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
+local useCatalogue = require(hooks:WaitForChild("useCatalogue"))
+local CatalogueConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("CatalogueConfig"))
 
 local e = React.createElement
 
-local function matches(item: PlaceholderData.Item, category: string, sub: string, query: string): boolean
-	if category == "Featured" then
-		if sub == "New" and not item.new then
-			return false
-		elseif sub == "Trending" and not item.trending then
-			return false
-		end
-	elseif category == "Halloween" then
-		if not item.halloween or (sub ~= "All" and item.main ~= sub) then
-			return false
-		end
-	elseif item.main ~= category or (sub ~= "All" and item.sub ~= sub) then
-		return false
-	end
-	return query == "" or string.find(string.lower(item.name), query, 1, true) ~= nil
-end
+local MESSAGES = {
+	loading = "Loading…",
+	error = "The catalogue isn't answering right now. Try again in a moment.",
+	empty = "No items found",
+}
 
 local function CatalogueScreen(props: { nav: any, look: any })
 	local skin = useSkin()
-	local category, setCategory = React.useState("Featured")
+	local category, setCategory = React.useState(CatalogueConfig.categories[1].name)
 	local sub, setSub = React.useState("All")
 	local query, setQuery = React.useState("")
+	local searchFocused, setSearchFocused = React.useState(false)
+	local catalogue = useCatalogue(category, if sub == "All" then nil else sub, query)
 
-	local subs = { "All" }
-	for _, entry in PlaceholderData.categories do
-		if entry.name == category then
-			subs = entry.subs
+	-- "All" plus the tab's chips; a single-chip tab (Backgrounds) shows none.
+	local subs = {}
+	for _, entry in CatalogueConfig.categories do
+		if entry.name == category and #entry.chips > 1 then
+			subs = { "All" }
+			for _, chip in entry.chips do
+				table.insert(subs, chip.name)
+			end
 		end
 	end
 
@@ -64,7 +64,7 @@ local function CatalogueScreen(props: { nav: any, look: any })
 			Padding = UDim.new(0, skin.px(20)),
 		}),
 	}
-	for index, entry in PlaceholderData.categories do
+	for index, entry in CatalogueConfig.categories do
 		tabs["Tab" .. index] = e(TextTab, {
 			label = entry.name,
 			active = entry.name == category,
@@ -97,24 +97,27 @@ local function CatalogueScreen(props: { nav: any, look: any })
 
 	local cards: { [string]: any } = {}
 	local count = 0
-	local lowered = string.lower(query)
-	for _, item in PlaceholderData.items do
-		if matches(item, category, sub, lowered) then
-			count += 1
-			cards["Item" .. item.id] = e(Parts.ItemCard, {
-				item = item,
-				wearing = props.look.isWorn(item.id),
-				inBasket = props.look.inBasket(item.id),
-				layoutOrder = count,
-				onActivated = function()
-					props.nav.push({ kind = "item", id = item.id, label = item.name })
-				end,
-			})
-		end
+	for _, item in catalogue.items do
+		count += 1
+		cards["Item" .. item.id] = e(Parts.ItemCard, {
+			item = item,
+			wearing = props.look.isWorn(item.id),
+			inBasket = props.look.inBasket(item.id),
+			layoutOrder = count,
+			onActivated = function()
+				props.nav.push({ kind = "item", id = item.id, label = item.name })
+			end,
+		})
 	end
+	local message = if count > 0 then nil
+		elseif catalogue.status == "ready" then MESSAGES.empty
+		else MESSAGES[catalogue.status]
 
 	local searchWidth = skin.px(230)
 	local tabsHeight = skin.px(Tokens.size.textTabHeight)
+	local gridTop = if #subs > 0
+		then tabsHeight + skin.px(Tokens.size.chipHeight) + skin.px(22)
+		else tabsHeight + skin.px(12)
 
 	return e("Frame", {
 		Name = "CatalogueScreen",
@@ -160,11 +163,13 @@ local function CatalogueScreen(props: { nav: any, look: any })
 				}),
 				Box = e("TextBox", {
 					Position = UDim2.fromOffset(skin.px(40), 0),
-					Size = UDim2.new(1, -skin.px(54), 1, 0),
+					-- Leaves room on the right for the clear button.
+					Size = UDim2.new(1, -skin.px(76), 1, 0),
 					BackgroundTransparency = 1,
 					ClearTextOnFocus = false,
 					Text = query,
-					PlaceholderText = "Search catalogue",
+					-- Hidden while typing, so focus reads as an empty box ready for input.
+					PlaceholderText = if searchFocused then "" else "Search catalogue",
 					PlaceholderColor3 = Color3.fromRGB(150, 150, 150),
 					TextColor3 = Tokens.color.white,
 					TextSize = skin.textPx(Tokens.type.search.size),
@@ -173,10 +178,32 @@ local function CatalogueScreen(props: { nav: any, look: any })
 					[React.Change.Text] = function(box: TextBox)
 						setQuery(box.Text)
 					end,
+					[React.Event.Focused] = function()
+						setSearchFocused(true)
+					end,
+					[React.Event.FocusLost] = function()
+						setSearchFocused(false)
+					end,
 				}),
+				-- Clears the search; only there when there's something to clear.
+				Clear = if query ~= ""
+					then e(PillButton, {
+						variant = "round",
+						size = Tokens.size.small.size - 8,
+						icon = "close",
+						iconSize = Tokens.size.small.icon - 4,
+						glowRadius = 0,
+						sound = "back",
+						anchorPoint = Vector2.new(1, 0.5),
+						position = UDim2.new(1, -skin.px(6), 0.5, 0),
+						onActivated = function()
+							setQuery("")
+						end,
+					})
+					else nil,
 			}),
 		}),
-		Chips = e("Frame", {
+		Chips = if #subs == 0 then nil else e("Frame", {
 			Position = UDim2.fromOffset(0, tabsHeight + skin.px(10)),
 			Size = UDim2.new(1, 0, 0, skin.px(Tokens.size.chipHeight)),
 			BackgroundTransparency = 1,
@@ -185,9 +212,21 @@ local function CatalogueScreen(props: { nav: any, look: any })
 			columns = 6,
 			extraHeight = 40,
 			count = count,
-			position = UDim2.fromOffset(0, tabsHeight + skin.px(Tokens.size.chipHeight) + skin.px(22)),
-			size = UDim2.new(1, 0, 1, -(tabsHeight + skin.px(Tokens.size.chipHeight) + skin.px(22))),
+			position = UDim2.fromOffset(0, gridTop),
+			size = UDim2.new(1, 0, 1, -gridTop),
 		}, cards),
+		Message = if message
+			then e("TextLabel", {
+				Position = UDim2.fromOffset(0, gridTop),
+				Size = UDim2.new(1, 0, 0, skin.px(120)),
+				BackgroundTransparency = 1,
+				Text = message,
+				TextColor3 = Tokens.color.white,
+				TextTransparency = Tokens.alpha.textDim,
+				TextSize = skin.textPx(Tokens.type.bodyStrong.size),
+				FontFace = Tokens.font(Tokens.type.bodyStrong.weight),
+			})
+			else nil,
 	})
 end
 

@@ -9,6 +9,8 @@
 	  · the placeholder look (worn / basket) until the server models land,
 	    wrapped so every change confirms itself with a toast + sound
 	  · the toast and the buy prompt, reachable anywhere through HudContext
+	  · World options (saved + live draft, useWorldOptions) and the renderer
+	    that applies them to this client's world
 
 	Renders inside a SkinRoot with the Task 1 decisions: `fill` sizing scaled
 	by height, `blur` glass.
@@ -29,12 +31,14 @@ local useSkin = require(hooks:WaitForChild("useSkin"))
 local useGlassBlur = require(hooks:WaitForChild("useGlassBlur"))
 local useNavigation = require(hooks:WaitForChild("useNavigation"))
 local useTransition = require(hooks:WaitForChild("useTransition"))
+local useWorldOptions = require(hooks:WaitForChild("useWorldOptions"))
 local PlaceholderData = require(views:WaitForChild("screens"):WaitForChild("PlaceholderData"))
 local usePlaceholderLook = require(views:WaitForChild("screens"):WaitForChild("usePlaceholderLook"))
 local WorldHud = require(views:WaitForChild("WorldHud"))
 local FullPanel = require(views:WaitForChild("panel"):WaitForChild("FullPanel"))
 local Toast = require(views:WaitForChild("Toast"))
 local BuyPrompt = require(views:WaitForChild("BuyPrompt"))
+local WorldRenderer = require(views:WaitForChild("WorldRenderer"))
 
 local e = React.createElement
 
@@ -122,6 +126,7 @@ local function Hud()
 	local rawLook = usePlaceholderLook()
 	local toast, showToast = useToast()
 	local buyIds, setBuyIds = React.useState(nil :: { number }?)
+	local world = useWorldOptions()
 	local look = withFeedback(rawLook, showToast)
 
 	-- Open / close sounds on panel state changes.
@@ -184,7 +189,8 @@ local function Hud()
 			glass = "blur",
 		}, {
 			Blur = e(BlurDriver, { active = nav.isOpen }),
-			World = if nav.isOpen then nil else e(WorldHud, { nav = nav, look = look, tabs = TABS }),
+			Renderer = e(WorldRenderer, { options = world.options, config = world.config }),
+			World = if nav.isOpen then nil else e(WorldHud, { nav = nav, look = look, tabs = TABS, world = world }),
 			Panel = e(React.Fragment, nil, panels),
 			Toast = e(Toast, { toast = toast }),
 			Buy = e(BuyPrompt, {

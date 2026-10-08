@@ -8,8 +8,9 @@
 	existing children on first render, which deletes any other ScreenGui
 	already there.
 
-	Also starts background preloads of the UI sounds and icons, so their first
-	use isn't delayed by downloading the asset.
+	Also starts background preloads of the UI sounds, icons and world textures
+	(floor patterns, flat skies), so their first use isn't delayed by
+	downloading the asset.
 ]]
 
 local Players = game:GetService("Players")
@@ -26,11 +27,18 @@ local SkinAssets = require(script.Parent:WaitForChild("SkinAssets"))
 
 Sounds.preload()
 task.spawn(function()
-	local icons = {}
+	local images = {}
 	for _, name in SkinAssets.iconNames() do
-		table.insert(icons, SkinAssets.iconImage(name) :: string)
+		table.insert(images, SkinAssets.iconImage(name) :: string)
 	end
-	ContentProvider:PreloadAsync(icons)
+	for _, group in { SkinAssets.floorTextures, SkinAssets.skyTextures } do
+		for _, id in group do
+			if id ~= 0 then
+				table.insert(images, "rbxassetid://" .. id)
+			end
+		end
+	end
+	ContentProvider:PreloadAsync(images)
 end)
 
 local screenGui = Instance.new("ScreenGui")

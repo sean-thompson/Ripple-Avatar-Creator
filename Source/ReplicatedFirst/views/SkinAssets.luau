@@ -72,6 +72,21 @@ SkinAssets.sounds = {
 	worldOut = 129860135845572, -- World options slides off
 } :: { [string]: number }
 
+-- World floor pattern textures (WorldRenderer + the World options thumbnails).
+-- White/greyscale on transparent, tinted by the pattern colour.
+SkinAssets.floorTextures = {
+	Grid = 6372755229, -- Roblox's default baseplate grid
+	Studs = 10455712361, -- classic studs, 2×2 per image
+	Checker = 92292194903425, -- 2×2 white/transparent checker
+} :: { [string]: number }
+
+-- Flat skybox images for the Studio / Void sky presets (WorldRenderer).
+-- 0 = not uploaded (the dense Atmosphere alone tints the sky).
+SkinAssets.skyTextures = {
+	Studio = 122230543831024, -- assets/world/sky_studio.png
+	Void = 105362083220450, -- assets/world/sky_void.png
+} :: { [string]: number }
+
 -- "rbxassetid://..." for an icon name, or nil if it has no art yet.
 function SkinAssets.iconImage(name: string): string?
 	local id = SkinAssets.icons[name]

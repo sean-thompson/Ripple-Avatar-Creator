@@ -61,25 +61,36 @@ end
 -- confirmation lives where the player is looking (the item, the avatar).
 local function withFeedback(look: any)
 	local feedback = table.clone(look)
-	feedback.toggleWear = function(id: number)
+	feedback.toggleWear = function(id: number): boolean
+		if not look.canWear(id) then
+			Sounds.play("error") -- a mock item: nothing real to put on
+			return false
+		end
 		Sounds.play(if look.isWorn(id) then "back" else "tryOn")
-		look.toggleWear(id)
+		return look.toggleWear(id)
 	end
 	feedback.toggleBasket = function(id: number)
 		Sounds.play(if look.inBasket(id) then "back" else "confirm")
 		look.toggleBasket(id)
 	end
-	feedback.wearAll = function(ids: { number })
-		if #ids == 0 then
-			Sounds.play("error")
-			return
-		end
-		Sounds.play("tryOn")
-		look.wearAll(ids)
+	feedback.wearAll = function(ids: { number }): number
+		local count = look.wearAll(ids)
+		Sounds.play(if count > 0 then "tryOn" else "error")
+		return count
 	end
 	feedback.takeOffAll = function()
 		Sounds.play("back")
 		look.takeOffAll()
+	end
+	feedback.undo = function()
+		if look.canUndo then
+			Sounds.play("back")
+			look.undo()
+		end
+	end
+	feedback.reset = function()
+		Sounds.play("back")
+		look.reset()
 	end
 	return feedback
 end

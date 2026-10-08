@@ -548,7 +548,11 @@ export type CardGridProps = {
 	children: any, -- cells, keyed, with LayoutOrder
 	count: number, -- number of cells (for the scroll extent)
 	onNearEnd: (() -> ())?, -- scrolled within a screenful of the end (load more)
+	scrollKey: string?, -- remember the scroll position under this key for the session
 }
+
+-- Session memory of grid scroll positions (CardGrid.scrollKey).
+local scrollPositions: { [string]: number } = {}
 
 function Parts.CardGrid(props: CardGridProps)
 	local skin = useSkin()
@@ -566,6 +570,28 @@ function Parts.CardGrid(props: CardGridProps)
 	local rows = math.ceil(props.count / columns)
 	local canvasHeight = rows * cellHeight + math.max(0, rows - 1) * gap + inset * 2
 
+	-- Put the scroll back where it was for this key, once there's enough
+	-- content to scroll that far (cached results arrive a frame or two late).
+	local restoredKey = React.useRef(nil :: string?)
+	React.useEffect(function()
+		local key = props.scrollKey
+		local frame = ref.current :: ScrollingFrame?
+		if not key or not frame or restoredKey.current == key then
+			return
+		end
+		local saved = scrollPositions[key] or 0
+		if saved <= 0 then
+			-- A browse not seen before starts at the top.
+			frame.CanvasPosition = Vector2.zero
+			restoredKey.current = key
+			return
+		end
+		if frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y >= saved then
+			frame.CanvasPosition = Vector2.new(0, saved)
+			restoredKey.current = key
+		end
+	end, { props.scrollKey or "", canvasHeight } :: { any })
+
 	return e("ScrollingFrame", {
 		Name = "CardGrid",
 		Size = props.size or UDim2.fromScale(1, 1),
@@ -578,14 +604,19 @@ function Parts.CardGrid(props: CardGridProps)
 		ScrollBarThickness = skin.px(8),
 		ScrollBarImageColor3 = Tokens.color.accent,
 		ref = ref,
-		[React.Change.CanvasPosition] = if props.onNearEnd
-			then function(rbx: ScrollingFrame)
+		[React.Change.CanvasPosition] = function(rbx: ScrollingFrame)
+			-- Only record once this key's position has been restored (or there
+			-- was none), so the reset to 0 on a new browse doesn't overwrite it.
+			if props.scrollKey and restoredKey.current == props.scrollKey then
+				scrollPositions[props.scrollKey] = rbx.CanvasPosition.Y
+			end
+			if props.onNearEnd then
 				local remaining = rbx.AbsoluteCanvasSize.Y - (rbx.CanvasPosition.Y + rbx.AbsoluteWindowSize.Y)
 				if remaining < rbx.AbsoluteWindowSize.Y then
-					(props.onNearEnd :: () -> ())()
+					props.onNearEnd()
 				end
 			end
-			else nil,
+		end,
 	}, {
 		Inset = e("UIPadding", {
 			PaddingTop = UDim.new(0, inset),

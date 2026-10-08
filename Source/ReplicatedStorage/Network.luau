@@ -42,6 +42,7 @@ local NetworkBuilder = require(script.Parent:WaitForChild("NetworkBuilder"))
 -- Network Configuration: Single source of truth for all controllers and state
 local NetworkConfig = {
 	Controllers = {
+		Avatar = { "TryOn", "TakeOff", "WearMany", "TakeOffAll", "Undo", "Reset" },
 		Bazaar = { "BuyTreasure" },
 		CashMachine = { "Withdraw", "Deposit" },
 		Shrine = { "Donate" },
@@ -50,6 +51,14 @@ local NetworkConfig = {
 	},
 
 	States = {
+		-- What the player is wearing (persisted; AvatarModel). `worn` is a list
+		-- of { targetId, kind, typeName, name } in the order put on.
+		Avatar = {
+			ownerId = "",
+			worn = {},
+			seeded = false,
+			canUndo = false,
+		},
 		Candles = {
 			ownerId = "",
 			modelId = "",
@@ -107,12 +116,27 @@ local Network = NetworkBuilder.build(NetworkConfig, Bolt)
 -- ============================================================================
 
 -- Action Type Exports (manually defined for type safety)
+export type AvatarAction = "TryOn" | "TakeOff" | "WearMany" | "TakeOffAll" | "Undo" | "Reset"
 export type BazaarAction = "BuyTreasure"
 export type CashMachineAction = "Withdraw" | "Deposit"
 export type ShrineAction = "Donate"
 export type WorldOptionsAction = "Set" | "Reset"
 
 -- State Type Exports (manually defined for type safety)
+export type WornItem = {
+	targetId: number, -- the catalogue asset / bundle id
+	kind: "Asset" | "Bundle",
+	typeName: string, -- AvatarAssetType / BundleType name
+	name: string,
+}
+
+export type AvatarState = {
+	ownerId: string,
+	worn: { WornItem }, -- in the order put on
+	seeded: boolean, -- filled from the player's own avatar on first join
+	canUndo: boolean,
+}
+
 export type CandlesState = {
 	ownerId: string,
 	modelId: string,

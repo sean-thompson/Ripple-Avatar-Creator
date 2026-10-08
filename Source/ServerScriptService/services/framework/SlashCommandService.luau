@@ -841,7 +841,8 @@ local function handleCommand(player: Player, commandString: string): ()
 		local helpTarget = parts[2] -- May be nil
 		local success, message = showHelp(player, helpTarget)
 		sendChatMessage(player, message)
-		print(`[SlashCommand] {player.Name} used /commands` .. (helpTarget and ` {helpTarget}` or ""))
+		-- The full reply in the Output too, for copying (chat truncates long ones).
+		print(`[SlashCommand] {player.Name} used /commands` .. (helpTarget and ` {helpTarget}` or "") .. "\n" .. message)
 		return
 	end
 
@@ -850,7 +851,7 @@ local function handleCommand(player: Player, commandString: string): ()
 		local modelTarget = parts[2] -- May be nil (show all models)
 		local success, message = queryModelState(player, modelTarget)
 		sendChatMessage(player, message)
-		print(`[SlashCommand] {player.Name} used /state` .. (modelTarget and ` {modelTarget}` or ""))
+		print(`[SlashCommand] {player.Name} used /state` .. (modelTarget and ` {modelTarget}` or "") .. "\n" .. message)
 		return
 	end
 

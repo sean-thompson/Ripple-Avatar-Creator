@@ -16,6 +16,10 @@
 	  parseLink(text)    target id + kind from a marketplace link or bare id
 	  lookup(id, kind?)  one item by its real id (yields); a nil kind tries an
 	                     asset, then a bundle. Fails for non-avatar items.
+	  remember(worn)     the item for a worn entry ({ targetId, kind,
+	                     typeName, name } from the Avatar state): a stub
+	                     straight away if unseen, filled in from the
+	                     catalogue in the background
 
 	Item ids: assets keep their asset id; bundles are negated (-bundleId), as
 	asset and bundle ids can collide. `targetId` + `kind` carry the real id.
@@ -360,6 +364,52 @@ function CatalogueClient.lookup(targetId: number, kind: ("Asset" | "Bundle")?): 
 		end
 	end
 	return false, lastError
+end
+
+-- An item for something the player is wearing, which this client may never
+-- have seen in a search (e.g. from their own avatar). Returns at once.
+function CatalogueClient.remember(worn: { targetId: number, kind: "Asset" | "Bundle", typeName: string, name: string }): Item
+	local id = if worn.kind == "Bundle" then -worn.targetId else worn.targetId
+	local known = seen[id]
+	if known then
+		return known
+	end
+	local where = placement[worn.typeName] or { main = "", sub = worn.typeName }
+	local size = CatalogueConfig.thumbnailSize
+	local item: Item = {
+		id = id,
+		kind = worn.kind,
+		targetId = worn.targetId,
+		name = if worn.name ~= "" then worn.name else worn.typeName,
+		main = where.main,
+		sub = where.sub,
+		typeName = worn.typeName,
+		price = 0,
+		limited = false,
+		resale = false,
+		creator = "",
+		description = "",
+		favourites = 0,
+		thumbnail = `rbxthumb://type={if worn.kind == "Bundle" then "BundleThumbnail" else "Asset"}&id={worn.targetId}&w={size}&h={size}`,
+		colour = "",
+		colours = {},
+		owned = false,
+	}
+	seen[id] = item
+	-- Fill in price, creator and the rest (updates this same object).
+	task.spawn(function()
+		local itemType = if worn.kind == "Bundle" then Enum.AvatarItemType.Bundle else Enum.AvatarItemType.Asset
+		local ok, raw = call(function()
+			return AvatarEditorService:GetItemDetails(worn.targetId, itemType)
+		end)
+		if ok then
+			local details = raw :: any
+			details.Id = details.Id or worn.targetId
+			details.ItemType = worn.kind
+			toItem(details)
+		end
+	end)
+	return item
 end
 
 function CatalogueClient.item(id: number): Item?

@@ -247,6 +247,12 @@ local function CatalogueScreen(props: { nav: any, look: any })
 			},
 		})
 	end
+	-- Still finding matches (colour classification under way): a spinner card
+	-- holds the next empty slot. With nothing yet, the message says so instead.
+	if count > 0 and catalogue.status == "loading" then
+		cards.Loading = e(Parts.LoadingCard, { layoutOrder = count + 1 })
+	end
+	local cells = count + (if cards.Loading then 1 else 0)
 	local message = if count > 0 then nil
 		elseif catalogue.status == "ready" then MESSAGES.empty
 		elseif catalogue.status == "loading" and filters.colour ~= "" then `Finding {string.lower(filters.colour)} items…`
@@ -363,7 +369,7 @@ local function CatalogueScreen(props: { nav: any, look: any })
 		Grid = e(Parts.CardGrid, {
 			columns = 6,
 			extraHeight = 40,
-			count = count,
+			count = cells,
 			position = UDim2.fromOffset(0, gridTop),
 			size = UDim2.new(1, 0, 1, -(gridTop + barSpace)),
 			onNearEnd = catalogue.loadMore,

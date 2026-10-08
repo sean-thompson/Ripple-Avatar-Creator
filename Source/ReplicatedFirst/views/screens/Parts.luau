@@ -12,6 +12,7 @@
 	             with `menu`, a tap opens the design's card menu over the thumb
 	             (Try · basket · Buy · View) instead of calling onActivated
 	  ListRow    Basket/Wearing/Outfit row: thumb, name, sub-line, price, actions
+	  LoadingCard  a grid cell holding a spinner: "more results are on the way"
 	  CardGrid   scrolling grid with an explicit column count — cells and scroll
 	             extent sized from measured width (no AutomaticCanvasSize, which
 	             mis-sizes under the canvas UIScale)
@@ -22,6 +23,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 
@@ -483,6 +485,54 @@ function Parts.ListRow(props: ListRowProps)
 				Padding = UDim.new(0, skin.px(8)),
 			}),
 			Children = e(React.Fragment, nil, props.trailing),
+		}),
+	})
+end
+
+-- A grid cell with a spinning arc where the next result will land.
+function Parts.LoadingCard(props: { layoutOrder: number? })
+	local skin = useSkin()
+	local rotation, setRotation = React.useBinding(0)
+	React.useEffect(function()
+		local connection = RunService.RenderStepped:Connect(function(dt: number)
+			setRotation((rotation:getValue() + dt * 360) % 360)
+		end)
+		return function()
+			connection:Disconnect()
+		end
+	end, {})
+	local ring = skin.px(34)
+	return e("Frame", {
+		Name = "LoadingCard",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.layoutOrder or 0,
+	}, {
+		Thumb = e(Parts.Thumb, {
+			colour = Tokens.color.white,
+			size = UDim2.fromScale(1, 1),
+		}, {
+			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1, DominantAxis = Enum.DominantAxis.Width }),
+			-- (not "Ring": Thumb already has a child of that name)
+			Spinner = e("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(ring, ring),
+				BackgroundTransparency = 1,
+				Rotation = rotation,
+			}, {
+				Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
+				Stroke = e("UIStroke", { Color = Tokens.color.accent, Thickness = skin.stroke(4) }, {
+					-- Fades round the ring, so it reads as a spinning arc.
+					Fade = e("UIGradient", {
+						Transparency = NumberSequence.new({
+							NumberSequenceKeypoint.new(0, 0),
+							NumberSequenceKeypoint.new(0.6, 0.85),
+							NumberSequenceKeypoint.new(1, 1),
+						}),
+					}),
+				}),
+			}),
 		}),
 	})
 end

@@ -29,6 +29,7 @@ local useSpring = require(hooks:WaitForChild("useSpring"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 local Icon = require(script.Parent:WaitForChild("Icon"))
 
 local e = React.createElement
@@ -72,6 +73,11 @@ local function Chip(props: Props)
 	local iconSize = skin.px(18)
 	local width = padding * 2 + textWidth + (if props.icon then iconSize + gap else 0)
 
+	local function onPress()
+		Sounds.play("tab")
+		props.onActivated()
+	end
+
 	return e("TextButton", {
 		Name = "Chip",
 		Size = UDim2.fromOffset(width, height),
@@ -80,10 +86,8 @@ local function Chip(props: Props)
 		BackgroundTransparency = spring.fill,
 		AutoButtonColor = false,
 		Text = "",
-		[React.Event.Activated] = function()
-			Sounds.play("tab")
-			props.onActivated()
-		end,
+		[React.Event.InputBegan] = Press.began(onPress),
+		[React.Event.Activated] = Press.activated(onPress),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {

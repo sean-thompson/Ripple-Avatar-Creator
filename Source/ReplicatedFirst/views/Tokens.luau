@@ -51,6 +51,9 @@ Tokens.alpha = {
 
 -- Catalogue colour filter swatches (logic.js COL).
 Tokens.swatch = {
+	Red = hex("#e0403a"),
+	Yellow = hex("#f2c94c"),
+	Grey = hex("#8c8c8c"),
 	Orange = hex("#ff7a00"),
 	Black = hex("#2a2a2a"),
 	White = hex("#d9d9d9"),

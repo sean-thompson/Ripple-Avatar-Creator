@@ -86,11 +86,14 @@ for index, raw in RAW_ITEMS do
 		sub = raw[3] :: string,
 		typeName = raw[3] :: string,
 		price = raw[4] :: number,
+		limited = false,
+		resale = false,
 		creator = CREATORS[(index - 1) % #CREATORS + 1],
 		description = "",
 		favourites = 0,
 		thumbnail = "",
 		colour = raw[5] :: string,
+		colours = { raw[5] :: string },
 		owned = string.find(flags, "o", 1, true) ~= nil,
 	} :: Item)
 end

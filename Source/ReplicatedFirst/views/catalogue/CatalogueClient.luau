@@ -13,6 +13,9 @@
 	  loadMore(query)    next page appended to that query's results (yields)
 	  item(id)           any item this client has seen, by id
 	  similar(item, n)   up to n seen items from the same category
+	  parseLink(text)    target id + kind from a marketplace link or bare id
+	  lookup(id, kind?)  one item by its real id (yields); a nil kind tries an
+	                     asset, then a bundle. Fails for non-avatar items.
 
 	Item ids: assets keep their asset id; bundles are negated (-bundleId), as
 	asset and bundle ids can collide. `targetId` + `kind` carry the real id.
@@ -36,12 +39,15 @@ export type Item = {
 	main: string, -- top-level category (CatalogueConfig.categories[].name)
 	sub: string, -- chip name within it
 	typeName: string, -- AvatarAssetType / BundleType name
-	price: number,
+	price: number, -- Robux to buy now; for a sold-out Limited, its lowest resale
+	limited: boolean, -- Limited / collectible
+	resale: boolean, -- `price` is the lowest resale price
 	creator: string,
 	description: string,
 	favourites: number,
 	thumbnail: string,
-	colour: string, -- dominant colour name; "" until colour analysis lands (Task 8)
+	colour: string, -- dominant colour name; "" until ItemColour has read the thumbnail
+	colours: { string }, -- every colour with a big enough share (ItemColour)
 	owned: boolean, -- false until ownership checks land (Task 11)
 }
 
@@ -49,6 +55,13 @@ export type Query = {
 	category: string,
 	chip: string?, -- nil = "All"
 	keyword: string?,
+	minPrice: number?, -- Robux; nil = no bound
+	maxPrice: number?,
+	sort: string?, -- Enum.CatalogSortType name; nil = CatalogueConfig.sort
+	sortWindow: string?, -- Enum.CatalogSortAggregation name; nil = CatalogueConfig.sortAggregation
+	creator: string?, -- creator name; nil / "" = anyone
+	salesType: string?, -- Enum.SalesTypeFilter name; nil = All
+	includeOffSale: boolean?, -- nil = CatalogueConfig.includeOffSale
 }
 
 export type Result = {
@@ -119,15 +132,34 @@ local function paramsFor(query: Query): CatalogSearchParams
 	params.AssetTypes = assetTypes :: any
 	params.BundleTypes = bundleTypes :: any
 	params.SearchKeyword = query.keyword or ""
-	params.SortType = (Enum.CatalogSortType :: any)[CatalogueConfig.sort]
-	params.SortAggregation = (Enum.CatalogSortAggregation :: any)[CatalogueConfig.sortAggregation]
-	params.IncludeOffSale = CatalogueConfig.includeOffSale
+	params.SortType = (Enum.CatalogSortType :: any)[query.sort or CatalogueConfig.sort]
+	params.SortAggregation = (Enum.CatalogSortAggregation :: any)[query.sortWindow or CatalogueConfig.sortAggregation]
+	params.SalesTypeFilter = (Enum.SalesTypeFilter :: any)[query.salesType or "All"]
+	params.IncludeOffSale = if query.includeOffSale ~= nil then query.includeOffSale else CatalogueConfig.includeOffSale
+	params.CreatorName = query.creator or ""
+	if query.minPrice then
+		params.MinPrice = query.minPrice
+	end
+	if query.maxPrice then
+		params.MaxPrice = query.maxPrice
+	end
 	params.Limit = CatalogueConfig.pageSize
 	return params
 end
 
 local function keyFor(query: Query): string
-	return `{query.category}|{query.chip or "All"}|{string.lower(query.keyword or "")}`
+	return table.concat({
+		query.category,
+		query.chip or "All",
+		string.lower(query.keyword or ""),
+		tostring(query.minPrice),
+		tostring(query.maxPrice),
+		query.sort or "",
+		query.sortWindow or "",
+		string.lower(query.creator or ""),
+		query.salesType or "",
+		tostring(query.includeOffSale),
+	}, "|")
 end
 
 local function typeNameOf(value: any): string
@@ -138,11 +170,34 @@ local function typeNameOf(value: any): string
 	return tostring(value)
 end
 
+-- What it costs to buy now. A Limited (collectible) whose original stock has
+-- sold out reports Price 0; its real price is the lowest resale.
+local function priceOf(raw: any): (number, boolean, boolean)
+	local limited = false
+	for _, restriction in raw.ItemRestrictions or {} do
+		local name = tostring(restriction)
+		if name == "Collectible" or name == "Limited" or name == "LimitedUnique" then
+			limited = true
+		end
+	end
+	local base = raw.Price or 0
+	local lowest = raw.LowestPrice or raw.LowestResalePrice or 0
+	if limited then
+		local units = raw.UnitsAvailableForConsumption
+		local soldOut = units ~= nil and units <= 0
+		if (soldOut or base <= 0) and lowest > 0 then
+			return lowest, true, true
+		end
+	end
+	return if base > 0 then base else math.max(lowest, 0), limited, false
+end
+
 local function toItem(raw: any): Item
 	local isBundle = raw.ItemType == "Bundle" or raw.ItemType == Enum.AvatarItemType.Bundle
 	local typeName = typeNameOf(if isBundle then raw.BundleType else raw.AssetType)
 	local where = placement[typeName] or { main = "", sub = typeName }
 	local size = CatalogueConfig.thumbnailSize
+	local price, limited, resale = priceOf(raw)
 	local item: Item = {
 		id = if isBundle then -raw.Id else raw.Id,
 		kind = if isBundle then "Bundle" else "Asset",
@@ -151,19 +206,25 @@ local function toItem(raw: any): Item
 		main = where.main,
 		sub = where.sub,
 		typeName = typeName,
-		price = raw.Price or raw.LowestPrice or 0,
+		price = price,
+		limited = limited,
+		resale = resale,
 		creator = raw.CreatorName or "",
 		description = raw.Description or "",
 		favourites = raw.FavoriteCount or 0,
 		thumbnail = `rbxthumb://type={if isBundle then "BundleThumbnail" else "Asset"}&id={raw.Id}&w={size}&h={size}`,
 		colour = "",
+		colours = {},
 		owned = false,
 	}
-	-- Keep the existing object, so anything holding it stays current.
+	-- Keep the existing object, so anything holding it stays current (and
+	-- keep colours ItemColour has already worked out).
 	local existing = seen[item.id]
 	if existing then
 		for k, v in item :: any do
-			(existing :: any)[k] = v
+			if k ~= "colour" and k ~= "colours" then
+				(existing :: any)[k] = v
+			end
 		end
 		return existing
 	end
@@ -251,6 +312,54 @@ function CatalogueClient.loadMore(query: Query): (boolean, Result | string)
 	appendPage(entry, pages:GetCurrentPage())
 	entry.exhausted = pages.IsFinished
 	return true, result(entry)
+end
+
+-- Marketplace links ("roblox.com/catalog/123/…", "roblox.com/bundles/45/…")
+-- or a bare id. A bare id's kind is unknown (nil): lookup tries both.
+function CatalogueClient.parseLink(text: string): (number?, ("Asset" | "Bundle")?)
+	local lowered = string.lower(text)
+	local asset = string.match(lowered, "/catalog/(%d+)")
+	if asset then
+		return tonumber(asset), "Asset"
+	end
+	local bundle = string.match(lowered, "/bundles/(%d+)")
+	if bundle then
+		return tonumber(bundle), "Bundle"
+	end
+	local bare = string.match(lowered, "^%s*(%d+)%s*$")
+	if bare then
+		return tonumber(bare), nil
+	end
+	return nil, nil
+end
+
+-- One item by its real id. Yields; returns (ok, Item or error message).
+function CatalogueClient.lookup(targetId: number, kind: ("Asset" | "Bundle")?): (boolean, Item | string)
+	local kinds: { "Asset" | "Bundle" } = if kind then { kind } else { "Asset", "Bundle" }
+	local lastError = "not found"
+	for _, k in kinds do
+		local known = seen[if k == "Bundle" then -targetId else targetId]
+		if known then
+			return true, known
+		end
+		local itemType = if k == "Bundle" then Enum.AvatarItemType.Bundle else Enum.AvatarItemType.Asset
+		local ok, raw = call(function()
+			return AvatarEditorService:GetItemDetails(targetId, itemType)
+		end)
+		if ok then
+			local details = raw :: any
+			details.Id = details.Id or targetId
+			details.ItemType = k
+			local item = toItem(details)
+			if item.main ~= "" then
+				return true, item
+			end
+			lastError = "not an avatar item"
+		else
+			lastError = raw :: string
+		end
+	end
+	return false, lastError
 end
 
 function CatalogueClient.item(id: number): Item?

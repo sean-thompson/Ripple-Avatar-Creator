@@ -43,6 +43,7 @@ local GlossFace = require(script.Parent:WaitForChild("GlossFace"))
 local Icon = require(script.Parent:WaitForChild("Icon"))
 local ShadowText = require(script.Parent:WaitForChild("ShadowText"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 
 local e = React.createElement
 
@@ -80,6 +81,13 @@ local function Segment(props: SegmentProps)
 
 	local line = skin.stroke(1)
 
+	local function onPress()
+		if props.sound then
+			Sounds.play("tab")
+		end
+		props.onSelect(props.tab.id)
+	end
+
 	return e("TextButton", {
 		Name = "Tab_" .. props.tab.id,
 		Size = UDim2.fromOffset(props.width, props.height),
@@ -87,12 +95,8 @@ local function Segment(props: SegmentProps)
 		BackgroundTransparency = 1,
 		AutoButtonColor = false,
 		Text = "",
-		[React.Event.Activated] = function()
-			if props.sound then
-				Sounds.play("tab")
-			end
-			props.onSelect(props.tab.id)
-		end,
+		[React.Event.InputBegan] = Press.began(onPress),
+		[React.Event.Activated] = Press.activated(onPress),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {

@@ -26,6 +26,7 @@ local views = script.Parent
 local components = views:WaitForChild("components")
 local hooks = views:WaitForChild("hooks")
 local Tokens = require(views:WaitForChild("Tokens"))
+local Press = require(views:WaitForChild("Press"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local useTransition = require(hooks:WaitForChild("useTransition"))
 local PillButton = require(components:WaitForChild("PillButton"))
@@ -70,7 +71,8 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 		AutoButtonColor = false,
 		Text = "",
 		ZIndex = 40,
-		[React.Event.Activated] = props.onCancel, -- tap outside to cancel
+		[React.Event.InputBegan] = Press.began(props.onCancel), -- tap outside to cancel
+		[React.Event.Activated] = Press.activated(props.onCancel),
 	}, {
 		Dialog = e("CanvasGroup", {
 			AnchorPoint = Vector2.new(0.5, 0.5),

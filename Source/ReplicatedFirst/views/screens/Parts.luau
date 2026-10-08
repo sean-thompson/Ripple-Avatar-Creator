@@ -8,8 +8,11 @@
 	  Thumb      tinted tile (the design's colour-washed card art) with the
 	             item's thumbnail on it when it has one
 	  PriceTag   "Owned" / "Free" / toll icon + price
-	  ItemCard   catalogue card: thumb with wearing/in-basket markers, name, price
+	  ItemCard   catalogue card: thumb with wearing/in-basket markers, name, price;
+	             with `menu`, a tap opens the design's card menu over the thumb
+	             (Try · basket · Buy · View) instead of calling onActivated
 	  ListRow    Basket/Wearing/Outfit row: thumb, name, sub-line, price, actions
+	  LoadingCard  a grid cell holding a spinner: "more results are on the way"
 	  CardGrid   scrolling grid with an explicit column count — cells and scroll
 	             extent sized from measured width (no AutomaticCanvasSize, which
 	             mis-sizes under the canvas UIScale)
@@ -20,6 +23,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 
@@ -28,6 +32,7 @@ local components = views:WaitForChild("components")
 local hooks = views:WaitForChild("hooks")
 local Tokens = require(views:WaitForChild("Tokens"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local useLocalSize = require(hooks:WaitForChild("useLocalSize"))
@@ -35,6 +40,7 @@ local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 local Badge = require(components:WaitForChild("Badge"))
 local Icon = require(components:WaitForChild("Icon"))
 local ShadowText = require(components:WaitForChild("ShadowText"))
+local PillButton = require(components:WaitForChild("PillButton"))
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
 
 local e = React.createElement
@@ -169,19 +175,138 @@ function Parts.PriceTag(props: PriceProps)
 	})
 end
 
+-- The card menu (design 5b): Try / Take off, basket toggle, Buy, View.
+export type CardMenu = {
+	open: boolean,
+	onToggle: () -> (), -- a tap on the card opens/closes its menu
+	onTry: () -> (),
+	onBasket: () -> (),
+	onBuy: () -> (),
+	onView: () -> (),
+}
+
 export type ItemCardProps = {
 	item: PlaceholderData.Item,
 	wearing: boolean,
 	inBasket: boolean,
-	onActivated: () -> (),
+	onActivated: (() -> ())?, -- plain tap (cards without a menu)
+	menu: CardMenu?,
 	layoutOrder: number?,
 }
+
+local MENU_BUTTON = 30
+local MENU_TEXT = { size = 13.5, weight = 900 }
+
+local function CardMenuOverlay(props: { item: PlaceholderData.Item, wearing: boolean, inBasket: boolean, menu: CardMenu })
+	local skin = useSkin()
+	local item, menu = props.item, props.menu
+	local gap = skin.px(5)
+	local buyLabel = if item.owned then "Owned" elseif item.price == 0 then "Get" else "Buy"
+	return e("Frame", {
+		Name = "Menu",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Tokens.color.black,
+		BackgroundTransparency = 0.3,
+		BorderSizePixel = 0,
+		ZIndex = 3,
+	}, {
+		Corner = e("UICorner", { CornerRadius = UDim.new(0, skin.px(Tokens.radius.itemCard)) }),
+		Padding = e("UIPadding", {
+			PaddingTop = UDim.new(0, skin.px(9)),
+			PaddingBottom = UDim.new(0, skin.px(9)),
+			PaddingLeft = UDim.new(0, skin.px(9)),
+			PaddingRight = UDim.new(0, skin.px(9)),
+		}),
+		Layout = e("UIListLayout", {
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, gap),
+		}),
+		Try = e(PillButton, {
+			variant = "pill",
+			size = MENU_BUTTON,
+			icon = if props.wearing then "remove" else "checkroom",
+			iconSize = 16,
+			label = if props.wearing then "Take off" else "Try",
+			textStyle = MENU_TEXT,
+			active = true,
+			glowRadius = 0,
+			sound = false, -- the look change plays its own sound
+			layoutOrder = 1,
+			zIndex = 3,
+			onActivated = menu.onTry,
+		}),
+		Row = e("Frame", {
+			Size = UDim2.new(1, 0, 0, skin.px(MENU_BUTTON)),
+			BackgroundTransparency = 1,
+			LayoutOrder = 2,
+			ZIndex = 3,
+		}, {
+			-- flex 1 : 1.4, as in the design
+			Basket = e("Frame", {
+				Size = UDim2.new(1 / 2.4, -gap / 2, 1, 0),
+				BackgroundTransparency = 1,
+				ZIndex = 3,
+			}, {
+				Button = e(PillButton, {
+					variant = "pill",
+					size = MENU_BUTTON,
+					icon = if props.inBasket then "remove_shopping_cart" else "add_shopping_cart",
+					iconSize = 17,
+					glowRadius = 0,
+					sound = false, -- the look change plays its own sound
+					zIndex = 3,
+					onActivated = menu.onBasket,
+				}),
+			}),
+			Buy = e("Frame", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.fromScale(1, 0),
+				Size = UDim2.new(1.4 / 2.4, -gap / 2, 1, 0),
+				BackgroundTransparency = 1,
+				ZIndex = 3,
+			}, {
+				Button = e(PillButton, {
+					variant = "pill",
+					size = MENU_BUTTON,
+					label = buyLabel,
+					textStyle = MENU_TEXT,
+					disabled = item.owned,
+					glowRadius = 0,
+					zIndex = 3,
+					onActivated = menu.onBuy,
+				}),
+			}),
+		}),
+		View = e(PillButton, {
+			variant = "pill",
+			size = MENU_BUTTON,
+			icon = "visibility",
+			iconSize = 16,
+			label = "View",
+			textStyle = MENU_TEXT,
+			glowRadius = 0,
+			layoutOrder = 3,
+			zIndex = 3,
+			onActivated = menu.onView,
+		}),
+	})
+end
 
 function Parts.ItemCard(props: ItemCardProps)
 	local skin = useSkin()
 	local interaction = useInteraction()
 	local item = props.item
 	local nameSize = skin.textPx(13)
+
+	local function onPress()
+		Sounds.play("press")
+		if props.menu then
+			props.menu.onToggle()
+		elseif props.onActivated then
+			props.onActivated()
+		end
+	end
 
 	return e("TextButton", {
 		Name = "ItemCard",
@@ -190,10 +315,8 @@ function Parts.ItemCard(props: ItemCardProps)
 		AutoButtonColor = false,
 		Text = "",
 		LayoutOrder = props.layoutOrder or 0,
-		[React.Event.Activated] = function()
-			Sounds.play("press")
-			props.onActivated()
-		end,
+		[React.Event.InputBegan] = Press.began(onPress),
+		[React.Event.Activated] = Press.activated(onPress),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {
@@ -224,6 +347,14 @@ function Parts.ItemCard(props: ItemCardProps)
 					then e(Badge, { kind = "marker", tone = "white", icon = "shopping_basket", layoutOrder = 2, zIndex = 2 })
 					else nil,
 			}),
+			Menu = if props.menu and props.menu.open
+				then e(CardMenuOverlay, {
+					item = item,
+					wearing = props.wearing,
+					inBasket = props.inBasket,
+					menu = props.menu,
+				})
+				else nil,
 		}),
 		Meta = e("Frame", {
 			AnchorPoint = Vector2.new(0, 1),
@@ -275,7 +406,8 @@ function Parts.ListRow(props: ListRowProps)
 		AutoButtonColor = false,
 		Text = "",
 		LayoutOrder = props.layoutOrder or 0,
-		[React.Event.Activated] = props.onActivated,
+		[React.Event.InputBegan] = Press.began(props.onActivated),
+		[React.Event.Activated] = Press.activated(props.onActivated),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {
@@ -357,6 +489,54 @@ function Parts.ListRow(props: ListRowProps)
 	})
 end
 
+-- A grid cell with a spinning arc where the next result will land.
+function Parts.LoadingCard(props: { layoutOrder: number? })
+	local skin = useSkin()
+	local rotation, setRotation = React.useBinding(0)
+	React.useEffect(function()
+		local connection = RunService.RenderStepped:Connect(function(dt: number)
+			setRotation((rotation:getValue() + dt * 360) % 360)
+		end)
+		return function()
+			connection:Disconnect()
+		end
+	end, {})
+	local ring = skin.px(34)
+	return e("Frame", {
+		Name = "LoadingCard",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.layoutOrder or 0,
+	}, {
+		Thumb = e(Parts.Thumb, {
+			colour = Tokens.color.white,
+			size = UDim2.fromScale(1, 1),
+		}, {
+			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1, DominantAxis = Enum.DominantAxis.Width }),
+			-- (not "Ring": Thumb already has a child of that name)
+			Spinner = e("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(ring, ring),
+				BackgroundTransparency = 1,
+				Rotation = rotation,
+			}, {
+				Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
+				Stroke = e("UIStroke", { Color = Tokens.color.accent, Thickness = skin.stroke(4) }, {
+					-- Fades round the ring, so it reads as a spinning arc.
+					Fade = e("UIGradient", {
+						Transparency = NumberSequence.new({
+							NumberSequenceKeypoint.new(0, 0),
+							NumberSequenceKeypoint.new(0.6, 0.85),
+							NumberSequenceKeypoint.new(1, 1),
+						}),
+					}),
+				}),
+			}),
+		}),
+	})
+end
+
 export type CardGridProps = {
 	columns: number,
 	gap: number?, -- design px
@@ -367,6 +547,7 @@ export type CardGridProps = {
 	position: UDim2?,
 	children: any, -- cells, keyed, with LayoutOrder
 	count: number, -- number of cells (for the scroll extent)
+	onNearEnd: (() -> ())?, -- scrolled within a screenful of the end (load more)
 }
 
 function Parts.CardGrid(props: CardGridProps)
@@ -397,6 +578,14 @@ function Parts.CardGrid(props: CardGridProps)
 		ScrollBarThickness = skin.px(8),
 		ScrollBarImageColor3 = Tokens.color.accent,
 		ref = ref,
+		[React.Change.CanvasPosition] = if props.onNearEnd
+			then function(rbx: ScrollingFrame)
+				local remaining = rbx.AbsoluteCanvasSize.Y - (rbx.CanvasPosition.Y + rbx.AbsoluteWindowSize.Y)
+				if remaining < rbx.AbsoluteWindowSize.Y then
+					(props.onNearEnd :: () -> ())()
+				end
+			end
+			else nil,
 	}, {
 		Inset = e("UIPadding", {
 			PaddingTop = UDim.new(0, inset),

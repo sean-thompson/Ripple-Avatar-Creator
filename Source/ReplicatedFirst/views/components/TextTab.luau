@@ -26,6 +26,7 @@ local useSpring = require(hooks:WaitForChild("useSpring"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 
 local e = React.createElement
 
@@ -52,6 +53,11 @@ local function TextTab(props: Props)
 	-- Explicit width, not AutomaticSize (mis-sizes under the canvas UIScale).
 	local width = useTextWidth(props.label, font, textSize)
 
+	local function onPress()
+		Sounds.play("tab")
+		props.onActivated()
+	end
+
 	return e("TextButton", {
 		Name = "TextTab",
 		Size = UDim2.fromOffset(width, skin.px(Tokens.size.textTabHeight)),
@@ -63,10 +69,8 @@ local function TextTab(props: Props)
 		TextTransparency = spring.text,
 		TextSize = textSize,
 		FontFace = font,
-		[React.Event.Activated] = function()
-			Sounds.play("tab")
-			props.onActivated()
-		end,
+		[React.Event.InputBegan] = Press.began(onPress),
+		[React.Event.Activated] = Press.activated(onPress),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {

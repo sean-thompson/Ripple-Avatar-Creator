@@ -69,6 +69,9 @@ local function ShadowText(props: Props)
 				TextTransparency = 0.4,
 				TextSize = textSize,
 				FontFace = font,
+				-- Same alignment as the text: if the measured width is off (an
+				-- estimate on first render), centred vs left would drift apart.
+				TextXAlignment = Enum.TextXAlignment.Left,
 				ZIndex = z,
 			}),
 		Text = e("TextLabel", {

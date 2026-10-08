@@ -3,10 +3,11 @@
 --[[
 	useCatalogue
 
-	Live catalogue results for a category / chip / keyword, via CatalogueClient.
-	Keyword changes wait CatalogueConfig.searchDebounce before searching;
-	category and chip changes search at once. A slower, older search never
-	overwrites a newer one.
+	Live catalogue results for a query (category, chip, keyword and filters),
+	via CatalogueClient. Changes to the typed fields (keyword, creator) wait
+	CatalogueConfig.searchDebounce before searching; everything else (tab,
+	chip, sort, price, sales type, off-sale) searches at once. A slower, older
+	search never overwrites a newer one.
 
 	Returns:
 		items: { Item }
@@ -24,7 +25,11 @@ local CatalogueClient = require(script.Parent.Parent:WaitForChild("catalogue"):W
 
 export type Status = "loading" | "ready" | "error"
 
-local function useCatalogue(category: string, chip: string?, keyword: string)
+local function trim(text: string?): string
+	return string.match(text or "", "^%s*(.-)%s*$") or ""
+end
+
+local function useCatalogue(input: CatalogueClient.Query)
 	local state, setState = React.useState({
 		items = {} :: { CatalogueClient.Item },
 		status = "loading" :: Status,
@@ -32,9 +37,12 @@ local function useCatalogue(category: string, chip: string?, keyword: string)
 	})
 	local generation = React.useRef(0)
 	local loading = React.useRef(nil :: number?) -- generation of the fetch in flight
-	local trimmed = string.gsub(keyword, "^%s*(.-)%s*$", "%1")
-	local lastKeyword = React.useRef(trimmed)
-	local query: CatalogueClient.Query = { category = category, chip = chip, keyword = trimmed }
+
+	local query: CatalogueClient.Query = table.clone(input)
+	query.keyword = trim(input.keyword)
+	query.creator = trim(input.creator)
+	local typed = query.keyword .. "\0" .. query.creator
+	local lastTyped = React.useRef(typed)
 
 	local function run(fetch: (CatalogueClient.Query) -> (boolean, any), q: CatalogueClient.Query, mine: number)
 		loading.current = mine
@@ -58,10 +66,10 @@ local function useCatalogue(category: string, chip: string?, keyword: string)
 	React.useEffect(function()
 		generation.current += 1
 		local mine = generation.current
-		local typing = lastKeyword.current ~= trimmed
-		lastKeyword.current = trimmed
-		-- Typing keeps the old results up while the new ones load; a new
-		-- category or chip clears them, so another tab's items never linger.
+		local typing = lastTyped.current ~= typed
+		lastTyped.current = typed
+		-- Typing keeps the old results up while the new ones load; any other
+		-- change clears them, so another tab's or filter's items never linger.
 		setState(function(current)
 			return { items = if typing then current.items else {}, status = "loading", exhausted = false }
 		end)
@@ -77,7 +85,18 @@ local function useCatalogue(category: string, chip: string?, keyword: string)
 				task.cancel(thread)
 			end
 		end
-	end, { category, chip or "", trimmed } :: { any })
+	end, {
+		query.category,
+		query.chip or "",
+		query.keyword,
+		query.creator,
+		tostring(query.minPrice),
+		tostring(query.maxPrice),
+		query.sort or "",
+		query.sortWindow or "",
+		query.salesType or "",
+		tostring(query.includeOffSale),
+	} :: { any })
 
 	local function loadMore()
 		if loading.current ~= nil or state.exhausted or state.status ~= "ready" then

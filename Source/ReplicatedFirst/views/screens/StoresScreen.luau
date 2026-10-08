@@ -21,6 +21,7 @@ local views = script.Parent.Parent
 local components = views:WaitForChild("components")
 local hooks = views:WaitForChild("hooks")
 local Tokens = require(views:WaitForChild("Tokens"))
+local Press = require(views:WaitForChild("Press"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local TextTab = require(components:WaitForChild("TextTab"))
@@ -44,7 +45,8 @@ local function StoreTile(props: { store: PlaceholderData.Store, onActivated: () 
 		AutoButtonColor = false,
 		Text = "",
 		LayoutOrder = props.layoutOrder,
-		[React.Event.Activated] = props.onActivated,
+		[React.Event.InputBegan] = Press.began(props.onActivated),
+		[React.Event.Activated] = Press.activated(props.onActivated),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {

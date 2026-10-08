@@ -38,6 +38,7 @@
 		disabled: boolean?
 		glowRadius: number?      design px; 0 disables
 		badge: React element?    pinned top-right, may overflow
+		sound: (Sounds.Name | false)?  tap sound; default "press", false = silent
 		forcedState: ("hover" | "pressed")?  gallery screenshots only
 		onActivated: (() -> ())?
 		layoutOrder, position, anchorPoint, zIndex
@@ -56,6 +57,7 @@ local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local GlossFace = require(script.Parent:WaitForChild("GlossFace"))
 local Icon = require(script.Parent:WaitForChild("Icon"))
 local ShadowText = require(script.Parent:WaitForChild("ShadowText"))
+local Sounds = require(views:WaitForChild("Sounds"))
 
 local e = React.createElement
 
@@ -72,6 +74,7 @@ export type Props = {
 	disabled: boolean?,
 	glowRadius: number?,
 	badge: any?,
+	sound: (Sounds.Name | false)?,
 	forcedState: ("hover" | "pressed")?,
 	onActivated: (() -> ())?,
 	layoutOrder: number?,
@@ -171,7 +174,16 @@ local function PillButton(props: Props)
 		Text = "",
 		AutoButtonColor = false,
 		Active = not props.disabled,
-		[React.Event.Activated] = if props.disabled then nil else props.onActivated,
+		[React.Event.Activated] = if props.disabled
+			then nil
+			else function()
+				if props.sound ~= false then
+					Sounds.play(props.sound or "press")
+				end
+				if props.onActivated then
+					props.onActivated()
+				end
+			end,
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 		[React.Event.MouseButton1Down] = interaction.onDown,

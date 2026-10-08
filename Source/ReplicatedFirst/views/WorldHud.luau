@@ -8,7 +8,9 @@
 	toggle and its side panel. The top-left is left clear for Roblox's own
 	top-bar buttons (the tab bar is centred, so nothing reaches it).
 
-	Hidden while the full panel is open — the design's panel covers it.
+	Hidden while the full panel is open — the design's panel covers it. When it
+	comes back, the bottom buttons rise into place; World options slides in and
+	out from the right; the Basket badge total rolls.
 	Create avatar and Save to Roblox are stubs until Task 11; Reset clears the
 	placeholder look.
 
@@ -26,10 +28,14 @@ local components = views:WaitForChild("components")
 local hooks = views:WaitForChild("hooks")
 local Tokens = require(views:WaitForChild("Tokens"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
+local useAppear = require(hooks:WaitForChild("useAppear"))
+local useSpringNumber = require(hooks:WaitForChild("useSpringNumber"))
+local useTransition = require(hooks:WaitForChild("useTransition"))
 local PillButton = require(components:WaitForChild("PillButton"))
 local PillTabs = require(components:WaitForChild("PillTabs"))
 local Badge = require(components:WaitForChild("Badge"))
 local WorldOptionsView = require(views:WaitForChild("WorldOptionsView"))
+local Sounds = require(views:WaitForChild("Sounds"))
 
 local e = React.createElement
 
@@ -42,14 +48,36 @@ export type Props = {
 local function WorldHud(props: Props)
 	local skin = useSkin()
 	local worldOpen, setWorldOpen = React.useState(false)
+	local function setWorld(open: boolean)
+		Sounds.play(if open then "worldIn" else "worldOut")
+		setWorldOpen(open)
+	end
 
 	local basket = Tokens.size.basket
 	local action = Tokens.size.action
 	local edge = skin.px(Tokens.size.edgeInset)
-	local total = props.look.basketTotal
+	local total = useSpringNumber(props.look.basketTotal, Tokens.spring.count)
+	local rise = useAppear(Tokens.spring.slide)
+	local worldTransitions = useTransition(worldOpen, {
+		from = { t = 0 },
+		enter = { t = 1 },
+		leave = { t = 0 },
+		config = Tokens.spring.slide,
+		leaveConfig = Tokens.spring.panelOut,
+	})
+	local worldPanels: { [string]: any } = {}
+	for _, transition in worldTransitions do
+		worldPanels.World = e(WorldOptionsView, {
+			t = transition.springProps.t,
+			onClose = function()
+				setWorld(false)
+			end,
+		})
+	end
 
-	local function actionButton(icon: string, order: number, onActivated: (() -> ())?)
+	local function actionButton(icon: string, order: number, onActivated: (() -> ())?, sound: any?)
 		return e(PillButton, {
+			sound = sound,
 			variant = "round",
 			size = action.size,
 			icon = icon,
@@ -69,6 +97,7 @@ local function WorldHud(props: Props)
 		Tabs = e(PillTabs, {
 			tabs = props.tabs,
 			activeId = nil,
+			sound = false, -- opening the panel plays its own sound
 			onSelect = props.nav.toggleTab,
 			anchorPoint = Vector2.new(0.5, 0),
 			position = UDim2.new(0.5, 0, 0, skin.px(16)),
@@ -76,7 +105,9 @@ local function WorldHud(props: Props)
 		}),
 		BottomLeft = e("Frame", {
 			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, edge, 1, -edge),
+			Position = rise:map(function(t: number)
+				return UDim2.new(0, edge, 1, -edge + (1 - t) * skin.px(basket.size + edge))
+			end),
 			Size = UDim2.fromOffset(skin.px(basket.size + 12 * 3 + action.size * 3), skin.px(basket.size)),
 			BackgroundTransparency = 1,
 			ZIndex = 2,
@@ -95,6 +126,7 @@ local function WorldHud(props: Props)
 				glowRadius = basket.glow,
 				layoutOrder = 1,
 				zIndex = 2,
+				sound = false, -- opening the panel plays its own sound
 				onActivated = function()
 					props.nav.openRoot("Basket")
 				end,
@@ -113,7 +145,7 @@ local function WorldHud(props: Props)
 			}),
 			CreateAvatar = actionButton("person_add", 2),
 			SaveToRoblox = actionButton("cloud_upload", 3),
-			Reset = actionButton("restart_alt", 4, props.look.takeOffAll),
+			Reset = actionButton("restart_alt", 4, props.look.takeOffAll, false),
 		}),
 		WorldToggle = e(PillButton, {
 			variant = "round",
@@ -123,19 +155,16 @@ local function WorldHud(props: Props)
 			glowRadius = action.glow,
 			active = worldOpen,
 			anchorPoint = Vector2.new(1, 1),
-			position = UDim2.new(1, -edge, 1, -edge),
+			position = rise:map(function(t: number)
+				return UDim2.new(1, -edge, 1, -edge + (1 - t) * skin.px(action.size + edge))
+			end),
 			zIndex = 2,
+			sound = false, -- the slide plays its own swipe
 			onActivated = function()
-				setWorldOpen(not worldOpen)
+				setWorld(not worldOpen)
 			end,
 		}),
-		World = if worldOpen
-			then e(WorldOptionsView, {
-				onClose = function()
-					setWorldOpen(false)
-				end,
-			})
-			else nil,
+		World = e(React.Fragment, nil, worldPanels),
 	})
 end
 

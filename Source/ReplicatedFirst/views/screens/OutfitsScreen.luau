@@ -225,8 +225,9 @@ local function OutfitScreen(props: { nav: any, look: any, source: string, index:
 				active = true,
 				anchorPoint = Vector2.new(1, 0),
 				position = UDim2.fromScale(1, 0),
+				sound = false, -- the look change plays its own sound
 				onActivated = function()
-					props.look.wearAll(outfit.items)
+					props.look.wearAll(outfit.items, outfit.name)
 				end,
 			}),
 			Rows = e("ScrollingFrame", {

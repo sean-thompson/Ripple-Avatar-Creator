@@ -256,11 +256,49 @@ Tokens.press = {
 
 export type SpringPreset = { force: number, dampening: number, mass: number? }
 
+-- Damping ratio = dampening / (2 * sqrt(force)); < 1 overshoots (bouncy),
+-- >= 1 settles without overshoot.
 Tokens.spring = {
 	hover = { force = 300, dampening = 28 } :: SpringPreset,
 	press = { force = 450, dampening = 30 } :: SpringPreset,
 	state = { force = 240, dampening = 26 } :: SpringPreset,
 	panel = { force = 180, dampening = 22 } :: SpringPreset,
+	-- Full panel open (slight overshoot) / close (fast, no overshoot).
+	panelIn = { force = 260, dampening = 26 } :: SpringPreset,
+	panelOut = { force = 420, dampening = 44 } :: SpringPreset,
+	-- Screen content arriving after a tab or crumb change.
+	screen = { force = 340, dampening = 30 } :: SpringPreset,
+	-- Toasts and the buy prompt: a little pop in, quick out.
+	toastIn = { force = 300, dampening = 22 } :: SpringPreset,
+	toastOut = { force = 400, dampening = 40 } :: SpringPreset,
+	-- Side panels sliding in from the edge.
+	slide = { force = 240, dampening = 26 } :: SpringPreset,
+	-- Number roll on badges and counts.
+	count = { force = 140, dampening = 20 } :: SpringPreset,
+}
+
+-- Motion distances (design px).
+Tokens.motion = {
+	panelDrop = 24, -- full panel content drops in from above
+	screenSlide = 18, -- screen content slides in from the right
+	toastDrop = 16,
+	sideSlide = 48, -- World options slides in from the right edge
+	promptRise = 30,
+	toastSeconds = 1.8,
+}
+
+-- UI sound volumes (0..1) per slot; `default` for any slot not listed.
+Tokens.sound = {
+	volume = {
+		default = 0.5,
+		press = 0.35,
+		tab = 0.35,
+		-- The synthesised swipes measure louder than the pack's tones.
+		switch = 0.3,
+		worldIn = 0.35,
+		worldOut = 0.35,
+		purchase = 0.6,
+	},
 }
 
 return Tokens

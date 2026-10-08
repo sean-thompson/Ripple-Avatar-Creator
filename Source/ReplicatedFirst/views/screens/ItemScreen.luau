@@ -6,7 +6,8 @@
 	Large preview, name, type / creator / colour, price, Try on · Basket · Buy,
 	and a "More like this" row (same category for now — the slot the phase 3
 	recommendation engine fills). Try on and Basket toggle the placeholder
-	look so badges and counts react; Buy is wired in Task 11.
+	look so badges and counts react; Buy opens the buy prompt (the Roblox
+	hand-off is Task 11).
 
 	Props: nav, look, itemId
 ]]
@@ -24,6 +25,7 @@ local PillButton = require(components:WaitForChild("PillButton"))
 local ShadowText = require(components:WaitForChild("ShadowText"))
 local Parts = require(script.Parent:WaitForChild("Parts"))
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
+local HudContext = require(views:WaitForChild("HudContext"))
 
 local e = React.createElement
 
@@ -52,6 +54,7 @@ end
 
 local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	local skin = useSkin()
+	local hud = React.useContext(HudContext)
 	local item = PlaceholderData.item(props.itemId)
 	local wearing = props.look.isWorn(item.id)
 	local inBasket = props.look.inBasket(item.id)
@@ -116,6 +119,7 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 					iconSize = 18,
 					label = if wearing then "Take off" else "Try on",
 					active = not wearing,
+					sound = false, -- the look change plays its own sound
 					layoutOrder = 1,
 					onActivated = function()
 						props.look.toggleWear(item.id)
@@ -128,6 +132,7 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 					icon = if inBasket then "remove_shopping_cart" else "add_shopping_cart",
 					iconSize = 18,
 					label = if inBasket then "In basket" else "Add to basket",
+					sound = false, -- the look change plays its own sound
 					layoutOrder = 2,
 					onActivated = function()
 						props.look.toggleBasket(item.id)
@@ -140,6 +145,9 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 					label = buyLabel,
 					disabled = item.owned,
 					layoutOrder = 3,
+					onActivated = function()
+						hud.openBuy({ item.id })
+					end,
 				}),
 			}),
 		}),

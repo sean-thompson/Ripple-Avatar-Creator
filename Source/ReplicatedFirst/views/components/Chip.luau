@@ -28,6 +28,7 @@ local useSkin = require(hooks:WaitForChild("useSkin"))
 local useSpring = require(hooks:WaitForChild("useSpring"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
+local Sounds = require(views:WaitForChild("Sounds"))
 local Icon = require(script.Parent:WaitForChild("Icon"))
 
 local e = React.createElement
@@ -79,7 +80,10 @@ local function Chip(props: Props)
 		BackgroundTransparency = spring.fill,
 		AutoButtonColor = false,
 		Text = "",
-		[React.Event.Activated] = props.onActivated,
+		[React.Event.Activated] = function()
+			Sounds.play("tab")
+			props.onActivated()
+		end,
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {

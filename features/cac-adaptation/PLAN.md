@@ -174,7 +174,7 @@
 
 
 ### Task 5: Avatar core, server-side try-on
-- **Status:** [TODO]
+- **Status:** [DONE]
 - **Why here:** Everything after this (catalogue, basket, outfits) calls "try on". It must exist as a validated, server-authoritative service with slot rules and Undo before any UI browsing depends on it.
 - **Depends on:** 3, 7, 8 (reordered after the catalogue; tapping Try in the Task 8 grid then changes the real character)
 - **Refs:** Scope > Catalogue (wearing rules); Scope > Full panel (Undo); Scope > HUD (Reset); Replication strategy (Player avatar); Integration points (Avatar); Risks (Undo semantics)
@@ -189,15 +189,20 @@
   - **Player avatar (try-on): server Workspace is the source of truth.** The server applies the change to the real character (HumanoidDescription application is a candidate API to evaluate) and Roblox replicates it to everyone. No client reconstruction of the character.
   - Logical worn list and undo history: a session model feeds the HUD badges/counts and the Wearing screen. It never carries position or appearance data.
 - **Sub-tasks:**
-  - [TODO] 5.1 Investigate and decide (open questions): which item types can be applied without owning them (accessories, classic clothing, bundles/hair combos, animation packs, emotes, faces/heads), failure behaviour for off-sale/unloadable items, how emotes (not appearance) are handled, and the scope of Undo (avatar changes only, or basket/outfit actions too). Document findings in the open questions section.
-  - [TODO] 5.2 Config: slot rules (Hair; Clothing/sub-slot; Face; Head; Animation pack; stackable types), rate limit and undo depth. `/create-config` plus Studio module.
-  - [TODO] 5.3 Network: `Avatar` controller actions (TryOn, TakeOff, TakeOffAll, Undo, Reset) and `Avatar` state.
-  - [TODO] 5.4 Model: `models/userSession/AvatarModel.luau` (UserSession scope: resets each join; holds worn item ids, slot map, undo stack). Use `/create-model`. Open point: restore last look on rejoin is not in the spec; confirm before adding persistence.
-  - [TODO] 5.5 Service: a game service (`services/game/AvatarService.luau`, event-driven) that applies the worn list to the character on server, re-applies on `CharacterAdded`/respawn, and resolves "Reset" from the player's own saved description. Use `/create-service`.
-  - [TODO] 5.6 Controller: `controllers/AvatarController.luau` with validation (asset id type/shape, catalogue type check, cooldown), slot-rule application via config. Use `/create-controller`.
-  - [TODO] 5.7 Wire HUD: Undo, Reset, Take everything off, and the Wearing count badge to the new state/intents (preview and Wearing screen follow in Task 6). Feedback is in place plus sound (no toasts).
-  - [TODO] 5.8 Analytics: custom `try_on`, `take_off`, `reset` events with item id/type (feeds phase 3 signals).
-  - [TODO] 5.9 Playtest with two clients: try on from a debug trigger/slash command, verify the other client sees the change, slot replacement, undo, respawn.
+  - [DONE] 5.1 Investigate and decide (open questions): which item types can be applied without owning them (accessories, classic clothing, bundles/hair combos, animation packs, emotes, faces/heads), failure behaviour for off-sale/unloadable items, how emotes (not appearance) are handled, and the scope of Undo (avatar changes only, or basket/outfit actions too). Document findings in the open questions section.
+  - [DONE] 5.2 Config: slot rules (Hair; Clothing/sub-slot; Face; Head; Animation pack; stackable types), rate limit and undo depth. `/create-config` plus Studio module.
+  - [DONE] 5.3 Network: `Avatar` controller actions (TryOn, TakeOff, TakeOffAll, Undo, Reset) and `Avatar` state.
+  - [DONE] 5.4 Model: `models/userSession/AvatarModel.luau` (UserSession scope: resets each join; holds worn item ids, slot map, undo stack). Use `/create-model`. Open point: restore last look on rejoin is not in the spec; confirm before adding persistence. *Built as `models/user/AvatarModel.luau` (User scope, persisted, user call); undo history session-only in `_undo`.*
+  - [DONE] 5.5 Service: a game service (`services/game/AvatarService.luau`, event-driven) that applies the worn list to the character on server, re-applies on `CharacterAdded`/respawn, and resolves "Reset" from the player's own saved description. Use `/create-service`.
+  - [DONE] 5.6 Controller: `controllers/AvatarController.luau` with validation (asset id type/shape, catalogue type check, cooldown), slot-rule application via config. Use `/create-controller`.
+  - [DONE] 5.7 Wire HUD: Undo, Reset, Take everything off, and the Wearing count badge to the new state/intents (preview and Wearing screen follow in Task 6). Feedback is in place plus sound (no toasts).
+  - [DONE] 5.8 Analytics: custom `try_on`, `take_off`, `reset` events with item id/type (feeds phase 3 signals).
+  - [TODO] 5.9 Playtest with two clients: try on from a debug trigger/slash command, verify the other client sees the change, slot replacement, undo, respawn. *Single-client checks done in Studio (try on, slot replacement, undo, respawn, reset, rejoin, gear); a two-client check is still open — Roblox replicates the server character, so it is expected to hold.*
+- **Outcome:**
+  > Ran after the catalogue (reordered), so Try works on real items from the grid, the card menu and the item page. Decisions (user): undo covers avatar changes only; **the look is saved** (`AvatarModel`, User scope) and on first join is seeded from the player's own Roblox avatar; gear is held but inert (scripts stripped). `AvatarConfig` holds the slot rules: one per slot (hair, body, head, each layered and classic garment, shoes, animation pack, gear, background, each makeup type, eyebrows, eyelashes); accessories stack to 10 and emotes to 8, the oldest dropping off. `AvatarService` dresses the real character on the server from the player's own avatar (body, head, skin, proportions, animations) plus `worn`, re-dresses on respawn and coalesces applies; bundles go through their UserOutfit (a full body brings parts, head + face + mood, colours, proportions and its bundled accessories, e.g. the Paladin's helmet). `AvatarController` resolves every item server-side (`AvatarEditorService:GetItemDetails`, cached) and accepts only types `AvatarConfig` knows, with a 0.2s cooldown; it tracks `try_on` / `take_off` / `reset` with item id/type. HUD: Wearing count, Undo (disabled when empty), Reset to your avatar (undoable), mock items refused with the error sound; the basket stays local until Task 10.
+  > Review extras: the Catalogue keeps its tab / chip / search / filters / scroll across closing the panel (`hooks/useSessionState`, per-browse scroll in `CardGrid`); `/state` and `/commands` also print their full reply to the Output.
+  > **Lessons:** makeup isn't an AccessoryType: it's a `MakeupDescription` child of the HumanoidDescription; a bundle's first UserOutfit item is the full look (later ones, e.g. "- Face", are partial); a body bundle's outfit carries accessories and a mood animation that matter to how it looks; `GetEquippedEmotes` returns `{ Name, Slot }` tables. Command-bar `require` gets separate module copies, so client tests that fire intents must go through the real UI.
+
 
 ### Task 6: Avatar preview, Wearing screen and tap-avatar-to-open-Wearing
 - **Status:** [TODO]

@@ -14,7 +14,7 @@ Work the next task from `features/<slug>/PLAN.md`. Argument: the feature slug (o
 
 5. **Verify it yourself where you can.** With Roblox Studio MCP connected and `rojo serve` running: play, check the console for errors and warnings, screen-capture, drive the UI with mouse input, read state with `execute_luau`. Leave `rojo serve` running — stopping it disconnects the user's Studio plugin and they have to reconnect. If it crashes (it can when a branch switch or deletion removes a folder it's watching), restart it and say so. Say plainly what you verified and what you didn't.
 
-6. **Hand back** with: what changed (one line per file), how to test it, what they should see, what to watch for.
+6. **Hand back** — commit and push the feature branch first (commit as you go: every hand-back and every confirmed round of fixes), then give: what changed (one line per file), how to test it, what they should see, what to watch for.
 
 7. **Fix what they report** until they confirm it works. Never mark a task done without that confirmation.
 

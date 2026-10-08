@@ -7,8 +7,8 @@
 	  · navigation (useNavigation) and the panel's open/close motion — the panel
 	    stays mounted through its exit animation, showing the screen it had
 	  · the placeholder look (worn / basket) until the server models land,
-	    wrapped so every change confirms itself with a toast + sound
-	  · the toast and the buy prompt, reachable anywhere through HudContext
+	    wrapped so every change confirms itself with a sound
+	  · the buy prompt, reachable anywhere through HudContext
 	  · World options (saved + live draft, useWorldOptions) and the renderer
 	    that applies them to this client's world
 
@@ -36,7 +36,6 @@ local PlaceholderData = require(views:WaitForChild("screens"):WaitForChild("Plac
 local usePlaceholderLook = require(views:WaitForChild("screens"):WaitForChild("usePlaceholderLook"))
 local WorldHud = require(views:WaitForChild("WorldHud"))
 local FullPanel = require(views:WaitForChild("panel"):WaitForChild("FullPanel"))
-local Toast = require(views:WaitForChild("Toast"))
 local BuyPrompt = require(views:WaitForChild("BuyPrompt"))
 local WorldRenderer = require(views:WaitForChild("WorldRenderer"))
 
@@ -55,67 +54,28 @@ local function BlurDriver(props: { active: boolean })
 	return nil
 end
 
--- Toast state: the latest toast, auto-cleared after Tokens.motion.toastSeconds.
-local function useToast()
-	local toast, setToast = React.useState(nil :: { id: number, text: string, icon: string }?)
-	local counter = React.useRef(0)
-
-	local showToast = React.useCallback(function(text: string, icon: string?)
-		counter.current += 1
-		local id = counter.current
-		-- No sound of its own: every toast comes from an action that plays one.
-		setToast({ id = id, text = text, icon = icon or "check_circle" })
-		task.delay(Tokens.motion.toastSeconds, function()
-			setToast(function(current)
-				if current and current.id == id then
-					return nil
-				end
-				return current
-			end)
-		end)
-	end, {})
-
-	return toast, showToast
-end
-
--- Wraps the placeholder look so each change gives feedback (prototype copy).
-local function withFeedback(look: any, showToast: (string, string?) -> ())
+-- Wraps the placeholder look so each change plays its sound. No toasts:
+-- confirmation lives where the player is looking (the item, the avatar).
+local function withFeedback(look: any)
 	local feedback = table.clone(look)
 	feedback.toggleWear = function(id: number)
-		local item = PlaceholderData.item(id)
-		if look.isWorn(id) then
-			Sounds.play("back")
-			showToast("Took off " .. item.name, "remove")
-		else
-			Sounds.play("tryOn")
-			showToast("Trying on " .. item.name, "checkroom")
-		end
+		Sounds.play(if look.isWorn(id) then "back" else "tryOn")
 		look.toggleWear(id)
 	end
 	feedback.toggleBasket = function(id: number)
-		local item = PlaceholderData.item(id)
-		if look.inBasket(id) then
-			Sounds.play("back")
-			showToast("Removed " .. item.name .. " from basket", "remove_shopping_cart")
-		else
-			Sounds.play("confirm")
-			showToast("Added " .. item.name .. " to basket", "add_shopping_cart")
-		end
+		Sounds.play(if look.inBasket(id) then "back" else "confirm")
 		look.toggleBasket(id)
 	end
-	feedback.wearAll = function(ids: { number }, name: string?)
+	feedback.wearAll = function(ids: { number })
 		if #ids == 0 then
 			Sounds.play("error")
-			showToast("Nothing to try on", "close")
 			return
 		end
 		Sounds.play("tryOn")
-		showToast(if name then "Wearing " .. name else "Trying on " .. #ids .. " items", "checkroom")
 		look.wearAll(ids)
 	end
 	feedback.takeOffAll = function()
 		Sounds.play("back")
-		showToast("Took everything off", "restart_alt")
 		look.takeOffAll()
 	end
 	return feedback
@@ -124,10 +84,9 @@ end
 local function Hud()
 	local nav = useNavigation()
 	local rawLook = usePlaceholderLook()
-	local toast, showToast = useToast()
 	local buyIds, setBuyIds = React.useState(nil :: { number }?)
 	local world = useWorldOptions()
-	local look = withFeedback(rawLook, showToast)
+	local look = withFeedback(rawLook)
 
 	-- Open / close sounds on panel state changes.
 	local wasOpen = React.useRef(false)
@@ -153,7 +112,6 @@ local function Hud()
 
 	local actions = React.useMemo(function()
 		return {
-			showToast = showToast,
 			openBuy = function(itemIds: { number })
 				local unowned = {}
 				for _, id in itemIds do
@@ -163,13 +121,12 @@ local function Hud()
 				end
 				if #unowned == 0 then
 					Sounds.play("error")
-					showToast("You already own all of that", "lock")
 					return
 				end
 				setBuyIds(unowned)
 			end,
 		}
-	end, { showToast })
+	end, {})
 
 	local panels: { [string]: any } = {}
 	for _, transition in panelTransitions do
@@ -192,7 +149,6 @@ local function Hud()
 			Renderer = e(WorldRenderer, { options = world.options, config = world.config }),
 			World = if nav.isOpen then nil else e(WorldHud, { nav = nav, look = look, tabs = TABS, world = world }),
 			Panel = e(React.Fragment, nil, panels),
-			Toast = e(Toast, { toast = toast }),
 			Buy = e(BuyPrompt, {
 				itemIds = buyIds,
 				onCancel = function()
@@ -202,10 +158,6 @@ local function Hud()
 					setBuyIds(nil)
 					rawLook.markOwned(ids)
 					Sounds.play("purchase")
-					showToast(
-						if #ids == 1 then "Purchased " .. PlaceholderData.item(ids[1]).name else "Purchased " .. #ids .. " items",
-						"check_circle"
-					)
 				end,
 			}),
 		}),

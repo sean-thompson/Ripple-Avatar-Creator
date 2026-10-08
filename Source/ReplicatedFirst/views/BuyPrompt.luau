@@ -217,8 +217,8 @@ local function BuyPrompt(props: { itemIds: { number }?, onCancel: () -> (), onCo
 		from = { t = 0 },
 		enter = { t = 1 },
 		leave = { t = 0 },
-		config = Tokens.spring.toastIn,
-		leaveConfig = Tokens.spring.toastOut,
+		config = Tokens.spring.promptIn,
+		leaveConfig = Tokens.spring.promptOut,
 	})
 
 	local children: { [string]: any } = {}

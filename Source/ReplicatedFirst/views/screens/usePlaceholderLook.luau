@@ -21,7 +21,7 @@ export type Look = {
 	isWorn: (id: number) -> boolean,
 	inBasket: (id: number) -> boolean,
 	toggleWear: (id: number) -> (),
-	wearAll: (ids: { number }, name: string?) -> (), -- name: for the toast (Hud)
+	wearAll: (ids: { number }) -> (),
 	takeOffAll: () -> (),
 	toggleBasket: (id: number) -> (),
 	markOwned: (ids: { number }) -> (),

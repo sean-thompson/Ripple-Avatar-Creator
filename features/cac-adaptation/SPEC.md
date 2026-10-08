@@ -28,7 +28,7 @@ Played side by side with CAC, ours is better. In practice:
   buttons or the avatar itself. No mode-dependent hidden UI.
 - **State stays small:** wearing and basket state shows as badges and counts,
   not panels that live on screen.
-- **It feels good:** every open/close, tab change, press, toast and state change
+- **It feels good:** every open/close, tab change, press and state change
   has considered motion (springs/tweens) and, where it helps, sound. The polish
   reads as "nice", never as clutter.
 
@@ -70,7 +70,10 @@ Taken from `design/markup.html` + `design/logic.js`:
 - Bottom-right: **World options** toggle → side panel.
 - Tapping your own avatar in the world opens **Wearing**.
 - Space reserved top-left for the Roblox system bar.
-- Toasts confirm actions ("Trying on X", "Added X to basket", "Purchased…").
+- **No toasts.** Actions confirm themselves where the player is already looking
+  (the button or item changes state, the avatar changes, a count rolls) plus a
+  sound. Errors and empty states show inline, in the place they happen. (Cut
+  after Task 3: a pop-up where you're looking is in the way.)
 
 **World options (side panel)**
 - Time of day (0–24h slider). Drives sky colour, sun/moon position and stars.
@@ -183,7 +186,7 @@ change of direction is expected later.
 pills, Nunito, Material Symbols, glass panels, glow/press states). Tabs,
 basket, action buttons and World options toggle are in place. The full panel
 opens and closes and tabs change, with breadcrumbs, on placeholder content.
-Toasts and the buy-prompt frame are styled. All of it has tweens/springs and
+The buy-prompt frame is styled. All of it has tweens/springs and
 UI sounds. This proves the look and feel on iPad, desktop and phone, and
 settles the sizing approach.
 

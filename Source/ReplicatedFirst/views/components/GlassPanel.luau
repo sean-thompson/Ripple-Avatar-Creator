@@ -6,7 +6,7 @@
 	The design's glass surfaces:
 
 	  variant "dark"   World options side panel (grey→near-black, 72→86%)
-	  variant "bar"    toast, Wearing bar (darker, near-opaque)
+	  variant "bar"    Wearing bar (darker, near-opaque)
 	  variant "light"  content panel, basket card (faint white wash)
 
 	Roblox UI can't blur what's behind it, so the CSS backdrop-filter has no

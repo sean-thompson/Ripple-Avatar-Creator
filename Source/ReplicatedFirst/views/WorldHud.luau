@@ -17,6 +17,7 @@
 	Props:
 		nav, look
 		tabs: { PillTabs.Tab }
+		world: useWorldOptions result { options, config, change, commit }
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,6 +37,7 @@ local PillTabs = require(components:WaitForChild("PillTabs"))
 local Badge = require(components:WaitForChild("Badge"))
 local WorldOptionsView = require(views:WaitForChild("WorldOptionsView"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local HudContext = require(views:WaitForChild("HudContext"))
 
 local e = React.createElement
 
@@ -43,10 +45,12 @@ export type Props = {
 	nav: any,
 	look: any,
 	tabs: { any },
+	world: any,
 }
 
 local function WorldHud(props: Props)
 	local skin = useSkin()
+	local hud = React.useContext(HudContext)
 	local worldOpen, setWorldOpen = React.useState(false)
 	local function setWorld(open: boolean)
 		Sounds.play(if open then "worldIn" else "worldOut")
@@ -69,6 +73,14 @@ local function WorldHud(props: Props)
 	for _, transition in worldTransitions do
 		worldPanels.World = e(WorldOptionsView, {
 			t = transition.springProps.t,
+			options = props.world.options,
+			config = props.world.config,
+			onChange = props.world.change,
+			onCommit = props.world.commit,
+			onReset = function()
+				props.world.reset()
+				hud.showToast("World options reset to defaults", "restart_alt")
+			end,
 			onClose = function()
 				setWorld(false)
 			end,

@@ -46,6 +46,7 @@ local NetworkConfig = {
 		CashMachine = { "Withdraw", "Deposit" },
 		Shrine = { "Donate" },
 		SlashCommand = {},  -- No actions, just the intent
+		WorldOptions = { "Set", "Reset" },
 	},
 
 	States = {
@@ -78,6 +79,20 @@ local NetworkConfig = {
 			ownerId = "",
 			message = "",
 		},
+		-- Defaults mirror WorldOptionsConfig.defaults (the model loads them).
+		WorldOptions = {
+			ownerId = "",
+			time = 14.5,
+			sky = "Clear",
+			floor = "#cc5f00",
+			floorLightness = 100,
+			pattern = "Grid",
+			patternColor = "#ffffff",
+			patternLightness = 0,
+			patternStrength = 20,
+			brightness = 100,
+			shadows = true,
+		},
 	},
 }
 
@@ -95,6 +110,7 @@ local Network = NetworkBuilder.build(NetworkConfig, Bolt)
 export type BazaarAction = "BuyTreasure"
 export type CashMachineAction = "Withdraw" | "Deposit"
 export type ShrineAction = "Donate"
+export type WorldOptionsAction = "Set" | "Reset"
 
 -- State Type Exports (manually defined for type safety)
 export type CandlesState = {
@@ -124,6 +140,20 @@ export type ShrineState = {
 	ownerId: string,
 	treasure: number,
 	userId: string,
+}
+
+export type WorldOptionsState = {
+	ownerId: string,
+	time: number, -- ClockTime, 0..24
+	sky: string, -- WorldOptionsConfig.skies
+	floor: string, -- hex, one of WorldOptionsConfig.floorColors
+	floorLightness: number, -- percent multiplier on the floor colour
+	pattern: string, -- WorldOptionsConfig.patterns
+	patternColor: string, -- hex, one of WorldOptionsConfig.patternColors
+	patternLightness: number, -- percent multiplier on the pattern colour
+	patternStrength: number, -- percent opacity of the pattern
+	brightness: number, -- percent
+	shadows: boolean,
 }
 
 -- ============================================================================

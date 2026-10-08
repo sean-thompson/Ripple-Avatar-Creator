@@ -20,6 +20,7 @@ local views = script.Parent.Parent
 local hooks = views:WaitForChild("hooks")
 local Tokens = require(views:WaitForChild("Tokens"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local useSpring = require(hooks:WaitForChild("useSpring"))
 
@@ -39,6 +40,11 @@ local function Toggle(props: Props)
 	local w, h, k = skin.px(50), skin.px(28), skin.px(22)
 	local inset = skin.px(3)
 
+	local function onPress()
+		Sounds.play("press")
+		props.onToggle(not props.on)
+	end
+
 	return e("TextButton", {
 		Name = "Toggle",
 		Position = props.position,
@@ -48,10 +54,8 @@ local function Toggle(props: Props)
 		BackgroundColor3 = Tokens.color.toggleOff,
 		AutoButtonColor = false,
 		Text = "",
-		[React.Event.Activated] = function()
-			Sounds.play("press")
-			props.onToggle(not props.on)
-		end,
+		[React.Event.InputBegan] = Press.began(onPress),
+		[React.Event.Activated] = Press.activated(onPress),
 	}, {
 		Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
 		-- Border mode: on a button a UIStroke otherwise outlines the (empty) text.

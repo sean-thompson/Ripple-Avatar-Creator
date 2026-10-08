@@ -100,7 +100,10 @@ local function Hud()
 			nav.back()
 		elseif nav.isOpen then
 			nav.close() -- the close sound plays from the effect below
+		else
+			return false
 		end
+		return true
 	end)
 
 	-- Open / close sounds on panel state changes.

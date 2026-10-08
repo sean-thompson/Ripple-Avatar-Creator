@@ -156,13 +156,15 @@
 - **Associated UI:** 5b Catalogue (badges and price range); colour and price popovers; card menu.
 - **Replication:** **Cosmetic.** Card images are client-rendered thumbnails or viewports, not world entities. Open question: thumbnails vs 3D viewports on cards (cost on phones).
 - **Sub-tasks:**
-  - [TODO] 8.1 Decide card imagery (open question): static thumbnail images vs ViewportFrame previews, with a phone performance check.
+  - [DONE] 8.1 Decide card imagery (open question): static thumbnail images vs ViewportFrame previews, with a phone performance check. *Decided (user, 2026-10-08): thumbnails on cards (`rbxthumb://`, already in from Task 7); a 3D preview is a stretch for the item page only (8.8).*
   - [TODO] 8.2 Catalogue screen (`/html-to-react-luau`, frame 5b): category tabs, sub-chips, search, colour and price popovers (two-handle slider component, new in `components/`, justified by reuse in Stores), grid with staggered entrance (`useTransition` list mode), empty state.
   - [TODO] 8.3 Item card component with badges and the tap menu; menu actions wired to the local stand-in look (swapped to Avatar intents in Task 5), basket callbacks (stubbed to local state until Task 10) and buy-prompt frame (Task 3, confirm stubbed until Task 11).
   - [TODO] 8.4 Paste link/ID: parse catalogue URLs and bare IDs client-side, resolve the item through the Task 7 path, open the item page (Task 9) or show not-found inline at the search field.
   - [TODO] 8.5 Wire `HudApp` subscription to `Catalogue` and `Avatar` states; debounce search; pagination/load more on scroll.
   - [TODO] 8.6 Analytics: search, filter and view events (item id, category) via the controller or `trackEvent`.
   - [TODO] 8.7 Playtest: find an item in fewer taps than CAC (record the count), filter combos, rapid try-on/take-off, phone layout.
+  - [TODO] 8.8 Stretch: consider a 3D preview (ViewportFrame) as an option on the item page, e.g. a toggle between the thumbnail and a rotatable model. Weigh phone cost; may fold into Task 6's preview rig.
+- **Build in three hand-backs (agreed 2026-10-08):** (1) card menu, load more, paste link/ID in the design's bottom bar; (2) filter bar: Sort, Colour, Price, Filters (creator, sales type, availability) as upward popovers; (3) colour classification + live-server check. Analytics (8.6) last.
 
 ### Task 5: Avatar core, server-side try-on
 - **Status:** [TODO]

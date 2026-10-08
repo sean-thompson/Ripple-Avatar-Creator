@@ -58,6 +58,7 @@ local GlossFace = require(script.Parent:WaitForChild("GlossFace"))
 local Icon = require(script.Parent:WaitForChild("Icon"))
 local ShadowText = require(script.Parent:WaitForChild("ShadowText"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 
 local e = React.createElement
 
@@ -163,6 +164,15 @@ local function PillButton(props: Props)
 		ZIndex = z + 2,
 	}, contentChildren)
 
+	local function onPress()
+		if props.sound ~= false then
+			Sounds.play(props.sound or "press")
+		end
+		if props.onActivated then
+			props.onActivated()
+		end
+	end
+
 	return e("TextButton", {
 		Name = "PillButton",
 		Size = outerSize,
@@ -174,16 +184,8 @@ local function PillButton(props: Props)
 		Text = "",
 		AutoButtonColor = false,
 		Active = not props.disabled,
-		[React.Event.Activated] = if props.disabled
-			then nil
-			else function()
-				if props.sound ~= false then
-					Sounds.play(props.sound or "press")
-				end
-				if props.onActivated then
-					props.onActivated()
-				end
-			end,
+		[React.Event.InputBegan] = Press.began(if props.disabled then nil else onPress),
+		[React.Event.Activated] = Press.activated(if props.disabled then nil else onPress),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 		[React.Event.MouseButton1Down] = interaction.onDown,

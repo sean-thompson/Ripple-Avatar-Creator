@@ -30,6 +30,7 @@ local components = views:WaitForChild("components")
 local hooks = views:WaitForChild("hooks")
 local Tokens = require(views:WaitForChild("Tokens"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local PillButton = require(components:WaitForChild("PillButton"))
 local GlassPanel = require(components:WaitForChild("GlassPanel"))
@@ -169,15 +170,17 @@ local function WorldOptionsView(props: Props)
 		local row: { [string]: any } = {}
 		for index, hex in colors do
 			local selected = options[key] == hex
+			local function pick()
+				choose({ [key] = hex, [lightnessKey] = config.lightnessMax })
+			end
 			row["Swatch" .. index] = e("TextButton", {
 				Size = UDim2.fromOffset(skin.px(SWATCH), skin.px(SWATCH)),
 				BackgroundColor3 = Color3.fromHex(hex),
 				AutoButtonColor = false,
 				Text = "",
 				LayoutOrder = index,
-				[React.Event.Activated] = function()
-					choose({ [key] = hex, [lightnessKey] = config.lightnessMax })
-				end,
+				[React.Event.InputBegan] = Press.began(pick),
+				[React.Event.Activated] = Press.activated(pick),
 			}, {
 				Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
 				-- Inferred: CSS double ring `0 0 0 2px #111, 0 0 0 4px #ffa64d` → one accent stroke.
@@ -208,6 +211,9 @@ local function WorldOptionsView(props: Props)
 	for index, name in config.patterns do
 		local selected = options.pattern == name
 		local id = SkinAssets.floorTextures[name]
+		local function pick()
+			choose({ pattern = name })
+		end
 		patternTiles[name] = e("Frame", {
 			Size = UDim2.fromOffset(skin.px(PATTERN_TILE.width), skin.px(PATTERN_TILE.height + PATTERN_TILE.caption)),
 			BackgroundTransparency = 1,
@@ -222,9 +228,8 @@ local function WorldOptionsView(props: Props)
 				ImageTransparency = 1 - math.clamp(options.patternStrength / 100, 0, 1),
 				ScaleType = Enum.ScaleType.Tile,
 				TileSize = UDim2.fromOffset(skin.px(PATTERN_PREVIEW_TILE[name] or 32), skin.px(PATTERN_PREVIEW_TILE[name] or 32)),
-				[React.Event.Activated] = function()
-					choose({ pattern = name })
-				end,
+				[React.Event.InputBegan] = Press.began(pick),
+				[React.Event.Activated] = Press.activated(pick),
 			}, {
 				Corner = e("UICorner", { CornerRadius = UDim.new(0, skin.px(12)) }),
 				-- Border mode: on a button a UIStroke otherwise outlines the (empty) text.

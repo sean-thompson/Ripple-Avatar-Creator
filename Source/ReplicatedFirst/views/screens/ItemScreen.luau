@@ -4,7 +4,7 @@
 	ItemScreen (design item page, placeholder data)
 
 	Large preview, name, type / creator / colour, price, Try on · Basket · Buy,
-	the item's catalogue description (up to four lines),
+	the item's id (selectable, to copy) and catalogue description (up to three lines),
 	and a "More like this" row (same category for now — the slot the phase 3
 	recommendation engine fills). Try on and Basket toggle the placeholder
 	look so badges and counts react; Buy opens the buy prompt (the Roblox
@@ -28,8 +28,49 @@ local Parts = require(script.Parent:WaitForChild("Parts"))
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
 local CatalogueClient = require(views:WaitForChild("catalogue"):WaitForChild("CatalogueClient"))
 local HudContext = require(views:WaitForChild("HudContext"))
+local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 
 local e = React.createElement
+
+-- "ID 1234…": the id is a read-only TextBox, so it can be selected and copied
+-- (Roblox has no clipboard API to copy it for the player).
+local function IdLine(props: { label: string, id: number, layoutOrder: number })
+	local skin = useSkin()
+	local text = tostring(props.id)
+	local style = Tokens.type.bodyStrong
+	local width = useTextWidth(text, Tokens.font(style.weight), skin.textPx(style.size))
+	return e("Frame", {
+		Size = UDim2.new(1, 0, 0, skin.px(20)),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.layoutOrder,
+	}, {
+		Layout = e("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, skin.px(8)),
+		}),
+		Label = e(ShadowText, {
+			text = props.label,
+			style = Tokens.type.meta,
+			transparency = Tokens.alpha.textDim,
+			shadow = false,
+			layoutOrder = 1,
+		}),
+		Value = e("TextBox", {
+			Size = UDim2.fromOffset(width + skin.px(4), skin.px(20)),
+			BackgroundTransparency = 1,
+			Text = text,
+			TextEditable = false,
+			ClearTextOnFocus = false,
+			TextColor3 = Tokens.color.white,
+			TextSize = skin.textPx(style.size),
+			FontFace = Tokens.font(style.weight),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			LayoutOrder = 2,
+		}),
+	})
+end
 
 local function metaLine(skin, label: string, value: string, order: number)
 	return e("Frame", {
@@ -90,10 +131,10 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	end
 
 	-- Catalogue descriptions are free text: fold line breaks into spaces and
-	-- cap the height (four lines) so a long one can't push the actions around.
+	-- cap the height (three lines) so a long one can't push the actions around.
 	local description = string.gsub(item.description, "%s*\n%s*", " ")
 	description = string.match(description, "^%s*(.-)%s*$") or ""
-	local descriptionHeight = math.floor(skin.textPx(13.5) * 1.15 * 4)
+	local descriptionHeight = math.floor(skin.textPx(13.5) * 1.15 * 3)
 
 	local buyLabel = if item.owned then "Owned" elseif item.price == 0 then "Get free" else "Buy " .. item.price
 
@@ -116,14 +157,21 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 		}, {
 			Layout = e("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, skin.px(8)) }),
 			Name = e(ShadowText, { text = item.name, style = { size = 26, weight = 900 }, layoutOrder = 1 }),
-			Type = metaLine(skin, "Type", item.main .. " · " .. item.sub, 2),
-			Creator = metaLine(skin, "Creator", item.creator, 3),
-			Colour = if item.colour ~= "" then metaLine(skin, "Colour", item.colour, 4) else nil,
-			Price = e(Parts.PriceTag, { item = item, size = 18, layoutOrder = 5 }),
+			Id = if item.thumbnail ~= ""
+				then e(IdLine, {
+					label = if item.kind == "Bundle" then "Bundle ID" else "ID",
+					id = item.targetId,
+					layoutOrder = 2,
+				})
+				else nil,
+			Type = metaLine(skin, "Type", item.main .. " · " .. item.sub .. (if item.limited then " · Limited" else ""), 3),
+			Creator = metaLine(skin, "Creator", item.creator, 4),
+			Colour = if item.colour ~= "" then metaLine(skin, "Colour", item.colour, 5) else nil,
+			Price = e(Parts.PriceTag, { item = item, size = 18, layoutOrder = 6 }),
 			Actions = e("Frame", {
 				Size = UDim2.new(1, 0, 0, skin.px(Tokens.size.ctaHeight)),
 				BackgroundTransparency = 1,
-				LayoutOrder = 6,
+				LayoutOrder = 7,
 			}, {
 				Layout = e("UIListLayout", {
 					FillDirection = Enum.FillDirection.Horizontal,
@@ -182,7 +230,7 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 					TextTruncate = Enum.TextTruncate.AtEnd,
 					TextXAlignment = Enum.TextXAlignment.Left,
 					TextYAlignment = Enum.TextYAlignment.Top,
-					LayoutOrder = 7,
+					LayoutOrder = 8,
 				})
 				else nil,
 		}),

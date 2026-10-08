@@ -20,11 +20,39 @@ export type CatalogueCategory = {
     chips: { CatalogueChip }, -- in display order; "All" (every chip's types) is implicit
 }
 
+export type PricePreset = {
+    label: string,
+    min: number?, -- Robux; nil = no lower bound
+    max: number?, -- Robux; nil = no upper bound (0 = free only)
+}
+
+export type SortOption = {
+    label: string,
+    sortType: string, -- Enum.CatalogSortType name
+    windowed: boolean, -- offers a time window (Most Favourited, Bestselling)
+}
+
+export type SortWindow = {
+    label: string,
+    aggregation: string, -- Enum.CatalogSortAggregation name
+}
+
+export type SalesTypeOption = {
+    label: string,
+    filter: string, -- Enum.SalesTypeFilter name
+}
+
 export type CatalogueConfig = {
     categories: { CatalogueCategory },
     pageSize: number, -- items per catalogue page (10–120)
-    sort: string, -- Enum.CatalogSortType name
-    sortAggregation: string, -- Enum.CatalogSortAggregation name (for sorts over a time window)
+    sort: string, -- default Enum.CatalogSortType name
+    sortAggregation: string, -- default Enum.CatalogSortAggregation name (for sorts over a time window)
+    sorts: { SortOption }, -- Sort popover, in order
+    sortWindows: { SortWindow }, -- time windows for windowed sorts, in order
+    priceMax: number, -- top of the price slider; at the top it means "any"
+    priceStep: number,
+    pricePresets: { PricePreset },
+    salesTypes: { SalesTypeOption }, -- Filters popover; the first is the default
     includeOffSale: boolean,
     cacheSeconds: number, -- how long a query's results are reused
     searchDebounce: number, -- seconds of no typing before a keyword search runs

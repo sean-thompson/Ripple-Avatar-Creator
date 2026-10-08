@@ -49,6 +49,7 @@ local Icon = require(components:WaitForChild("Icon"))
 local ShadowText = require(components:WaitForChild("ShadowText"))
 local Breadcrumbs = require(script.Parent:WaitForChild("Breadcrumbs"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 local CatalogueScreen = require(screens:WaitForChild("CatalogueScreen"))
 local ItemScreen = require(screens:WaitForChild("ItemScreen"))
 local StoresScreen = require(screens:WaitForChild("StoresScreen"))
@@ -70,7 +71,8 @@ local function cardButton(onActivated: () -> (), onEnter: () -> (), onLeave: () 
 		Text = "",
 		AutoButtonColor = false,
 		ZIndex = 0,
-		[React.Event.Activated] = onActivated,
+		[React.Event.InputBegan] = Press.began(onActivated),
+		[React.Event.Activated] = Press.activated(onActivated),
 		[React.Event.MouseEnter] = onEnter,
 		[React.Event.MouseLeave] = onLeave,
 	})
@@ -208,7 +210,8 @@ local function BasketCard(props: { nav: any, look: any, openList: (root: string)
 	})
 end
 
-local function currentScreen(nav: any, look: any)
+-- The page pushed on top of the root (item, store, outfit), or nil.
+local function deepScreen(nav: any, look: any)
 	local top = nav.top
 	if top then
 		if top.kind == "item" then
@@ -219,6 +222,10 @@ local function currentScreen(nav: any, look: any)
 			return e(OutfitsScreen.Outfit, { nav = nav, look = look, source = top.id.source, index = top.id.index })
 		end
 	end
+	return nil
+end
+
+local function rootScreen(nav: any, look: any)
 	if nav.root == "Catalogue" then
 		return e(CatalogueScreen, { nav = nav, look = look })
 	elseif nav.root == "Stores" then
@@ -263,9 +270,12 @@ local function FullPanel(props: Props)
 	local crumbsHeight = if hasCrumbs then skin.px(Tokens.size.back.size + 12) else 0
 	local close = Tokens.size.close
 
-	-- Key the screen by where we are so per-screen state (category, sort,
-	-- scroll) resets when navigating to a different page.
-	local screenKey = (nav.root or "") .. "/" .. #nav.stack .. "/" .. (if nav.top then nav.top.label else "")
+	-- The root screen stays mounted (hidden) under pushed pages, so going back
+	-- returns to it as it was: same tab, chip, search, filters, loaded items
+	-- and scroll. Pushed pages are keyed by where we are, so each one starts
+	-- fresh. Switching tab or closing the panel resets the root.
+	local deep = deepScreen(nav, props.look)
+	local deepKey = (nav.root or "") .. "/" .. #nav.stack .. "/" .. (if nav.top then nav.top.label else "")
 	local open = props.t or React.createBinding(1)
 	local baseTransparency = if skin.glass == "blur" then 0.25 else 0
 	local margin = skin.px(6)
@@ -372,7 +382,14 @@ local function FullPanel(props: Props)
 					Size = UDim2.new(1, 0, 1, -crumbsHeight),
 					BackgroundTransparency = 1,
 				}, {
-					[screenKey] = e(ScreenAppear, nil, { Screen = currentScreen(nav, props.look) }),
+					["Root/" .. (nav.root or "")] = e("Frame", {
+						Size = UDim2.fromScale(1, 1),
+						BackgroundTransparency = 1,
+						Visible = deep == nil,
+					}, {
+						Appear = e(ScreenAppear, nil, { Screen = rootScreen(nav, props.look) }),
+					}),
+					[deepKey] = if deep then e(ScreenAppear, nil, { Screen = deep }) else nil,
 				}),
 			}),
 		}),

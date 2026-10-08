@@ -28,6 +28,7 @@ local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
 local PillButton = require(components:WaitForChild("PillButton"))
 local Icon = require(components:WaitForChild("Icon"))
 local Sounds = require(views:WaitForChild("Sounds"))
+local Press = require(views:WaitForChild("Press"))
 
 local e = React.createElement
 
@@ -38,6 +39,13 @@ local function Crumb(props: { label: string, isLast: boolean, onActivated: () ->
 	local textSize = skin.textPx(Tokens.type.crumb.size)
 	local font = Tokens.font(weight)
 	local width = useTextWidth(props.label, font, textSize)
+	local function onPress()
+		if not props.isLast then
+			Sounds.play("back")
+		end
+		props.onActivated()
+	end
+
 	return e("TextButton", {
 		Name = "Crumb",
 		Size = UDim2.fromOffset(width, skin.px(40)),
@@ -49,12 +57,8 @@ local function Crumb(props: { label: string, isLast: boolean, onActivated: () ->
 		TextSize = textSize,
 		FontFace = font,
 		LayoutOrder = props.layoutOrder,
-		[React.Event.Activated] = function()
-			if not props.isLast then
-				Sounds.play("back")
-			end
-			props.onActivated()
-		end,
+		[React.Event.InputBegan] = Press.began(onPress),
+		[React.Event.Activated] = Press.activated(onPress),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	})

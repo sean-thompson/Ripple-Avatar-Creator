@@ -2,13 +2,14 @@
 
 ## Build order
 
-**Approach:** feel-first, top-down (custom). Get the skin, motion and sound right before the heavy technical lifts. The first task is the first-playable slice (HUD shell in the final skin, full panel with tabs/breadcrumbs on placeholder content, toasts, buy-prompt frame, springs/tweens and UI sounds, and the relative-vs-absolute sizing decision). Then the layers in the SPEC's order: World options, Avatar core, Catalogue, Basket and buying, Outfits, Sharing, Community outfits, Stores. Large layers are split into several tasks; the layer order is never broken.
+**Approach:** feel-first, top-down (custom). Get the skin, motion and sound right before the heavy technical lifts. The first task is the first-playable slice (HUD shell in the final skin, full panel with tabs/breadcrumbs on placeholder content, buy-prompt frame, springs/tweens and UI sounds, and the relative-vs-absolute sizing decision). Then the layers in the SPEC's order: World options, Avatar core, Catalogue, Basket and buying, Outfits, Sharing, Community outfits, Stores. Large layers are split into several tasks; the layer order is never broken.
 
 **Rationale:** the design is settled and the riskiest things to get wrong late are look, feel and sizing across iPad/desktop/phone. Proving those first means every later layer (data, APIs, cross-server storage) plugs into a UI that already feels right, and the unresolved technical risks (catalogue limits, cross-server data, deep links, store model) each get an explicit investigation sub-task at the top of the task that depends on them rather than being assumed.
 
 **Cross-cutting rules applied to every task**
 - Template architecture only: Models / Controllers / Views / Services / Configs per `docs/*_GUIDE.md`. New intents/states are added to `Source/ReplicatedStorage/Network.luau` (NetworkConfig plus type exports) before the controller/model/view that use them. No new pattern where an existing one fits.
-- HUD state flows through `HudApp` (`useBoltState` subscriptions, props/callbacks down, no BindableEvents). Navigation/UI-only state (open panel, tab, breadcrumb stack, toasts, buy prompt) is React state in `HudApp`, the same way `activeModal` is today.
+- HUD state flows through `HudApp` (`useBoltState` subscriptions, props/callbacks down, no BindableEvents). Navigation/UI-only state (open panel, tab, breadcrumb stack, buy prompt) is React state in `HudApp`, the same way `activeModal` is today.
+- **No toasts, anywhere.** Feedback lives where the player is looking: the control or item changes state, the avatar changes, a count rolls, and a sound plays. Errors, not-found and empty states show inline where they happen. The design's toasts were built in Task 3 and removed (sidequest after Task 4); don't reintroduce them.
 - HUD tasks translate the design with `/html-to-react-luau` (structure and styling), then wire state with `/create-view`. Each HUD sub-task names the design frame it implements. Visual divergences from the design (for example glass blur, which Roblox UI cannot do) are listed explicitly, never silent.
 - Slash commands are auto-discovered from model methods and controller actions, so testing hooks need no extra work beyond naming methods well.
 - Config modules are Studio-created (types under `Source/ReplicatedStorage/Config/ConfigTypes/` via `/create-config`); each task that adds one includes the Studio step.
@@ -65,28 +66,28 @@
 - **Outcome:**
   > Shell built: `Hud` (root: SkinRoot fill/height/blur, navigation, placeholder look) → `WorldHud` or `panel/FullPanel` (+ `Breadcrumbs`); `hooks/useNavigation` (roots Catalogue/Stores/Outfits/Basket/Wearing + crumb stack; tapping the open tab closes); placeholder screens in `views/screens/` (Catalogue, Item, Stores root/store, Outfits root/outfit, Basket, Wearing) on `PlaceholderData` + `usePlaceholderLook` (slot rules), shared `Parts` (Thumb, PriceTag, ItemCard, ListRow, CardGrid, Heading). World options panel moved to `WorldOptionsView` (static until Task 4). Deviation agreed: ModalWindow/AnimatedModal deleted rather than reshaped — FullPanel is the one panel frame. Template HUD views, HudButton, CurrencyChip, FavourTile and the gallery deleted; docs/commands updated. Lessons: ScrollingFrames clip strokes drawn outside cells — inset grids/lists ~3px; size grid cells/scroll extents from `useLocalSize`, not AutomaticCanvasSize; labelled buttons keep text out of the press UIScale (text snaps to whole pixels and jitters, and text/shadow snap apart); tapping an active filter chip clears it. Verified on desktop, iPad and phone emulation.
 
-### Task 3: Motion, sound, toasts and buy-prompt frame
+### Task 3: Motion, sound and buy-prompt frame
 - **Status:** [DONE]
 - **Why here:** Second half of the first-playable slice. Motion and sound are the product's differentiator and are tuned on placeholder content before real data makes iteration slower. Completes the slice, so this task ends with a feel review.
 - **Depends on:** 2
-- **Refs:** Scope > HUD (toasts); Scope > Buy prompt; Success criteria (It feels good, State stays small); Risks (Sound direction)
+- **Refs:** Scope > Buy prompt; Success criteria (It feels good, State stays small); Risks (Sound direction)
 - **Acceptance criteria:**
-  - Every open/close, tab change, breadcrumb pop, press, toast and badge change has considered motion (springs/tweens via the template hooks) and, where it helps, a UI sound.
-  - Toasts appear, stack/replace sensibly and dismiss (about 1.8 s in the prototype) with entrance/exit motion; a toast queue copes with rapid repeat actions.
+  - Every open/close, tab change, breadcrumb pop, press and badge change has considered motion (springs/tweens via the template hooks) and, where it helps, a UI sound.
+  - ~~Toasts appear, stack/replace sensibly and dismiss~~ (built, then removed: see the no-toasts rule above).
   - The buy-prompt frame (single item or bundle total, Free state) opens and closes with motion and has the Roblox hand-off slot, without faking a Roblox purchase UI.
   - Basket badge and count changes animate (number roll via `useSpringNumber`).
   - Motion never reads as clutter and holds frame rate on a phone emulation.
-- **Associated UI:** Toast (bottom-centre in the frames), buy prompt (`buyOpen` in 5b/5f/5d), panel/tab/badge transitions across 5a to 5h.
+- **Associated UI:** buy prompt (`buyOpen` in 5b/5f/5d), panel/tab/badge transitions across 5a to 5h.
 - **Replication:** UI-only; client sounds are local. No world entity.
 - **Sub-tasks:**
-  - [DONE] 3.1 Decide sound direction and asset source (open question): style, whether assets are authored, bought or generated, and licence. List the sound slots needed (tab, open, close, press, toast, add to basket, try on/take off, purchase success, error). Studio step: create the Sound instances/assets under SoundService.
+  - [DONE] 3.1 Decide sound direction and asset source (open question): style, whether assets are authored, bought or generated, and licence. List the sound slots needed (tab, open, close, press, toast, add to basket, try on/take off, purchase success, error; toast was dropped). Studio step: create the Sound instances/assets under SoundService.
   - [DONE] 3.2 Add a small client UI-sound helper in `views/hooks/` (a `useSound`-style hook alongside the existing hooks) so components trigger sounds declaratively; honour volume/mute. Use `/create-view`.
-  - [DONE] 3.3 Toast host and queue component (`/html-to-react-luau`), driven by `HudApp` React state, with a `showToast` callback passed down; spring in/out.
+  - [DONE] 3.3 ~~Toast host and queue component~~ (removed after Task 4; no toasts) (`/html-to-react-luau`), driven by `HudApp` React state, with a `showToast` callback passed down; spring in/out.
   - [DONE] 3.4 Buy-prompt frame component (`/html-to-react-luau`): title, text, price or Free, tint swatch, Cancel/Confirm, with the confirm callback left as a stub for Task 11.
   - [DONE] 3.5 Motion pass over the shell from Task 2 using `useSpring`, `useTransition`, `useSpringNumber`, `useDrag` where it fits; record the spring presets in the tokens module; add the press/hover states to every interactive component.
   - [DONE] 3.6 Feel review and playtest on three device classes. Tune; capture phone-tightness issues for later tasks.
 - **Outcome:**
-  > Sound: ObsydianX "Interface SFX Pack 1" (CC0), style-3 tones + two cursor tones picked by measurement (brightness/harshness) for a bright-soft arcade feel, trimmed from 6s padding to 0.2–1.5s; the pack has no swipes, so `switch` / `worldIn` / `worldOut` are synthesised by `tools/build_swipes.py`. Files + provenance in `assets/ui/sounds/`, IDs in `SkinAssets.sounds`, volumes in `Tokens.sound`, played by `views/Sounds` (local, throttled, preloaded at startup with icons — first play was slow from downloading). No separate toast sound (every toast follows an action that has one). Panel open/close sounds come from Hud on state change; buttons that open/close it are silent to avoid doubles; switching tabs or Basket/Wearing inside the panel plays `switch`. Toasts: `views/Toast` (latest replaces current, ~1.8s, CanvasGroup fade). Buy prompt: `views/BuyPrompt` (dense glass, tap-outside cancels; confirm does a placeholder purchase until Task 11). Motion: panel fades + body drops (CanvasGroup with render margin), tab bar and close button vanish instantly on close, screens slide in on navigation (`useAppear`), world HUD rises back, World options slides, counts roll; presets in `Tokens.spring`/`Tokens.motion`. HUD actions reachable via `HudContext`. Lesson: a full-size invisible "swallow taps" button must sit at a lower ZIndex than the controls it guards.
+  > Sound: ObsydianX "Interface SFX Pack 1" (CC0), style-3 tones + two cursor tones picked by measurement (brightness/harshness) for a bright-soft arcade feel, trimmed from 6s padding to 0.2–1.5s; the pack has no swipes, so `switch` / `worldIn` / `worldOut` are synthesised by `tools/build_swipes.py`. Files + provenance in `assets/ui/sounds/`, IDs in `SkinAssets.sounds`, volumes in `Tokens.sound`, played by `views/Sounds` (local, throttled, preloaded at startup with icons — first play was slow from downloading). Toasts were built here, then removed after Task 4: a pop-up where you're looking is in the way, so feedback is in-place state change + sound. Panel open/close sounds come from Hud on state change; buttons that open/close it are silent to avoid doubles; switching tabs or Basket/Wearing inside the panel plays `switch`. Toasts: `views/Toast` (latest replaces current, ~1.8s, CanvasGroup fade). Buy prompt: `views/BuyPrompt` (dense glass, tap-outside cancels; confirm does a placeholder purchase until Task 11). Motion: panel fades + body drops (CanvasGroup with render margin), tab bar and close button vanish instantly on close, screens slide in on navigation (`useAppear`), world HUD rises back, World options slides, counts roll; presets in `Tokens.spring`/`Tokens.motion`. HUD actions reachable via `HudContext`. Lesson: a full-size invisible "swallow taps" button must sit at a lower ZIndex than the controls it guards.
 
 ### Task 4: World options (client rendering, persistence) and double-jump flight
 - **Status:** [DONE]
@@ -128,7 +129,7 @@
   - Undo reverses the last avatar change; Reset returns to the player's own avatar; Take everything off works.
   - Appearance survives character respawn.
   - Rapid or malformed requests are rejected (rate limit, id validation).
-- **Associated UI:** Undo button and "Wearing - N" bar in the panel's left column (frame 5g); toasts "Trying on X" / "Took off X" / "Reset to your avatar".
+- **Associated UI:** Undo button and "Wearing - N" bar in the panel's left column (frame 5g); feedback is the avatar changing plus a sound (no toasts).
 - **Replication:**
   - **Player avatar (try-on): server Workspace is the source of truth.** The server applies the change to the real character (HumanoidDescription application is a candidate API to evaluate) and Roblox replicates it to everyone. No client reconstruction of the character.
   - Logical worn list and undo history: a session model feeds the HUD badges/counts and the Wearing screen. It never carries position or appearance data.
@@ -139,7 +140,7 @@
   - [TODO] 5.4 Model: `models/userSession/AvatarModel.luau` (UserSession scope: resets each join; holds worn item ids, slot map, undo stack). Use `/create-model`. Open point: restore last look on rejoin is not in the spec; confirm before adding persistence.
   - [TODO] 5.5 Service: a game service (`services/game/AvatarService.luau`, event-driven) that applies the worn list to the character on server, re-applies on `CharacterAdded`/respawn, and resolves "Reset" from the player's own saved description. Use `/create-service`.
   - [TODO] 5.6 Controller: `controllers/AvatarController.luau` with validation (asset id type/shape, catalogue type check, cooldown), slot-rule application via config. Use `/create-controller`.
-  - [TODO] 5.7 Wire HUD: Undo, Reset, Take everything off, and the Wearing count badge to the new state/intents (preview and Wearing screen follow in Task 6). Toasts via the Task 3 toast host.
+  - [TODO] 5.7 Wire HUD: Undo, Reset, Take everything off, and the Wearing count badge to the new state/intents (preview and Wearing screen follow in Task 6). Feedback is in place plus sound (no toasts).
   - [TODO] 5.8 Analytics: custom `try_on`, `take_off`, `reset` events with item id/type (feeds phase 3 signals).
   - [TODO] 5.9 Playtest with two clients: try on from a debug trigger/slash command, verify the other client sees the change, slot replacement, undo, respawn.
 
@@ -192,14 +193,14 @@
   - Search box; paste an item link or ID resolves to that item; colour filter popover; price filter popover with two-handle min/max slider and presets (Free, Under 50, 50-100, 100+); the grid updates live as filters change; empty state and match count.
   - Item cards show an orange "wearing" badge, a white "in basket" badge, and price/Free/Owned.
   - Tapping a card opens the menu: Try / Take off, Add/Remove basket, Buy/Get, View.
-  - Trying an item on and taking it off takes one tap from the menu, with toast and preview feedback.
+  - Trying an item on and taking it off takes one tap from the menu, with in-place and preview feedback.
 - **Associated UI:** 5b Catalogue (badges and price range); colour and price popovers; card menu.
 - **Replication:** **Cosmetic.** Card images are client-rendered thumbnails or viewports, not world entities. Open question: thumbnails vs 3D viewports on cards (cost on phones).
 - **Sub-tasks:**
   - [TODO] 8.1 Decide card imagery (open question): static thumbnail images vs ViewportFrame previews, with a phone performance check.
   - [TODO] 8.2 Catalogue screen (`/html-to-react-luau`, frame 5b): category tabs, sub-chips, search, colour and price popovers (two-handle slider component, new in `components/`, justified by reuse in Stores), grid with staggered entrance (`useTransition` list mode), empty state.
   - [TODO] 8.3 Item card component with badges and the tap menu; menu actions wired to Avatar intents (Task 5), basket callbacks (stubbed to local state until Task 10) and buy-prompt frame (Task 3, confirm stubbed until Task 11).
-  - [TODO] 8.4 Paste link/ID: parse catalogue URLs and bare IDs client-side, resolve the item through the Task 7 path, open the item page (Task 9) or show a not-found toast.
+  - [TODO] 8.4 Paste link/ID: parse catalogue URLs and bare IDs client-side, resolve the item through the Task 7 path, open the item page (Task 9) or show not-found inline at the search field.
   - [TODO] 8.5 Wire `HudApp` subscription to `Catalogue` and `Avatar` states; debounce search; pagination/load more on scroll.
   - [TODO] 8.6 Analytics: search, filter and view events (item id, category) via the controller or `trackEvent`.
   - [TODO] 8.7 Playtest: find an item in fewer taps than CAC (record the count), filter combos, rapid try-on/take-off, phone layout.
@@ -252,17 +253,17 @@
 - **Acceptance criteria:**
   - Buy / Get on an item, and Buy all on the basket or outfit selection, show our confirmation frame (single item or bundle total) then hand off to Roblox's own purchase prompt. We never fake the Roblox UI.
   - Ownership is known per item (cards, item page, Wearing, Basket, outfit rows show Owned; Buy is disabled/relabelled when owned; summaries exclude owned items from totals).
-  - Purchased items leave the basket and become Owned after confirmed purchase; cancel or failure leaves everything unchanged with a toast.
+  - Purchased items leave the basket and become Owned after confirmed purchase; cancel or failure leaves everything unchanged, with the reason shown in the buy prompt.
   - Save to Roblox uses Roblox's own avatar-editor save prompt for the current look.
   - Create avatar does what is decided in the open question.
 - **Associated UI:** Buy prompt frame (Task 3), 5f Basket (Buy all), Item page Buy, 5a action pills Create avatar and Save to Roblox.
 - **Replication:** Purchases and avatar saves are Roblox-native and server-confirmed; ownership cache is logical (**cosmetic / not position-critical**), a session model.
 - **Sub-tasks:**
   - [TODO] 11.1 Investigation (open questions): candidate APIs to evaluate for catalogue purchases (`MarketplaceService` single and bulk purchase prompts, purchase-finished signals), ownership checks (`MarketplaceService` ownership calls, `AvatarEditorService` inventory-access prompt), bundle vs asset handling, free-item "Get", and what confirms success. Also candidate for Save to Roblox: `AvatarEditorService` save-avatar prompt. Confirm bulk "Buy all" is possible or define a sequential fallback.
-  - [TODO] 11.2 Decide Create avatar semantics (open question): its behaviour is not specified in the design beyond a toast. Options include start a blank avatar, open Roblox's avatar-creation prompt, or reset to a default. Await the user's choice before building.
+  - [TODO] 11.2 Decide Create avatar semantics (open question): its behaviour is not specified in the design (it only shows a toast, which we don't use). Options include start a blank avatar, open Roblox's avatar-creation prompt, or reset to a default. Await the user's choice before building.
   - [TODO] 11.3 Service/Model: `services/game/OwnershipService.luau` plus `models/userSession/OwnershipModel.luau` caching owned item ids per player with refresh after purchases. `/create-service`, `/create-model`.
   - [TODO] 11.4 Network/Controller: `Purchase` controller (RequestBuy for ids, RequestSaveToRoblox) validating ids, deduplicating owned items and enforcing size limits; handles purchase-finished results and updates Basket and Ownership models. `/create-controller`.
-  - [TODO] 11.5 Wire the Task 3 buy-prompt frame to real confirm/cancel; wire Buy all, outfit-selection Buy, item Buy/Get to it; toasts for success/cancel/failure; purchase sound.
+  - [TODO] 11.5 Wire the Task 3 buy-prompt frame to real confirm/cancel; wire Buy all, outfit-selection Buy, item Buy/Get to it; success/cancel/failure shown in the buy prompt and on the items themselves (no toasts); purchase sound.
   - [TODO] 11.6 Wire Save to Roblox and Create avatar pills.
   - [TODO] 11.7 Analytics: `purchase_prompted`, `purchase_completed`, `purchase_cancelled` with item ids and Robux total (phase 3 signal).
   - [TODO] 11.8 Playtest in a published test place with real (cheap/free) items; Studio purchase prompts are limited, so record anything that can only be verified live.
@@ -276,7 +277,7 @@
   - Outfits tab, source Mine: "New outfit" saves what you're wearing; outfits can be renamed and deleted; the outfit you are currently wearing is ring-highlighted.
   - Search filters outfits by name.
   - Outfit screen: large preview, Wear all, every item with checkboxes (Select all/none), Wear selected, Add to basket, Buy selected (cost label for unowned selection); tapping a row opens the item page; breadcrumb shows Outfits > Name > Item.
-  - Save as outfit from the Wearing screen works and shows a toast.
+  - Save as outfit from the Wearing screen works and the new outfit visibly appears in Outfits (no toast).
   - Names are filtered through Roblox text filtering.
 - **Associated UI:** 5d Outfit screen; Outfits root (source tabs Mine/Community/Roblox, cards, "New outfit" card); 5g Save as outfit.
 - **Replication:** saved outfits are logical persisted data (**cosmetic / not position-critical**). Outfit preview is a client-only rig (reuse Task 6); "Wear all" goes through the server-applied Avatar path from Task 5.
@@ -298,7 +299,7 @@
 - **Refs:** Scope > Outfits (Roblox source: search a username to load their saved outfits/current avatar)
 - **Acceptance criteria:**
   - On the Roblox source, searching a username loads that user's available outfits (or at minimum their current avatar) into the same card/outfit-screen flow.
-  - Not-found, private, banned and rate-limited users show a clear toast/empty state.
+  - Not-found, private, banned and rate-limited users show a clear inline empty state.
   - Wear all and partial wear work on another user's outfit exactly as on Mine.
 - **Associated UI:** 5d Outfit screen; Outfits root, Roblox source ("Search a username" placeholder).
 - **Replication:** lookups are server-side requests (**cosmetic**); previews are client-only rigs.
@@ -460,9 +461,9 @@
   - A side-by-side CAC comparison records: feature parity (what CAC does vs ours or an equivalent), and tap counts for try on, take off, buy what you're wearing, save/load an outfit, find an item. Ours is lower on each.
   - Every feature is reachable from the three tabs, the HUD buttons or the avatar itself. No mode-dependent hidden UI.
   - Wearing and basket state show only as badges and counts, never always-on panels.
-  - Every open/close, tab change, press, toast and state change has motion and, where it helps, sound; nothing reads as clutter.
+  - Every open/close, tab change, press and state change has motion and, where it helps, sound; nothing reads as clutter.
   - iPad and desktop equivalent; phone usable. Analytics covers try-on, basket, purchase, outfit save/share and navigation.
-- **Associated UI:** All frames 5a to 5h, World options panel, buy prompt, toasts.
+- **Associated UI:** All frames 5a to 5h, World options panel, buy prompt.
 - **Replication:** none new.
 - **Sub-tasks:**
   - [TODO] 21.1 Navigation analytics: a navigation intent/controller (or `trackEvent` calls) for tab opens, breadcrumb depth and screen views, validated against a fixed screen list. `/create-controller`.
@@ -490,7 +491,7 @@ Each needs a user decision (or a recorded finding) before or during the named ta
 10. **Catalogue delivery architecture (Task 7).** Server-proxied (per-player session model through the existing intent/state pattern; cacheable, protects rate limits, extra latency) vs client-direct (lower latency, but each client spends its own budget and the server still has to validate try-on ids).
 11. **Curation source (Task 7).** Where Featured, seasonal (Halloween), New and Trending come from: config-curated lists, query heuristics, or an external list.
 12. **Card imagery (Task 8).** Thumbnails (cheap, static) vs ViewportFrame previews (lively, heavier on phones).
-13. **What Create avatar does (Task 11).** The design only shows a toast. Needs a defined behaviour.
+13. **What Create avatar does (Task 11).** The design only shows a toast (we don't use toasts). Needs a defined behaviour.
 14. **Purchase and ownership specifics (Task 11).** Confirm bulk "Buy all" is possible through Roblox prompts or accept sequential prompts; how ownership of bundles is determined.
 15. **Roblox username lookup depth (Task 13).** Whether another user's saved outfits are retrievable, or only their current avatar.
 16. **Cross-server storage technology (Task 14).** DataStore, OrderedDataStore, MemoryStore, external service, or a mix; consistency, budgets and moderation hooks. Also used by Tasks 16 and 17.

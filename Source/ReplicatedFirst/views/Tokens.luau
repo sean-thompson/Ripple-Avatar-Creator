@@ -133,7 +133,6 @@ Tokens.size = {
 	markerBadge = 24,
 	chipHeight = 34,
 	textTabHeight = 42,
-	toastHeight = 40,
 	ctaHeight = 42,
 	wearingBar = 44,
 	sidePanelWidth = 340,
@@ -181,7 +180,6 @@ Tokens.type = {
 	cta = { size = 15, weight = 900 },
 	badge = { size = 15, weight = 900 },
 	crumb = { size = 15, weight = 800 },
-	toast = { size = 15, weight = 800 },
 	sectionLabel = { size = 14, weight = 800 },
 	bodyStrong = { size = 14, weight = 900 },
 	chip = { size = 13.5, weight = 800 },
@@ -268,9 +266,9 @@ Tokens.spring = {
 	panelOut = { force = 420, dampening = 44 } :: SpringPreset,
 	-- Screen content arriving after a tab or crumb change.
 	screen = { force = 340, dampening = 30 } :: SpringPreset,
-	-- Toasts and the buy prompt: a little pop in, quick out.
-	toastIn = { force = 300, dampening = 22 } :: SpringPreset,
-	toastOut = { force = 400, dampening = 40 } :: SpringPreset,
+	-- The buy prompt: a little pop in, quick out.
+	promptIn = { force = 300, dampening = 22 } :: SpringPreset,
+	promptOut = { force = 400, dampening = 40 } :: SpringPreset,
 	-- Side panels sliding in from the edge.
 	slide = { force = 240, dampening = 26 } :: SpringPreset,
 	-- Number roll on badges and counts.
@@ -281,10 +279,8 @@ Tokens.spring = {
 Tokens.motion = {
 	panelDrop = 24, -- full panel content drops in from above
 	screenSlide = 18, -- screen content slides in from the right
-	toastDrop = 16,
 	sideSlide = 48, -- World options slides in from the right edge
 	promptRise = 30,
-	toastSeconds = 1.8,
 }
 
 -- UI sound volumes (0..1) per slot; `default` for any slot not listed.

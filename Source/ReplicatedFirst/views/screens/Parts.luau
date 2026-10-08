@@ -5,7 +5,8 @@
 
 	Building blocks shared by the full-panel screens (design frames 5b–5h):
 
-	  Thumb      tinted placeholder tile (the design's colour-washed card art)
+	  Thumb      tinted tile (the design's colour-washed card art) with the
+	             item's thumbnail on it when it has one
 	  PriceTag   "Owned" / "Free" / toll icon + price
 	  ItemCard   catalogue card: thumb with wearing/in-basket markers, name, price
 	  ListRow    Basket/Wearing/Outfit row: thumb, name, sub-line, price, actions
@@ -14,7 +15,8 @@
 	             mis-sizes under the canvas UIScale)
 	  Heading    section title with optional "See all"-style trailing element
 
-	Item art is a placeholder tint until real thumbnails arrive (Task 8).
+	Real catalogue items show their thumbnail over the tint; mock items show
+	their sub-category caption instead.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,6 +27,7 @@ local views = script.Parent.Parent
 local components = views:WaitForChild("components")
 local hooks = views:WaitForChild("hooks")
 local Tokens = require(views:WaitForChild("Tokens"))
+local Sounds = require(views:WaitForChild("Sounds"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local useLocalSize = require(hooks:WaitForChild("useLocalSize"))
@@ -55,8 +58,14 @@ function Parts.swatch(colourName: string): Color3
 	return (Tokens.swatch :: any)[colourName] or Tokens.swatch.Orange
 end
 
+-- The item's thumbnail, or nil for mock items (which have none).
+function Parts.image(item: PlaceholderData.Item): string?
+	return if item.thumbnail ~= "" then item.thumbnail else nil
+end
+
 export type ThumbProps = {
 	colour: Color3,
+	image: string?, -- thumbnail drawn over the tint; hides the caption
 	radius: number?,
 	size: UDim2?,
 	position: UDim2?,
@@ -72,7 +81,7 @@ export type ThumbProps = {
 function Parts.Thumb(props: ThumbProps)
 	local skin = useSkin()
 	local z = props.zIndex or 1
-	local caption = props.caption
+	local caption = if props.image then nil else props.caption
 	return e("Frame", {
 		Name = "Thumb",
 		Size = props.size or UDim2.fromScale(1, 1),
@@ -91,6 +100,17 @@ function Parts.Thumb(props: ThumbProps)
 			Thickness = skin.stroke(if props.selected then 2 else 1),
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		}),
+		Image = if props.image
+			then e("ImageLabel", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromScale(0.92, 0.92),
+				BackgroundTransparency = 1,
+				Image = props.image,
+				ScaleType = Enum.ScaleType.Fit,
+				ZIndex = z,
+			})
+			else nil,
 		Caption = if caption
 			then e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
@@ -170,12 +190,16 @@ function Parts.ItemCard(props: ItemCardProps)
 		AutoButtonColor = false,
 		Text = "",
 		LayoutOrder = props.layoutOrder or 0,
-		[React.Event.Activated] = props.onActivated,
+		[React.Event.Activated] = function()
+			Sounds.play("press")
+			props.onActivated()
+		end,
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 	}, {
 		Thumb = e(Parts.Thumb, {
 			colour = Parts.swatch(item.colour),
+			image = Parts.image(item),
 			caption = string.lower(item.sub),
 			hovered = interaction.hovered,
 			-- Square: the thumb is as tall as the card is wide.
@@ -228,6 +252,7 @@ export type ListRowProps = {
 	title: string,
 	subtitle: string?,
 	colour: Color3,
+	image: string?,
 	trailing: any?, -- elements on the right (price, buttons)
 	leading: any?, -- element before the thumb (e.g. a checkbox)
 	onActivated: (() -> ())?,
@@ -271,6 +296,7 @@ function Parts.ListRow(props: ListRowProps)
 			else nil,
 		Thumb = e(Parts.Thumb, {
 			colour = props.colour,
+			image = props.image,
 			radius = 10,
 			anchorPoint = Vector2.new(0, 0.5),
 			position = UDim2.new(0, skin.px(8) + leadingWidth + (if props.leading then skin.px(8) else 0), 0.5, 0),

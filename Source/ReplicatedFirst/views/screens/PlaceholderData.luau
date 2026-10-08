@@ -3,33 +3,28 @@
 --[[
 	PlaceholderData (Task 2 — replaced by real data from Task 7 onwards)
 
-	Mock catalogue, stores and outfits ported from the design prototype
+	Mock items, stores and outfits ported from the design prototype
 	(features/cac-adaptation/design/logic.js) so the shell's screens have
 	believable content to navigate. Nothing here is persisted or networked.
+
+	The Catalogue screen now shows real items (CatalogueClient, Task 7);
+	`item(id)` falls back to them, so the screens that look items up by id
+	(item page, basket, wearing, buy prompt) work for both. The mock items
+	remain for the starting basket/wearing state and the mock outfits/stores.
 ]]
+
+local CatalogueClient = require(script.Parent.Parent:WaitForChild("catalogue"):WaitForChild("CatalogueClient"))
 
 local PlaceholderData = {}
 
-export type Item = {
-	id: number,
-	name: string,
-	main: string, -- category: Hair, Clothing, Accessories, Head & Body, Animations, Emotes
-	sub: string, -- sub-category within `main`
-	price: number, -- Robux; 0 = free
-	colour: string, -- key into Tokens.swatch
-	halloween: boolean,
-	owned: boolean,
-	new: boolean,
-	trending: boolean,
-	creator: string,
-}
+export type Item = CatalogueClient.Item
 
 export type Store = { id: number, name: string, rating: number, visits: number, sponsored: boolean }
 export type Outfit = { name: string, by: string, items: { number } }
 
 local CREATORS = { "JON.", "pixelfox", "mossy_m", "k4tana", "nyxie", "Roblox" }
 
--- name, main, sub, price, colour, flags (h = halloween, o = owned, n = new, t = trending)
+-- name, main, sub, price, colour, flags (o = owned; h/n/t were the dropped Halloween/New/Trending tabs)
 local RAW_ITEMS = {
 	{ "Wavy Middle Part", "Hair", "Long", 65, "Brown", "" },
 	{ "Messy Bob", "Hair", "Short", 65, "Black", "" },
@@ -84,30 +79,21 @@ for index, raw in RAW_ITEMS do
 	local flags = raw[6] :: string
 	table.insert(PlaceholderData.items, {
 		id = index,
+		kind = "Asset",
+		targetId = index,
 		name = raw[1] :: string,
 		main = raw[2] :: string,
 		sub = raw[3] :: string,
+		typeName = raw[3] :: string,
 		price = raw[4] :: number,
-		colour = raw[5] :: string,
-		halloween = string.find(flags, "h", 1, true) ~= nil,
-		owned = string.find(flags, "o", 1, true) ~= nil,
-		new = string.find(flags, "n", 1, true) ~= nil,
-		trending = string.find(flags, "t", 1, true) ~= nil,
 		creator = CREATORS[(index - 1) % #CREATORS + 1],
-	})
+		description = "",
+		favourites = 0,
+		thumbnail = "",
+		colour = raw[5] :: string,
+		owned = string.find(flags, "o", 1, true) ~= nil,
+	} :: Item)
 end
-
--- Catalogue category tabs and their sub-category chips.
-PlaceholderData.categories = {
-	{ name = "Featured", subs = { "All", "New", "Trending" } },
-	{ name = "Halloween", subs = { "All", "Clothing", "Accessories", "Emotes" } },
-	{ name = "Hair", subs = { "All", "Long", "Short", "Curly", "Updo" } },
-	{ name = "Clothing", subs = { "All", "Tops", "Jackets", "Bottoms", "Shoes" } },
-	{ name = "Accessories", subs = { "All", "Hat", "Face", "Neck", "Back" } },
-	{ name = "Head & Body", subs = { "All", "Faces", "Heads" } },
-	{ name = "Animations", subs = { "All", "Packs", "Idle" } },
-	{ name = "Emotes", subs = { "All", "Dance", "Gesture", "Pose" } },
-}
 
 local RAW_STORES = {
 	{ "Mini Basics", 89, 18.6e6, true },
@@ -185,7 +171,7 @@ PlaceholderData.outfits = {
 PlaceholderData.outfitSources = { "Mine", "Community", "Roblox" }
 
 function PlaceholderData.item(id: number): Item
-	return PlaceholderData.items[id]
+	return PlaceholderData.items[id] or CatalogueClient.item(id) :: Item
 end
 
 -- "18.6M" / "294.0K" / "596"

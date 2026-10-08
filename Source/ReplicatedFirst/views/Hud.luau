@@ -9,6 +9,8 @@
 	  · the placeholder look (worn / basket) until the server models land,
 	    wrapped so every change confirms itself with a sound
 	  · the buy prompt, reachable anywhere through HudContext
+	  · back input (mouse back button, Backspace): closes the buy prompt, then
+	    pops a breadcrumb, then closes the panel
 	  · World options (saved + live draft, useWorldOptions) and the renderer
 	    that applies them to this client's world
 
@@ -30,6 +32,7 @@ local SkinRoot = require(components:WaitForChild("SkinRoot"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
 local useGlassBlur = require(hooks:WaitForChild("useGlassBlur"))
 local useNavigation = require(hooks:WaitForChild("useNavigation"))
+local useBackInput = require(hooks:WaitForChild("useBackInput"))
 local useTransition = require(hooks:WaitForChild("useTransition"))
 local useWorldOptions = require(hooks:WaitForChild("useWorldOptions"))
 local PlaceholderData = require(views:WaitForChild("screens"):WaitForChild("PlaceholderData"))
@@ -87,6 +90,18 @@ local function Hud()
 	local buyIds, setBuyIds = React.useState(nil :: { number }?)
 	local world = useWorldOptions()
 	local look = withFeedback(rawLook)
+
+	useBackInput(function()
+		if buyIds then
+			Sounds.play("back")
+			setBuyIds(nil)
+		elseif #nav.stack > 0 then
+			Sounds.play("back")
+			nav.back()
+		elseif nav.isOpen then
+			nav.close() -- the close sound plays from the effect below
+		end
+	end)
 
 	-- Open / close sounds on panel state changes.
 	local wasOpen = React.useRef(false)

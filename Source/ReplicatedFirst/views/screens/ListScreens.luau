@@ -160,6 +160,7 @@ local function BasketScreen(props: { nav: any, look: any })
 			title = item.name,
 			subtitle = item.main .. " · " .. item.sub .. " · by " .. item.creator,
 			colour = Parts.swatch(item.colour),
+			image = Parts.image(item),
 			layoutOrder = index,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
@@ -213,6 +214,7 @@ local function WearingScreen(props: { nav: any, look: any })
 			title = item.name,
 			subtitle = item.main .. " · " .. item.sub,
 			colour = Parts.swatch(item.colour),
+			image = Parts.image(item),
 			layoutOrder = index,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),

@@ -112,6 +112,7 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 				}),
 				Thumb = e(Parts.Thumb, {
 					colour = Parts.swatch(items[1].colour),
+					image = Parts.image(items[1]),
 					radius = 16,
 					size = UDim2.fromOffset(thumb, thumb),
 				}),

@@ -2,7 +2,7 @@
 
 ## Build order
 
-**Approach:** feel-first, top-down (custom). Get the skin, motion and sound right before the heavy technical lifts. The first task is the first-playable slice (HUD shell in the final skin, full panel with tabs/breadcrumbs on placeholder content, buy-prompt frame, springs/tweens and UI sounds, and the relative-vs-absolute sizing decision). Then the layers in the SPEC's order: World options, Avatar core, Catalogue, Basket and buying, Outfits, Sharing, Community outfits, Stores. Large layers are split into several tasks; the layer order is never broken.
+**Approach:** feel-first, top-down (custom). Get the skin, motion and sound right before the heavy technical lifts. The first task is the first-playable slice (HUD shell in the final skin, full panel with tabs/breadcrumbs on placeholder content, buy-prompt frame, springs/tweens and UI sounds, and the relative-vs-absolute sizing decision). Then the layers in the SPEC's order: World options, Catalogue, Avatar core, Basket and buying, Outfits, Sharing, Community outfits, Stores. Large layers are split into several tasks. Tasks keep their numbers but run in document order: after Task 4 the catalogue (7, 8) was moved ahead of try-on (5, 6), so there are things to put on the avatar before dealing with what's on it.
 
 **Rationale:** the design is settled and the riskiest things to get wrong late are look, feel and sizing across iPad/desktop/phone. Proving those first means every later layer (data, APIs, cross-server storage) plugs into a UI that already feels right, and the unresolved technical risks (catalogue limits, cross-server data, deep links, store model) each get an explicit investigation sub-task at the top of the task that depends on them rather than being assumed.
 
@@ -118,10 +118,56 @@
 - **Outcome:**
   > Server: `WorldOptionsModel` (User scope, persisted) + `WorldOptionsController` (Set/Reset; every field validated against `WorldOptionsConfig`, numbers clamped/snapped, colours must be in the palette). Config: Studio-authored `ReplicatedStorage.Config.WorldOptionsConfig` with a reference copy in `Source/ReplicatedStorage/Config/` (keep in step — edit both). Client: `hooks/useWorldOptions` (saved + live draft; change on drag, commit on release/tap; reset; normalises stale saves), `WorldRenderer` (client-only Lighting/sky/clouds/floor — private by construction; waits for game load; floor parts tagged `WorldFloor` in Studio), `WorldOptionsView` (fixed title with reset + close, scrolling body), `components/Slider` + `Toggle`, `FlightView.client` (double-tap jump; climb on hold; hover; lands on touch-down; 0.35s take-off grace). Final panel: Time; Sky (Clear/Clouds/Studio/Void — Studio/Void use flat skybox images); Floor (lightness slider + orange/yellow/green/teal/purple/white); Pattern colour (lightness + same palette); Pattern (strength + Grid/Studs/Checker preview tiles); Lighting 0–200% (exposure, clamped by Roblox to ±3 stops); Shadows. Defaults match the place in Edit mode (14:30, Baseplate #cc5f00, black grid = white at 0% lightness, 20% strength). Colours saved as hex, not list positions. Picking a colour resets its lightness to 100%. Lessons: UIStroke on a TextButton outlines its text unless ApplyStrokeMode = Border; LayoutOrder is an integer (fractions collapse); slider tracks must be inset by half a knob inside the hit area; a dense Atmosphere fogs the floor — use flat skybox images for solid skies; JumpRequest repeats every frame while held (press gap 0.06s); command-bar `require` gets a separate module copy (can't read live model registries). Not verified: two-client privacy test, GA4 events (4.9), flight on a touch device. Open: flight in a shared world awaits a world layout (4.8 — `flight.enabled` switch in config).
 
+### Task 7: Catalogue data layer
+- **Status:** [DONE]
+- **Why here:** The browse UI depends on what Roblox's in-experience catalogue can actually provide. This is the largest unresolved technical risk in the spec, so it is investigated and the data path is built before the UI that consumes it.
+- **Depends on:** 3 (reordered: runs before 5 and 6, so browsing has real items before try-on exists)
+- **Refs:** Scope > Catalogue (categories, search, filters); Risks (Catalogue data source and rate limits); Integration points
+- **Acceptance criteria:**
+  - Open questions on catalogue data are answered with evidence and recorded: what search/category/price facets the API exposes, colour as a facet or not, rate limits, caching, and where Featured/Halloween/New/Trending come from.
+  - The server can return a page of items (id, name, type/sub-type, price, creator, favourites count) for a category/sub-category/search/price/colour query, within agreed limits.
+  - Results for a given player's query are delivered to that player only.
+- **Associated UI:** none yet (data layer); shapes follow `logic.js` ITEMS (name, main category, sub-category, price, colour, creator, favourites, flags).
+- **Replication:** **Cosmetic / not position-critical.** Catalogue results are logical per-player data, not world entities. Delivery follows the existing intent/state pattern (candidate: a per-player session model holding the latest result page) unless the investigation chooses client-direct calls (see Open questions).
+- **Sub-tasks:**
+  - [DONE] 7.1 Investigation spike: evaluate `AvatarEditorService` catalogue search and item-details calls, `MarketplaceService` product info, thumbnail services, and any other in-experience catalogue API for: query facets, page size, rate limits, caching windows, and availability from client vs server. Decide server-proxied vs client-direct, and how colour and price filters are applied (server facet vs client filter over fetched pages). Write findings into the open questions.
+  - [DONE] 7.2 Investigation: curation source for Featured, seasonal (Halloween), New, Trending, and any items outside the live catalogue. Do not invent one; present options (config-curated lists, a catalogue query heuristic, an external list) for the user to choose. *(Replaced: Featured/Halloween/New/Trending dropped for the marketplace categories; see open question 11.)*
+  - [DONE] 7.3 Config: `CatalogueConfig` (categories, sub-categories, price presets, colour swatches, page size, cache lifetimes, curated lists as decided). `/create-config` plus Studio module.
+  - [DONE] 7.4 Service: `services/game/CatalogueService.luau` (event-driven with an in-memory cache; add a loop only if cache expiry demands it) wrapping the API with throttling and retry/backoff. `/create-service`. *(Superseded by client-direct: no server service; throttling/backoff/cache live in `views/catalogue/CatalogueClient.luau`.)*
+  - [DONE] 7.5 Network/Model/Controller: `Catalogue` controller (Search, LoadMore, GetDetails) and a `CatalogueModel` (UserSession) that syncs the latest page to the owner. If 7.1 chooses client-direct, replace this with a client Pattern A module plus a server validation hook for try-on (Task 5 will validate ids). `/create-model`, `/create-controller`. *(Client-direct chosen: `CatalogueClient` + `hooks/useCatalogue`; the server validation hook moves to Task 5.)*
+  - [DONE] 7.6 Slot/type mapping: map catalogue asset types to slot rules that Task 5.2 then uses so browse, wear and the Wearing screen share one definition. *(Type→category/chip placement is derived from `CatalogueConfig` in `CatalogueClient`; the slot rules themselves are Task 5.2.)*
+  - [DONE] 7.7 Server-side playtest via slash commands: query each category, apply price/colour filters, observe cache hits and rate-limit behaviour. *(Done as client-side Studio probes and a play test rather than slash commands, since there is no server path.)*
+- **Outcome:**
+  > Client-direct catalogue (user call): `AvatarEditorService:SearchCatalog` has a per-caller budget (~36 searches/26s, then HTTP 429 for 30s+), and the client's budget is separate from the server's, so a server proxy would put every player on one budget. `views/catalogue/CatalogueClient.luau` searches, caches per query (5 min), pages, waits out a throttle and retries once, and remembers every item seen (`item(id)`, `similar(item, n)`); bundle ids are negated so they can't collide with asset ids. `hooks/useCatalogue.luau` debounces typing (0.4s), searches at once on tab/chip change, and drops stale results by generation. Tabs follow the marketplace menu (`catalog.roblox.com/v1/search/navigation-menu-items`): Body, Clothing, Classic (split out, user), Accessories (Gear kept, user), Backgrounds, Animations, Makeup; Bodysuits has no API type, so it's left out; every query pins asset/bundle types, as untyped ones return non-wearables. `CatalogueConfig` is Studio-authored (reference copy in the repo). Real items carry thumbnails (`rbxthumb://`), descriptions, creator, favourites; `PlaceholderData.item` falls back to them so Item/Basket/Wearing/Buy work for real items. Extras from review: item-page description (4 lines), card click sound, search clear button, placeholder hidden on focus, Backspace / mouse back to go back. **Lessons:** `UserInputService.InputBegan` never reports mouse-button KeyCodes; the Input Action System is the documented route, but in Studio the side buttons of the user's plug-and-play IntelliMouse didn't reach Roblox at all (kept the binding; check in the live client). The UI sometimes renders low-res just after start-up in every game: that's engine render resolution, with no script control. EditableImage *can* read catalogue thumbnails in Studio (0.41s per 58) despite the docs; live servers still need checking (Task 8).
+
+### Task 8: Catalogue browsing UI
+- **Status:** [TODO]
+- **Why here:** First real content in the panel. With the data layer in place, build the screen that most of the experience is spent in.
+- **Depends on:** 3, 7. Until Task 5 lands, Try/Take off drive the local stand-in look (badges and counts change; the character does not), and the preview feedback arrives with Task 6.
+- **Refs:** Scope > Catalogue; Success criteria (fewer clicks for try on / take off / find an item; nothing hidden)
+- **Acceptance criteria:**
+  - Category tabs (Body, Clothing, Classic, Accessories, Backgrounds, Animations, Makeup, from CatalogueConfig; done in Task 7) with per-category chips; the grid updates live.
+  - Search box (keyword search done in Task 7); paste an item link or ID resolves to that item; the grid updates live as filters change; empty state and match count.
+  - Filters, matching the marketplace (user, 2026-10-08: "more filters than just price and colour"): **price** popover with two-handle min/max slider and presets (Free, Under 50, 50-100, 100+); **colour** (dominant colour from thumbnails, see open question 11); **creator** (All, Roblox, or a typed creator name); **sales type** (All, Limited/Collectibles, Timed Options); **availability** (include off-sale/unavailable items); and **sort order** (Relevance, Most Favourited, Bestselling, Recently Created, Price low-high, Price high-low, with the time window for Most Favourited and Bestselling). All map onto `CatalogSearchParams` except colour.
+  - Load more as the grid scrolls to the end.
+  - Item cards show an orange "wearing" badge, a white "in basket" badge, and price/Free/Owned.
+  - Tapping a card opens the menu: Try / Take off, Add/Remove basket, Buy/Get, View.
+  - Trying an item on and taking it off takes one tap from the menu, with in-place and preview feedback.
+- **Associated UI:** 5b Catalogue (badges and price range); colour and price popovers; card menu.
+- **Replication:** **Cosmetic.** Card images are client-rendered thumbnails or viewports, not world entities. Open question: thumbnails vs 3D viewports on cards (cost on phones).
+- **Sub-tasks:**
+  - [TODO] 8.1 Decide card imagery (open question): static thumbnail images vs ViewportFrame previews, with a phone performance check.
+  - [TODO] 8.2 Catalogue screen (`/html-to-react-luau`, frame 5b): category tabs, sub-chips, search, colour and price popovers (two-handle slider component, new in `components/`, justified by reuse in Stores), grid with staggered entrance (`useTransition` list mode), empty state.
+  - [TODO] 8.3 Item card component with badges and the tap menu; menu actions wired to the local stand-in look (swapped to Avatar intents in Task 5), basket callbacks (stubbed to local state until Task 10) and buy-prompt frame (Task 3, confirm stubbed until Task 11).
+  - [TODO] 8.4 Paste link/ID: parse catalogue URLs and bare IDs client-side, resolve the item through the Task 7 path, open the item page (Task 9) or show not-found inline at the search field.
+  - [TODO] 8.5 Wire `HudApp` subscription to `Catalogue` and `Avatar` states; debounce search; pagination/load more on scroll.
+  - [TODO] 8.6 Analytics: search, filter and view events (item id, category) via the controller or `trackEvent`.
+  - [TODO] 8.7 Playtest: find an item in fewer taps than CAC (record the count), filter combos, rapid try-on/take-off, phone layout.
+
 ### Task 5: Avatar core, server-side try-on
 - **Status:** [TODO]
 - **Why here:** Everything after this (catalogue, basket, outfits) calls "try on". It must exist as a validated, server-authoritative service with slot rules and Undo before any UI browsing depends on it.
-- **Depends on:** 3, 4
+- **Depends on:** 3, 7, 8 (reordered after the catalogue; tapping Try in the Task 8 grid then changes the real character)
 - **Refs:** Scope > Catalogue (wearing rules); Scope > Full panel (Undo); Scope > HUD (Reset); Replication strategy (Player avatar); Integration points (Avatar); Risks (Undo semantics)
 - **Acceptance criteria:**
   - Try on and take off change the player's real character on the server, and other players in the server see it.
@@ -146,7 +192,7 @@
 
 ### Task 6: Avatar preview, Wearing screen and tap-avatar-to-open-Wearing
 - **Status:** [TODO]
-- **Why here:** Gives the try-on state its UI (preview, Wearing list) so catalogue browsing in Task 8 has a visible result for every tap.
+- **Why here:** Gives the try-on state its UI (preview, Wearing list) so every try-on from the catalogue has a visible result in the panel.
 - **Depends on:** 5
 - **Refs:** Scope > Full panel (live avatar preview, Wearing bar); Scope > Wearing; Scope > HUD (tap avatar opens Wearing); Replication strategy (Avatar preview)
 - **Acceptance criteria:**
@@ -160,50 +206,8 @@
   - [TODO] 6.1 Avatar preview component (`/html-to-react-luau` for the frame, `/create-view` for the rig logic): client-only rig in a ViewportFrame, rotates/spring-settles, updates on Avatar state changes. Studio-free.
   - [TODO] 6.2 Wearing screen (`/html-to-react-luau`, frame 5g): rows with owned/price, Take off, Add to basket, Save as outfit (stub until Task 12), Take everything off, empty state.
   - [TODO] 6.3 Tap-own-avatar hook in `views/hooks/` (input raycast against the local character, mouse and touch) calling `HudApp`'s open-Wearing callback, so no new cross-script bridge pattern is introduced.
-  - [TODO] 6.4 Item data the screens need (name, price, owned) come from a small client lookup keyed by asset id; stub with the Task 7 shape until the catalogue lands, and note the dependency.
+  - [TODO] 6.4 Item data the screens need (name, price, owned) come from a small client lookup keyed by asset id; use the Task 7 item shape.
   - [TODO] 6.5 Playtest on touch: tapping the avatar while the camera moves and while the panel is open.
-
-### Task 7: Catalogue data layer
-- **Status:** [TODO]
-- **Why here:** The browse UI depends on what Roblox's in-experience catalogue can actually provide. This is the largest unresolved technical risk in the spec, so it is investigated and the data path is built before the UI that consumes it.
-- **Depends on:** 5
-- **Refs:** Scope > Catalogue (categories, search, filters); Risks (Catalogue data source and rate limits); Integration points
-- **Acceptance criteria:**
-  - Open questions on catalogue data are answered with evidence and recorded: what search/category/price facets the API exposes, colour as a facet or not, rate limits, caching, and where Featured/Halloween/New/Trending come from.
-  - The server can return a page of items (id, name, type/sub-type, price, creator, favourites count) for a category/sub-category/search/price/colour query, within agreed limits.
-  - Results for a given player's query are delivered to that player only.
-- **Associated UI:** none yet (data layer); shapes follow `logic.js` ITEMS (name, main category, sub-category, price, colour, creator, favourites, flags).
-- **Replication:** **Cosmetic / not position-critical.** Catalogue results are logical per-player data, not world entities. Delivery follows the existing intent/state pattern (candidate: a per-player session model holding the latest result page) unless the investigation chooses client-direct calls (see Open questions).
-- **Sub-tasks:**
-  - [TODO] 7.1 Investigation spike: evaluate `AvatarEditorService` catalogue search and item-details calls, `MarketplaceService` product info, thumbnail services, and any other in-experience catalogue API for: query facets, page size, rate limits, caching windows, and availability from client vs server. Decide server-proxied vs client-direct, and how colour and price filters are applied (server facet vs client filter over fetched pages). Write findings into the open questions.
-  - [TODO] 7.2 Investigation: curation source for Featured, seasonal (Halloween), New, Trending, and any items outside the live catalogue. Do not invent one; present options (config-curated lists, a catalogue query heuristic, an external list) for the user to choose.
-  - [TODO] 7.3 Config: `CatalogueConfig` (categories, sub-categories, price presets, colour swatches, page size, cache lifetimes, curated lists as decided). `/create-config` plus Studio module.
-  - [TODO] 7.4 Service: `services/game/CatalogueService.luau` (event-driven with an in-memory cache; add a loop only if cache expiry demands it) wrapping the API with throttling and retry/backoff. `/create-service`.
-  - [TODO] 7.5 Network/Model/Controller: `Catalogue` controller (Search, LoadMore, GetDetails) and a `CatalogueModel` (UserSession) that syncs the latest page to the owner. If 7.1 chooses client-direct, replace this with a client Pattern A module plus a server validation hook for try-on (Task 5 already validates ids). `/create-model`, `/create-controller`.
-  - [TODO] 7.6 Slot/type mapping: map catalogue asset types to the slot config from Task 5.2 so browse, wear and the Wearing screen share one definition.
-  - [TODO] 7.7 Server-side playtest via slash commands: query each category, apply price/colour filters, observe cache hits and rate-limit behaviour.
-
-### Task 8: Catalogue browsing UI
-- **Status:** [TODO]
-- **Why here:** First real content in the panel. With the data layer in place, build the screen that most of the experience is spent in.
-- **Depends on:** 3, 6, 7
-- **Refs:** Scope > Catalogue; Success criteria (fewer clicks for try on / take off / find an item; nothing hidden)
-- **Acceptance criteria:**
-  - Category tabs (Featured, Halloween, Hair, Clothing, Accessories, Head & Body, Animations, Emotes) with per-category sub-category chips; the grid updates live.
-  - Search box; paste an item link or ID resolves to that item; colour filter popover; price filter popover with two-handle min/max slider and presets (Free, Under 50, 50-100, 100+); the grid updates live as filters change; empty state and match count.
-  - Item cards show an orange "wearing" badge, a white "in basket" badge, and price/Free/Owned.
-  - Tapping a card opens the menu: Try / Take off, Add/Remove basket, Buy/Get, View.
-  - Trying an item on and taking it off takes one tap from the menu, with in-place and preview feedback.
-- **Associated UI:** 5b Catalogue (badges and price range); colour and price popovers; card menu.
-- **Replication:** **Cosmetic.** Card images are client-rendered thumbnails or viewports, not world entities. Open question: thumbnails vs 3D viewports on cards (cost on phones).
-- **Sub-tasks:**
-  - [TODO] 8.1 Decide card imagery (open question): static thumbnail images vs ViewportFrame previews, with a phone performance check.
-  - [TODO] 8.2 Catalogue screen (`/html-to-react-luau`, frame 5b): category tabs, sub-chips, search, colour and price popovers (two-handle slider component, new in `components/`, justified by reuse in Stores), grid with staggered entrance (`useTransition` list mode), empty state.
-  - [TODO] 8.3 Item card component with badges and the tap menu; menu actions wired to Avatar intents (Task 5), basket callbacks (stubbed to local state until Task 10) and buy-prompt frame (Task 3, confirm stubbed until Task 11).
-  - [TODO] 8.4 Paste link/ID: parse catalogue URLs and bare IDs client-side, resolve the item through the Task 7 path, open the item page (Task 9) or show not-found inline at the search field.
-  - [TODO] 8.5 Wire `HudApp` subscription to `Catalogue` and `Avatar` states; debounce search; pagination/load more on scroll.
-  - [TODO] 8.6 Analytics: search, filter and view events (item id, category) via the controller or `trackEvent`.
-  - [TODO] 8.7 Playtest: find an item in fewer taps than CAC (record the count), filter combos, rapid try-on/take-off, phone layout.
 
 ### Task 9: Item page, favourites and More like this
 - **Status:** [TODO]
@@ -486,10 +490,16 @@ Each needs a user decision (or a recorded finding) before or during the named ta
 5. **Flight in a shared world (Task 4).** Collisions, griefing and where "quiet spots" are depend on world layout, which isn't designed. Phase-1 defaults are provisional.
 6. **Undo scope (Task 5).** Avatar changes only, or basket and outfit actions too.
 7. **Try-on coverage and failure behaviour (Task 5).** Which item types can be tried on without owning them, and what happens for off-sale or unloadable items and emotes.
+   *Findings (Studio test, 2026-10-08):* server-side `Humanoid:ApplyDescription` applies **non-owned** items and they replicate: rigid accessories (hair, hat, face, back), layered clothing (shirt, jacket, pants via `SetAccessories(..., true)`), classic shirt/pants/T-shirt, emotes (`SetEmotes` + `SetEquippedEmotes`; `Humanoid:PlayEmote` works client-side, unowned) and animation packs (~0.5s per apply). Bundles carry a `UserOutfit` item: `Players:GetHumanoidDescriptionFromOutfitId` gives the whole bundle (dynamic heads, bodies, animation packs). Bad or unloadable ids are **silently skipped**, so the server must resolve type first; reusing one id in two slots makes the whole apply throw. Off-sale doesn't block wearing (the asset still exists); it only matters to Buy. **Respawn resets to the player's own avatar**, so the look must be re-applied on `CharacterAdded`. Shoes, classic faces and single animations aren't individually searchable (they arrive via bundles). Proposed approach: worn list seeded from the player's own avatar on join; the description is built from their own body plus worn items; Reset re-seeds; Undo restores the previous list.
+   *Recommendation (pending user call):* undo covers avatar changes only (Q6); session-only, no restore on rejoin for now (Q8).
 8. **Restore last look on rejoin (Task 5).** Not in the spec; the avatar model is session-only unless the user wants persistence.
 9. **Catalogue data source and limits (Task 7).** What the in-experience APIs expose, rate limits, and whether colour is a facet or a client-side filter.
+   *Findings (Studio test, 2026-10-08):* `AvatarEditorService:SearchCatalog` works on server and client. `CatalogSearchParams` facets: keyword, min/max price, asset types, bundle types (BodyParts, Animations, Shoes, DynamicHead, DynamicHeadAvatar), sort (Relevance, price both ways, MostFavorited, RecentlyCreated, Bestselling) with aggregation window (12h to all time), category filter (Featured, Collectibles, CommunityCreations, Premium, Recommended), sales type, creator, include off-sale. Page `Limit` up to 120 (default 30); a search takes about 0.2–0.7s. Results already carry id, name, item type, asset/bundle type, price, creator name, favourites count and description; `GetItemDetails` / `GetBatchItemDetails` fill in single items. Thumbnails come free via `rbxthumb://`. **No colour facet**: colour can only be a keyword ("red" works well) or nothing. Untyped queries return non-wearables (e.g. AvatarBackground), so every query should pin asset/bundle types. **Rate limit:** about 36 searches in 26s, then HTTP 429, which lasted over 30s. The client has its **own budget** (40/40 succeeded while the server was throttled).
 10. **Catalogue delivery architecture (Task 7).** Server-proxied (per-player session model through the existing intent/state pattern; cacheable, protects rate limits, extra latency) vs client-direct (lower latency, but each client spends its own budget and the server still has to validate try-on ids).
-11. **Curation source (Task 7).** Where Featured, seasonal (Halloween), New and Trending come from: config-curated lists, query heuristics, or an external list.
+   *Finding:* the throttle is per caller, so a server proxy puts every player's browsing on one shared budget that a handful of active browsers would exhaust. *Recommendation (pending user call):* client-direct search (Pattern A client module with a small cache and debounce); the server only resolves single item details (cached) to validate try-on in Task 5.
+11. ~~**Curation source (Task 7).**~~ Decided (user, 2026-10-08): drop Featured / Halloween / New / Trending (CAC leftovers). Categories follow the real marketplace instead, from `catalog.roblox.com/v1/search/navigation-menu-items`: **Body** (Full Bodies, Hair, Heads), **Clothing** (Shirts, T-Shirts, Sweaters, Jackets, Pants, Dresses & Skirts, Bodysuits, Shorts, Shoes), **Classic** (Classic Shirts, Classic T-Shirts, Classic Pants; split out of Clothing, which was too busy), **Accessories** (Head, Face, Neck, Shoulder, Front, Back, Waist, Gear; Gear kept for its history. Try-on means a Tool, not a HumanoidDescription: Roblox-made gear loads via `InsertService:LoadAsset` with its scripts (tested: Bloxy Cola, Body Swap Potion, a magic carpet), and R15 hands carry a `RightGripAttachment` the Tool's handle welds to. Task 5 decides held-and-inert (scripts stripped) vs working; CAC lists gear but wearing it fails), **Backgrounds** (avatar backdrops for thumbnails and the avatar editor, not in-world; we use them in the UI behind the avatar preview, as CAC does), **Animations** (Bundles, Emotes), **Makeup** (Eyes, Lips, Face, Eyelashes, Eyebrows). Each maps to `AvatarAssetType`/`BundleType` values in `CatalogueConfig`. Emotes move under Animations.
+    *Delivery decided (user):* client-direct search (Q10).
+    *Colour filter (open):* must stay (a major CAC feature) but not as a keyword. No colour facet exists in the API or the marketplace menu; **in-engine thumbnail analysis works in Studio** (user enabled Game Settings > Security > Allow Mesh & Image APIs; this needs an ID-verified 13+ creator but doesn't change the game's age rating). `AssetService:CreateEditableImageAsync(Content.fromUri("rbxthumb://type=Asset&id=…&w=150&h=150"))` read catalogue thumbnails despite the docs saying only creator-owned images load; a page of 58 thumbnails loaded and classified in parallel in **0.41s** on the client. Dominant colour by HSV buckets (sampling every 4th pixel) is roughly right but needs tuning: white garments read as Grey (thumbnail shading), and mannequin skin can tip items to Red/Orange/Brown. **Risk:** must be re-verified in a published live server, since the docs' ownership rule may be enforced there and not in Studio. Fallback: an external colour index built by the Phase 3 scraper, queried via the server's HttpService. The filter fetches and classifies pages as they arrive and hides the paging.
 12. **Card imagery (Task 8).** Thumbnails (cheap, static) vs ViewportFrame previews (lively, heavier on phones).
 13. **What Create avatar does (Task 11).** The design only shows a toast (we don't use toasts). Needs a defined behaviour.
 14. **Purchase and ownership specifics (Task 11).** Confirm bulk "Buy all" is possible through Roblox prompts or accept sequential prompts; how ownership of bundles is determined.

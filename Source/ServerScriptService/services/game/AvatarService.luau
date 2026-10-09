@@ -34,6 +34,10 @@
 		                                      it can't be found
 		ownLook(player) -> { WornItem }        the player's own avatar's items
 		apply(player)                          re-dress the character from `worn`
+
+	Also used by OutfitsController (the outfit page's 3D preview):
+		describeLook(player, worn) -> HumanoidDescription   `worn` on the
+		                                      player's own base (gear left out)
 ]]
 
 local AssetService = game:GetService("AssetService")
@@ -423,6 +427,11 @@ local function describe(player: Player, worn: { WornItem }): (HumanoidDescriptio
 	description:SetEmotes(emotes)
 	description:SetEquippedEmotes(equipped)
 	return description, gear
+end
+
+function AvatarService.describeLook(player: Player, worn: { WornItem }): HumanoidDescription
+	local description = describe(player, worn)
+	return description
 end
 
 local function holdGear(character: Model, gearId: number?)

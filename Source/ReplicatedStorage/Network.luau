@@ -47,6 +47,7 @@ local NetworkConfig = {
 		Bazaar = { "BuyTreasure" },
 		CashMachine = { "Withdraw", "Deposit" },
 		Favourites = { "Toggle" },
+		Outfits = { "Save", "Rename", "Delete", "WearAll", "WearSelected" },
 		Purchase = { "Buy", "Finished", "Check" },
 		Shrine = { "Donate" },
 		SlashCommand = {},  -- No actions, just the intent
@@ -93,6 +94,13 @@ local NetworkConfig = {
 			gold = 0,
 			treasure = 0,
 			favourIds = {},
+		},
+		-- The player's saved outfits (persisted; OutfitsModel), oldest first:
+		-- { id, name, items = { { targetId, kind, typeName, name } } }.
+		Outfits = {
+			ownerId = "",
+			outfits = {},
+			nextId = 1,
 		},
 		-- What the player owns, as far as we've checked, and their latest
 		-- purchase (session only; OwnershipModel). `owned` holds "Asset:123" /
@@ -145,6 +153,7 @@ export type BazaarAction = "BuyTreasure"
 export type CashMachineAction = "Withdraw" | "Deposit"
 export type FavouritesAction = "Toggle"
 export type PurchaseAction = "Buy" | "Finished" | "Check"
+export type OutfitsAction = "Save" | "Rename" | "Delete" | "WearAll" | "WearSelected"
 export type ShrineAction = "Donate"
 export type WorldOptionsAction = "Set" | "Reset"
 
@@ -182,6 +191,18 @@ export type CandlesState = {
 export type FavouritesState = {
 	ownerId: string,
 	items: { string }, -- "Asset:123" / "Bundle:45", most recent last
+}
+
+export type Outfit = {
+	id: number,
+	name: string, -- text-filtered
+	items: { WornItem }, -- what was worn, in the order put on (`owned` unset)
+}
+
+export type OutfitsState = {
+	ownerId: string,
+	outfits: { Outfit }, -- oldest first
+	nextId: number,
 }
 
 export type PurchaseResult = {

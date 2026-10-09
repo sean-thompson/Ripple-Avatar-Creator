@@ -83,6 +83,23 @@ local function withFeedback(look: any)
 		Sounds.play(if look.inBasket(id) then "back" else "confirm")
 		return look.toggleBasket(id)
 	end
+	feedback.saveOutfit = function(): boolean
+		local saved = look.saveOutfit()
+		Sounds.play(if saved then "confirm" else "error") -- nothing worn to save
+		return saved
+	end
+	feedback.wearOutfit = function(id: number)
+		Sounds.play("tryOn")
+		look.wearOutfit(id)
+	end
+	feedback.wearOutfitItems = function(id: number, indices: { number })
+		Sounds.play(if #indices > 0 then "tryOn" else "error")
+		look.wearOutfitItems(id, indices)
+	end
+	feedback.deleteOutfit = function(id: number)
+		Sounds.play("back")
+		look.deleteOutfit(id)
+	end
 	feedback.clearBasket = function()
 		Sounds.play("back")
 		look.clearBasket()

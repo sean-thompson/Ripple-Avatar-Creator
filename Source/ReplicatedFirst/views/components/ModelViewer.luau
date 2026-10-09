@@ -32,6 +32,8 @@
 		cornerRadius: number?     design px
 		loadingText: string?      shown while building
 		failedText: string?       shown when build returns nil
+		onModel: ((Model) -> ())? called with each model once it's in view
+		                          (it lives in a WorldModel, so it can animate)
 ]]
 
 local GuiService = game:GetService("GuiService")
@@ -70,6 +72,7 @@ export type Props = {
 	cornerRadius: number?,
 	loadingText: string?,
 	failedText: string?,
+	onModel: ((Model) -> ())?,
 }
 
 local function isPress(input: InputObject): boolean
@@ -280,6 +283,9 @@ local function ModelViewer(props: Props)
 			end
 			v.place()
 			setStatus("ready")
+			if latest.current.onModel then
+				latest.current.onModel(model)
+			end
 		end)
 		return function()
 			alive = false

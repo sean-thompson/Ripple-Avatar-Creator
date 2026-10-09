@@ -56,6 +56,7 @@ local OutfitsScreen = require(screens:WaitForChild("OutfitsScreen"))
 local ListScreens = require(screens:WaitForChild("ListScreens"))
 local PlaceholderData = require(screens:WaitForChild("PlaceholderData"))
 local AvatarPreview = require(script.Parent:WaitForChild("AvatarPreview"))
+local AnimationBar = require(script.Parent:WaitForChild("AnimationBar"))
 
 local e = React.createElement
 
@@ -142,6 +143,20 @@ local function PreviewCard(props: { nav: any, look: any, openList: (root: string
 	end
 	local wornCount = useSpringNumber(#props.look.worn, Tokens.spring.count)
 	local wornCost = useSpringNumber(cost, Tokens.spring.count)
+	local animation, setAnimation = React.useState(AnimationBar.DEFAULT)
+
+	-- Emotes to preview: the ones being worn, then any in the basket.
+	local emotes = {}
+	local listed = {}
+	for _, list in { props.look.worn, props.look.basket } do
+		for _, id in list do
+			local item = PlaceholderData.item(id)
+			if item and item.typeName == "EmoteAnimation" and item.thumbnail ~= "" and not listed[item.targetId] then
+				listed[item.targetId] = true
+				table.insert(emotes, { id = item.targetId, name = item.name })
+			end
+		end
+	end
 	return e(GlassPanel, {
 		variant = "light",
 		cornerRadius = Tokens.radius.contentPanel,
@@ -158,7 +173,16 @@ local function PreviewCard(props: { nav: any, look: any, openList: (root: string
 			Avatar = e(AvatarPreview, {
 				backdrop = backdropOf(props.look),
 				cornerRadius = Tokens.radius.contentPanel,
+				animation = animation,
 			}),
+		}),
+		-- What the preview is doing: idle, walk, run… or an emote.
+		Animations = e(AnimationBar.Bar, {
+			selected = animation.key,
+			emotes = emotes,
+			onSelect = setAnimation,
+			anchorPoint = Vector2.new(0.5, 1),
+			position = UDim2.new(0.5, 0, 1, -skin.px(12 + Tokens.size.ctaHeight + 8)),
 		}),
 		Header = cardHeader(skin, "checkroom", "Wearing"),
 		Undo = e(PillButton, {

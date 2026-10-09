@@ -23,6 +23,12 @@
 	Applies are coalesced per player: changes that land while one is running
 	collapse into a single follow-up apply.
 
+	Emote animations: the client can't open an emote asset to find the
+	animation inside it, so it asks over the "AvatarEmoteAnimations" remote
+	function (Bolt) with up to MAX_EMOTE_LOOKUP emote ids, and gets back a
+	list of { id = emoteId, animation = "rbxassetid://…" } (cached). Used by the panel's avatar
+	preview to play emotes. Read-only; no state changes.
+
 	API (used by AvatarController):
 		resolve(targetId, kind) -> WornItem?   look an item up (cached); nil if
 		                                      it can't be found
@@ -34,7 +40,10 @@ local AssetService = game:GetService("AssetService")
 local AvatarEditorService = game:GetService("AvatarEditorService")
 local InsertService = game:GetService("InsertService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+
+local Bolt = require(ReplicatedStorage.Bolt)
 
 local AvatarModel = require(ServerScriptService.models.user.AvatarModel)
 
@@ -91,6 +100,8 @@ local ANIMATIONS =
 	{ "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation" }
 
 local GEAR_ATTRIBUTE = "RippleGear"
+local MAX_EMOTE_LOOKUP = 16 -- emote ids per request
+local EMOTE_LOOKUP_COOLDOWN = 0.5 -- seconds between a player's requests
 
 -- Reverse of RIGID + LAYERED, for reading a player's own avatar.
 local TYPE_OF_ACCESSORY: { [Enum.AccessoryType]: string } = {}
@@ -106,6 +117,28 @@ local bundleOutfits: { [number]: HumanoidDescription | false } = {}
 local gearTemplates: { [number]: Tool | false } = {}
 local bases: { [Player]: HumanoidDescription } = {}
 local applying: { [Player]: { busy: boolean, again: boolean } } = {}
+local emoteAnimations: { [number]: string | false } = {}
+local lastEmoteLookup: { [Player]: number } = {}
+
+-- The animation inside an emote asset (cached; false if it has none).
+local function emoteAnimation(emoteId: number): string?
+	local cached = emoteAnimations[emoteId]
+	if cached ~= nil then
+		return cached or nil
+	end
+	local ok, model = pcall(function()
+		return InsertService:LoadAsset(emoteId)
+	end)
+	local animation = if ok then model:FindFirstChildWhichIsA("Animation", true) else nil
+	local id = if animation then animation.AnimationId else nil
+	if ok then
+		model:Destroy()
+	else
+		warn(`[AvatarService] Couldn't load emote {emoteId}: {model}`)
+	end
+	emoteAnimations[emoteId] = id or false
+	return id
+end
 
 local function typeNameOf(value: any): string
 	if typeof(value) == "EnumItem" then
@@ -499,6 +532,25 @@ local function onPlayer(player: Player)
 end
 
 function AvatarService.init()
+	local lookup = Bolt.RemoteFunction("AvatarEmoteAnimations")
+	lookup.OnServerInvoke = function(player: Player, ids: any)
+		local result: { { id: number, animation: string } } = {}
+		local now = os.clock()
+		if type(ids) ~= "table" or now - (lastEmoteLookup[player] or 0) < EMOTE_LOOKUP_COOLDOWN then
+			return result
+		end
+		lastEmoteLookup[player] = now
+		for index, id in ids do
+			if type(index) == "number" and index <= MAX_EMOTE_LOOKUP and type(id) == "number" and id > 0 and id % 1 == 0 then
+				local animation = emoteAnimation(id)
+				if animation then
+					table.insert(result, { id = id, animation = animation })
+				end
+			end
+		end
+		return result
+	end
+
 	Players.PlayerAdded:Connect(function(player)
 		task.spawn(onPlayer, player)
 	end)
@@ -508,6 +560,7 @@ function AvatarService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		bases[player] = nil
 		applying[player] = nil
+		lastEmoteLookup[player] = nil
 	end)
 end
 

@@ -39,7 +39,7 @@ local ROW_BUTTON = 84 -- design px per row button
 local ROW_TRAILING = 60 + ROW_BUTTON * 3 + 8 * 3
 
 -- Buy (or Get, when free) for an item that isn't owned; nil when it is.
-local function buyButton(item: any, order: number, buy: (ids: { number }) -> ())
+local function buyButton(item: any, order: number, hud: any)
 	if item.owned then
 		return nil
 	end
@@ -50,9 +50,10 @@ local function buyButton(item: any, order: number, buy: (ids: { number }) -> ())
 		label = if item.price == 0 then "Get" else "Buy",
 		textStyle = Tokens.type.small,
 		active = true,
+		loading = hud.buying("item:" .. item.id),
 		layoutOrder = order,
 		onActivated = function()
-			buy({ item.id })
+			hud.buy({ item.id })
 		end,
 	})
 end
@@ -164,7 +165,8 @@ local function wideButton(
 	active: boolean?,
 	onActivated: (() -> ())?,
 	sound: any?,
-	disabled: boolean?
+	disabled: boolean?,
+	loading: boolean?
 )
 	return e(PillButton, {
 		variant = "pill",
@@ -175,6 +177,7 @@ local function wideButton(
 		active = active,
 		sound = sound,
 		disabled = disabled,
+		loading = loading,
 		layoutOrder = order,
 		onActivated = onActivated,
 	})
@@ -209,7 +212,7 @@ local function BasketScreen(props: { nav: any, look: any })
 			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
-				Buy = buyButton(item, 2, hud.buy),
+				Buy = buyButton(item, 2, hud),
 				Try = smallButton(if wearing then "Wearing" else "Try on", 3, wearing, function()
 					look.toggleWear(id)
 				end),
@@ -235,8 +238,8 @@ local function BasketScreen(props: { nav: any, look: any })
 			summaryLine(skin, "Total", Tokens.robux(look.basketTotal), 3, true),
 		}, {
 			wideButton("Buy all", "shopping_basket", 10, true, function()
-				hud.buy(look.basket)
-			end, nil, #look.basket == owned),
+				hud.buy(look.basket, "basket")
+			end, nil, #look.basket == owned, hud.buying("basket")),
 			wideButton("Try on everything", "checkroom", 11, false, function()
 				look.wearAll(look.basket)
 			end, false, #look.basket == 0),
@@ -289,7 +292,7 @@ local function WearingScreen(props: { nav: any, look: any })
 			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
-				Buy = buyButton(item, 2, hud.buy),
+				Buy = buyButton(item, 2, hud),
 				Basket = if item.owned
 					then nil
 					else smallButton(if inBasket then "In basket" else "Basket", 3, inBasket, function()

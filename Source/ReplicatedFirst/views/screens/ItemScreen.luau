@@ -275,6 +275,7 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 					width = 120,
 					label = buyLabel,
 					disabled = item.owned,
+					loading = hud.buying("item:" .. item.id),
 					layoutOrder = 3,
 					onActivated = function()
 						hud.buy({ item.id })

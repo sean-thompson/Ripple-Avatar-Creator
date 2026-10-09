@@ -23,6 +23,11 @@
 	A purchase the client never reports goes stale after PROMPT_TIMEOUT, and
 	a new one can start.
 
+	In Studio, purchases are only tests: Roblox reports them but grants
+	nothing. So there (only), an item the client reports as bought counts as
+	owned for the session, so the rest of the flow (basket removal, Owned
+	labels) can be tried out.
+
 	Check(items): look up ownership of up to MAX_CHECK items (the worn list,
 	the basket, an item page); each is looked up once a session.
 
@@ -34,6 +39,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local AbstractController = require(script.Parent.AbstractController)
 local OwnershipModel = require(script.Parent.Parent.models.userSession.OwnershipModel)
@@ -216,12 +222,21 @@ local function finished(player: Player, model: any, raw: any)
 			table.insert(late, { targetId = item.targetId, kind = item.kind })
 		end
 	end
-	if #late > 0 then
+	if #late > 0 and not RunService:IsStudio() then -- (Studio never grants them)
 		task.wait(RECHECK_DELAY)
 		if not player.Parent then
 			return
 		end
 		OwnershipService.check(player, model, late, true)
+	end
+	if RunService:IsStudio() then
+		local tested: { [string]: boolean } = {}
+		for _, item in pending.items do
+			if not model:owns(item.key) and said[item.key] == "Success" then
+				tested[item.key] = true
+			end
+		end
+		model:record(tested)
 	end
 
 	local bought = {}

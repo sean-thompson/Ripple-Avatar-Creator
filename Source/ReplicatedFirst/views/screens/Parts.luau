@@ -24,7 +24,6 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 
@@ -42,7 +41,9 @@ local Badge = require(components:WaitForChild("Badge"))
 local Icon = require(components:WaitForChild("Icon"))
 local ShadowText = require(components:WaitForChild("ShadowText"))
 local PillButton = require(components:WaitForChild("PillButton"))
+local Spinner = require(components:WaitForChild("Spinner"))
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
+local HudContext = require(views:WaitForChild("HudContext"))
 
 local e = React.createElement
 
@@ -198,6 +199,7 @@ local MENU_TEXT = { size = 13.5, weight = 900 }
 
 local function CardMenuOverlay(props: { item: PlaceholderData.Item, wearing: boolean, inBasket: boolean, menu: CardMenu })
 	local skin = useSkin()
+	local hud = React.useContext(HudContext)
 	local item, menu = props.item, props.menu
 	local gap = skin.px(5)
 	local buyLabel = if item.owned then "Owned" elseif item.price == 0 then "Get" else "Buy"
@@ -271,6 +273,7 @@ local function CardMenuOverlay(props: { item: PlaceholderData.Item, wearing: boo
 					label = buyLabel,
 					textStyle = MENU_TEXT,
 					disabled = item.owned,
+					loading = hud.buying("item:" .. item.id),
 					glowRadius = 0,
 					zIndex = 3,
 					onActivated = menu.onBuy,
@@ -494,17 +497,6 @@ end
 
 -- A grid cell with a spinning arc where the next result will land.
 function Parts.LoadingCard(props: { layoutOrder: number? })
-	local skin = useSkin()
-	local rotation, setRotation = React.useBinding(0)
-	React.useEffect(function()
-		local connection = RunService.RenderStepped:Connect(function(dt: number)
-			setRotation((rotation:getValue() + dt * 360) % 360)
-		end)
-		return function()
-			connection:Disconnect()
-		end
-	end, {})
-	local ring = skin.px(34)
 	return e("Frame", {
 		Name = "LoadingCard",
 		Size = UDim2.fromScale(1, 1),
@@ -516,25 +508,10 @@ function Parts.LoadingCard(props: { layoutOrder: number? })
 			size = UDim2.fromScale(1, 1),
 		}, {
 			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1, DominantAxis = Enum.DominantAxis.Width }),
-			-- (not "Ring": Thumb already has a child of that name)
-			Spinner = e("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.fromOffset(ring, ring),
-				BackgroundTransparency = 1,
-				Rotation = rotation,
-			}, {
-				Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
-				Stroke = e("UIStroke", { Color = Tokens.color.accent, Thickness = skin.stroke(4) }, {
-					-- Fades round the ring, so it reads as a spinning arc.
-					Fade = e("UIGradient", {
-						Transparency = NumberSequence.new({
-							NumberSequenceKeypoint.new(0, 0),
-							NumberSequenceKeypoint.new(0.6, 0.85),
-							NumberSequenceKeypoint.new(1, 1),
-						}),
-					}),
-				}),
+			Spinner = e(Spinner, {
+				size = 34,
+				anchorPoint = Vector2.new(0.5, 0.5),
+				position = UDim2.fromScale(0.5, 0.5),
 			}),
 		}),
 	})

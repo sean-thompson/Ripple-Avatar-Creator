@@ -47,6 +47,9 @@ local WorldRenderer = require(views:WaitForChild("WorldRenderer"))
 
 local e = React.createElement
 
+-- Seconds a Buy button may spin waiting for the purchase's outcome.
+local BUY_SPINNER_TIMEOUT = 60
+
 local TABS = {
 	{ id = "Catalogue", label = "Catalogue", icon = "apparel" },
 	{ id = "Stores", label = "Stores", icon = "storefront" },
@@ -110,8 +113,10 @@ end
 local function Hud()
 	local nav = useNavigation()
 	local rawLook = usePlaceholderLook()
-	-- The latest purchase we sent (its request id), to sound its outcome.
+	-- The latest purchase we sent (its request id), to sound its outcome,
+	-- and the button that sent it (spinning until the outcome arrives).
 	local buyRequest, setBuyRequest = React.useState(nil :: number?)
+	local buyingKey, setBuyingKey = React.useState(nil :: string?)
 	local world = useWorldOptions()
 	local look = withFeedback(rawLook)
 	local latestLook = React.useRef(rawLook)
@@ -129,7 +134,20 @@ local function Hud()
 			Sounds.play("error")
 		end
 		setBuyRequest(nil)
+		setBuyingKey(nil)
 	end, { purchase })
+	-- Don't spin forever if no outcome ever comes back.
+	React.useEffect(function()
+		if not buyingKey then
+			return nil
+		end
+		local thread = task.delay(BUY_SPINNER_TIMEOUT, function()
+			setBuyingKey(nil)
+		end)
+		return function()
+			task.cancel(thread)
+		end
+	end, { buyingKey })
 
 	useBackInput(function()
 		if #nav.stack > 0 then
@@ -172,7 +190,7 @@ local function Hud()
 
 	local actions = React.useMemo(function()
 		return {
-			buy = function(itemIds: { number })
+			buy = function(itemIds: { number }, key: string?)
 				local unowned = {}
 				for _, id in itemIds do
 					local item = PlaceholderData.item(id)
@@ -183,12 +201,16 @@ local function Hud()
 				local request = if #unowned > 0 then latestLook.current.buy(unowned) else nil
 				if request then
 					setBuyRequest(request)
+					setBuyingKey(key or (if #itemIds == 1 then "item:" .. itemIds[1] else "items"))
 				else
 					Sounds.play("error") -- nothing here left to buy
 				end
 			end,
+			buying = function(key: string): boolean
+				return buyingKey == key
+			end,
 		}
-	end, {})
+	end, { buyingKey })
 
 	local panels: { [string]: any } = {}
 	for _, transition in panelTransitions do

@@ -38,6 +38,8 @@
 		textStyle: Tokens.TypeStyle?   default Tokens.type.cta
 		active: boolean?         orange face
 		disabled: boolean?       greyed out (dimmed face and content) and inert
+		loading: boolean?        a spinner in place of the content, and inert
+		                         (waiting on something, e.g. Roblox's prompt)
 		glowRadius: number?      design px; 0 disables
 		badge: React element?    pinned top-right, may overflow
 		sound: (Sounds.Name | false)?  tap sound; default "press", false = silent
@@ -58,6 +60,7 @@ local useSpring = require(hooks:WaitForChild("useSpring"))
 local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local GlossFace = require(script.Parent:WaitForChild("GlossFace"))
 local Icon = require(script.Parent:WaitForChild("Icon"))
+local Spinner = require(script.Parent:WaitForChild("Spinner"))
 local ShadowText = require(script.Parent:WaitForChild("ShadowText"))
 local Sounds = require(views:WaitForChild("Sounds"))
 local Press = require(views:WaitForChild("Press"))
@@ -77,6 +80,7 @@ export type Props = {
 	textStyle: Tokens.TypeStyle?,
 	active: boolean?,
 	disabled: boolean?,
+	loading: boolean?,
 	glowRadius: number?,
 	badge: any?,
 	sound: (Sounds.Name | false)?,
@@ -94,7 +98,8 @@ local DISABLED_WASH = 0.5 -- transparency of the dark wash over a disabled face
 
 local function PillButton(props: Props)
 	local skin = useSkin()
-	local interaction = useInteraction(props.disabled)
+	local inert = props.disabled or props.loading
+	local interaction = useInteraction(inert)
 
 	local hovered = interaction.hovered or props.forcedState == "hover" or props.forcedState == "pressed"
 	local pressed = interaction.pressed or props.forcedState == "pressed"
@@ -148,7 +153,15 @@ local function PillButton(props: Props)
 	}
 	-- Disabled: content dimmed (and a dark wash over the face, below).
 	local contentTransparency = if props.disabled then DISABLED_CONTENT else 0
-	if props.icon then
+	if props.loading then
+		-- Same height as a label, so the button doesn't change size.
+		contentChildren.Spinner = e(Spinner, {
+			size = math.min(20, (props.size or Tokens.size.action.size) * 0.55),
+			thickness = 3,
+			color = Tokens.color.white,
+			zIndex = z + 2,
+		})
+	elseif props.icon then
 		contentChildren.Icon = e(Icon, {
 			name = props.icon,
 			size = props.iconSize or Tokens.size.action.icon,
@@ -158,7 +171,7 @@ local function PillButton(props: Props)
 			zIndex = z + 2,
 		})
 	end
-	if props.label then
+	if props.label and not props.loading then
 		contentChildren.Label = e(ShadowText, {
 			text = props.label,
 			style = textStyle,
@@ -196,9 +209,9 @@ local function PillButton(props: Props)
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
-		Active = not props.disabled,
-		[React.Event.InputBegan] = Press.began(if props.disabled then nil else onPress),
-		[React.Event.Activated] = Press.activated(if props.disabled then nil else onPress),
+		Active = not inert,
+		[React.Event.InputBegan] = Press.began(if inert then nil else onPress),
+		[React.Event.Activated] = Press.activated(if inert then nil else onPress),
 		[React.Event.MouseEnter] = interaction.onEnter,
 		[React.Event.MouseLeave] = interaction.onLeave,
 		[React.Event.MouseButton1Down] = interaction.onDown,

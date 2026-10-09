@@ -4,7 +4,8 @@
 	ListScreens (design frames 5f Basket / 5g Wearing, placeholder data)
 
 	Basket: one row per item (Try on / Remove), a summary (items, already owned,
-	total) with Buy all and Try on everything. Wearing: what's on the avatar
+	total) with Buy all, Try on everything and Add what I'm wearing (the
+	unowned worn items not already in it). Wearing: what's on the avatar
 	(price or Owned, Basket toggle, Take off) with Add unowned to basket, Save as
 	outfit and Take everything off. Rows open the item page.
 
@@ -155,7 +156,15 @@ local function sidePanel(skin, title: string, lines: { any }, buttons: { any })
 	}, children)
 end
 
-local function wideButton(label: string, icon: string?, order: number, active: boolean?, onActivated: (() -> ())?, sound: any?)
+local function wideButton(
+	label: string,
+	icon: string?,
+	order: number,
+	active: boolean?,
+	onActivated: (() -> ())?,
+	sound: any?,
+	disabled: boolean?
+)
 	return e(PillButton, {
 		variant = "pill",
 		size = Tokens.size.ctaHeight,
@@ -164,6 +173,7 @@ local function wideButton(label: string, icon: string?, order: number, active: b
 		iconSize = 18,
 		active = active,
 		sound = sound,
+		disabled = disabled,
 		layoutOrder = order,
 		onActivated = onActivated,
 	})
@@ -175,6 +185,14 @@ local function BasketScreen(props: { nav: any, look: any })
 	local look = props.look
 	local rows: { [string]: any } = {}
 	local owned = 0
+	-- Worn items that could go in: not owned, not already there.
+	local wornToAdd = {}
+	for _, id in look.worn do
+		local item = PlaceholderData.item(id)
+		if item and not item.owned and not look.inBasket(id) then
+			table.insert(wornToAdd, id)
+		end
+	end
 	for index, id in look.basket do
 		local item = PlaceholderData.item(id)
 		if item.owned then
@@ -217,10 +235,13 @@ local function BasketScreen(props: { nav: any, look: any })
 		}, {
 			wideButton("Buy all", "shopping_basket", 10, true, function()
 				hud.openBuy(look.basket)
-			end),
+			end, nil, #look.basket == owned),
 			wideButton("Try on everything", "checkroom", 11, false, function()
 				look.wearAll(look.basket)
-			end, false),
+			end, false, #look.basket == 0),
+			wideButton("Add what I'm wearing", "add_shopping_cart", 12, false, function()
+				look.addToBasket(wornToAdd)
+			end, false, #wornToAdd == 0),
 		}),
 	})
 end
@@ -294,11 +315,13 @@ local function WearingScreen(props: { nav: any, look: any })
 			summaryLine(skin, "Not owned", unowned .. " · " .. (if cost > 0 then Tokens.robux(cost) else "Free"), 2),
 		}, {
 			wideButton("Add unowned to basket", "add_shopping_cart", 10, true, function()
+				local unownedIds = {}
 				for _, id in look.worn do
-					if not PlaceholderData.item(id).owned and not look.inBasket(id) then
-						look.toggleBasket(id)
+					if not PlaceholderData.item(id).owned then
+						table.insert(unownedIds, id)
 					end
 				end
+				look.addToBasket(unownedIds)
 			end, false),
 			wideButton("Save as outfit", "bookmark_add", 11, false),
 			wideButton("Take everything off", "delete_sweep", 12, false, look.takeOffAll, false),

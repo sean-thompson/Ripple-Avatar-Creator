@@ -43,6 +43,7 @@ local NetworkBuilder = require(script.Parent:WaitForChild("NetworkBuilder"))
 local NetworkConfig = {
 	Controllers = {
 		Avatar = { "TryOn", "TakeOff", "WearMany", "TakeOffAll", "Undo", "Reset" },
+		Basket = { "Add", "Remove", "AddMany", "RemoveMany", "Clear" },
 		Bazaar = { "BuyTreasure" },
 		CashMachine = { "Withdraw", "Deposit" },
 		Favourites = { "Toggle" },
@@ -59,6 +60,12 @@ local NetworkConfig = {
 			worn = {},
 			seeded = false,
 			canUndo = false,
+		},
+		-- What the player means to buy (persisted; BasketModel): a list of
+		-- { targetId, kind, typeName, name }, oldest first.
+		Basket = {
+			ownerId = "",
+			items = {},
 		},
 		Candles = {
 			ownerId = "",
@@ -124,6 +131,7 @@ local Network = NetworkBuilder.build(NetworkConfig, Bolt)
 
 -- Action Type Exports (manually defined for type safety)
 export type AvatarAction = "TryOn" | "TakeOff" | "WearMany" | "TakeOffAll" | "Undo" | "Reset"
+export type BasketAction = "Add" | "Remove" | "AddMany" | "RemoveMany" | "Clear"
 export type BazaarAction = "BuyTreasure"
 export type CashMachineAction = "Withdraw" | "Deposit"
 export type FavouritesAction = "Toggle"
@@ -144,6 +152,11 @@ export type AvatarState = {
 	worn: { WornItem }, -- in the order put on
 	seeded: boolean, -- filled from the player's own avatar on first join
 	canUndo: boolean,
+}
+
+export type BasketState = {
+	ownerId: string,
+	items: { WornItem }, -- oldest first (`owned` is never set)
 }
 
 export type CandlesState = {

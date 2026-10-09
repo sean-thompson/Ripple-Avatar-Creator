@@ -256,20 +256,20 @@
 - **Depends on:** 9
 - **Refs:** Scope > Basket; Scope > HUD (Basket button badge); Integration points (persistent: basket)
 - **Acceptance criteria:**
-  - Add/remove from basket works from the card menu, item page, Wearing and outfit screens (outfit sources follow in later tasks); the Basket button badge shows the Robux total of unowned basket items, and the panel Basket card shows count and CTA ("Open basket - N R$").
+  - Add/remove from basket works from the card menu, item page, Wearing and outfit screens (outfit sources follow in later tasks); the Basket button badge shows the Robux total of unowned basket items, and the panel Basket card shows count and CTA ("View N items · ₹X ›", as changed in Task 6).
   - Basket persists across sessions.
   - Basket screen: rows with Try on / Remove, summary (items, already owned, total), Try on everything, "pull in what you're wearing".
   - Counts and badges animate; no always-on basket panel.
 - **Associated UI:** 5f Basket; basket button and card in 5a and the panel.
 - **Replication:** logical persisted state (**cosmetic / not position-critical**): model plus client view, per the template pattern.
 - **Sub-tasks:**
-  - [TODO] 10.1 Config: basket size limit. `/create-config`.
-  - [TODO] 10.2 Model: `models/user/BasketModel.luau` (User scope). `/create-model`.
-  - [TODO] 10.3 Network/Controller: `Basket` controller (Add, Remove, Clear, AddWorn, TryAll), validated; `TryAll` reuses the Avatar service's slot-aware apply rather than duplicating it. `/create-controller`.
-  - [TODO] 10.4 Replace the local-state stubs from Tasks 2, 6, 8 and 9 with real Basket intents/state in `HudApp`.
-  - [TODO] 10.5 Basket screen (`/html-to-react-luau`, frame 5f): rows, summary, actions, empty state, list animations.
-  - [TODO] 10.6 Price/ownership display uses the lookup shape from Task 7; the "already owned" count is finalised in Task 11.
-  - [TODO] 10.7 Analytics: `basket_add`, `basket_remove` events.
+  - [PARTIAL] 10.1 Config: `basketLimit` (100) and `basketBudget` (10 changes per 2 s) added to `AvatarConfig` rather than a new config.
+  - [PARTIAL] 10.2 Model: `models/user/BasketModel.luau` (User scope); entries are the worn-item record, prices aren't saved.
+  - [PARTIAL] 10.3 Network/Controller: `BasketController` (Add, Remove, AddMany, RemoveMany, Clear), items checked with `AvatarService.resolve`. "Try on everything" uses Avatar `WearMany` (slot rules already there), and "pull in what you're wearing" is a client-side `AddMany` of the unowned worn items, so no TryAll / AddWorn actions.
+  - [PARTIAL] 10.4 `usePlaceholderLook` reads `Network.State.Basket`; toggle / add / pretend-buy send Basket intents.
+  - [PARTIAL] 10.5 Basket screen: Add what I'm wearing button; Buy all / Try on everything / Add disabled when they'd do nothing.
+  - [PARTIAL] 10.6 Prices come from `CatalogueClient.remember` (filled in the background); "already owned" finalised in Task 11.
+  - [PARTIAL] 10.7 Analytics: `basket_add`, `basket_remove` events.
   - [TODO] 10.8 Playtest: add from every entry point, rejoin persistence, basket badge sums.
 
 ### Task 11: Buying through Roblox prompts, ownership awareness, Save to Roblox, Create avatar

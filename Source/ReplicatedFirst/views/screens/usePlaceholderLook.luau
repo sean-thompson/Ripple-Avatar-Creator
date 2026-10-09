@@ -13,10 +13,12 @@
 	    entries are turned into items with CatalogueClient.remember.
 	  · Favourites are real (Task 9): Network.State.Favourites (persisted),
 	    toggled through FavouritesController.
-	  · The basket is still a local stand-in until Task 10 (Basket model).
+	  · The basket is real (Task 10): Network.State.Basket (persisted),
+	    changed through BasketController. "Try on everything" goes to
+	    AvatarController's WearMany like any wear-all.
 
 	Mock items (the prototype's placeholder data, no thumbnail) can't be
-	worn: toggleWear / wearAll skip them and report it.
+	worn or put in the basket: the intents skip them and report it.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,6 +30,8 @@ local views = script.Parent.Parent
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
 local CatalogueClient = require(views:WaitForChild("catalogue"):WaitForChild("CatalogueClient"))
 local useBoltState = require(views:WaitForChild("hooks"):WaitForChild("useBoltState"))
+
+local AvatarConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("AvatarConfig"))
 
 export type Look = {
 	worn: { number }, -- item ids, in the order put on
@@ -43,13 +47,15 @@ export type Look = {
 	reset: () -> (), -- back to the player's own Roblox avatar
 	isFavourite: (id: number) -> boolean,
 	toggleFavourite: (id: number) -> boolean, -- false for mock items
-	toggleBasket: (id: number) -> (),
+	toggleBasket: (id: number) -> boolean, -- false for mock items
+	addToBasket: (ids: { number }) -> number, -- how many were sent
 	markOwned: (ids: { number }) -> (),
 	basketTotal: number, -- Robux for unowned basket items
 }
 
 local DEFAULT_AVATAR = { worn = {}, canUndo = false }
 local DEFAULT_FAVOURITES = { items = {} }
+local DEFAULT_BASKET = { items = {} }
 
 -- An item's favourites key: "Asset:123" / "Bundle:45" (nil for mock items).
 local function favouriteKey(id: number): string?
@@ -58,16 +64,6 @@ local function favouriteKey(id: number): string?
 		return nil
 	end
 	return item.kind .. ":" .. item.targetId
-end
-
-local function without(list: { number }, id: number): { number }
-	local result = {}
-	for _, other in list do
-		if other ~= id then
-			table.insert(result, other)
-		end
-	end
-	return result
 end
 
 local function canWear(id: number): boolean
@@ -87,11 +83,10 @@ local function usePlaceholderLook(): Look
 	for _, key in favourites.items or {} do
 		favouriteSet[key] = true
 	end
-	-- Prototype starting basket (1-based mock ids).
-	local basket, setBasket = React.useState({ 9, 31, 23 })
+	local basketState = useBoltState(Network.State.Basket, DEFAULT_BASKET :: any)
 	local _ownedVersion, setOwnedVersion = React.useState(0)
 
-	-- Re-render when a worn item's details (name, price) arrive.
+	-- Re-render when a worn or basket item's details (name, price) arrive.
 	React.useEffect(function()
 		local connection = CatalogueClient.changed:Connect(function()
 			setOwnedVersion(function(n: number)
@@ -111,11 +106,19 @@ local function usePlaceholderLook(): Look
 		wornSet[item.id] = true
 	end
 
+	local basket = {}
+	local basketSet = {}
+	for _, entry in basketState.items or {} do
+		local item = CatalogueClient.remember(entry)
+		table.insert(basket, item.id)
+		basketSet[item.id] = true
+	end
+
 	local function isWorn(id: number): boolean
 		return wornSet[id] == true
 	end
 	local function inBasket(id: number): boolean
-		return table.find(basket, id) ~= nil
+		return basketSet[id] == true
 	end
 
 	local total = 0
@@ -150,6 +153,10 @@ local function usePlaceholderLook(): Look
 					table.insert(refs, ref(id))
 				end
 			end
+			-- The server takes up to maxWearMany; keep the most recent.
+			while #refs > AvatarConfig.maxWearMany do
+				table.remove(refs, 1)
+			end
 			if #refs > 0 then
 				intent:FireServer(actions.WearMany, refs)
 			end
@@ -175,34 +182,42 @@ local function usePlaceholderLook(): Look
 			Network.Intent.Favourites:FireServer(Network.Actions.Favourites.Toggle, ref(id))
 			return true
 		end,
-		toggleBasket = function(id: number)
-			setBasket(function(current: { number })
-				if table.find(current, id) then
-					return without(current, id)
+		toggleBasket = function(id: number): boolean
+			if not canWear(id) then
+				return false
+			end
+			local basketActions = Network.Actions.Basket
+			Network.Intent.Basket:FireServer(if inBasket(id) then basketActions.Remove else basketActions.Add, ref(id))
+			return true
+		end,
+		addToBasket = function(ids: { number }): number
+			local refs = {}
+			for _, id in ids do
+				if canWear(id) and not inBasket(id) then
+					table.insert(refs, ref(id))
 				end
-				local result = table.clone(current)
-				table.insert(result, id)
-				return result
-			end)
+			end
+			if #refs > 0 then
+				Network.Intent.Basket:FireServer(Network.Actions.Basket.AddMany, refs)
+			end
+			return #refs
 		end,
 		-- Pretend purchase (Task 3 feel test; Task 11 does it for real): flags the
-		-- items owned and drops them from the basket.
+		-- items owned and takes them out of the basket.
 		markOwned = function(ids: { number })
+			local refs = {}
 			for _, id in ids do
 				local item = PlaceholderData.item(id)
 				if item then
 					item.owned = true
-				end
-			end
-			setBasket(function(current: { number })
-				local result = {}
-				for _, id in current do
-					if not table.find(ids, id) then
-						table.insert(result, id)
+					if canWear(id) and inBasket(id) then
+						table.insert(refs, ref(id))
 					end
 				end
-				return result
-			end)
+			end
+			if #refs > 0 then
+				Network.Intent.Basket:FireServer(Network.Actions.Basket.RemoveMany, refs)
+			end
 			setOwnedVersion(function(n: number)
 				return n + 1
 			end)

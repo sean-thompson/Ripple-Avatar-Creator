@@ -71,9 +71,18 @@ local function withFeedback(look: any)
 		Sounds.play(if look.isWorn(id) then "back" else "tryOn")
 		return look.toggleWear(id)
 	end
-	feedback.toggleBasket = function(id: number)
+	feedback.toggleBasket = function(id: number): boolean
+		if not look.canWear(id) then
+			Sounds.play("error") -- a mock item: nothing real to buy
+			return false
+		end
 		Sounds.play(if look.inBasket(id) then "back" else "confirm")
-		look.toggleBasket(id)
+		return look.toggleBasket(id)
+	end
+	feedback.addToBasket = function(ids: { number }): number
+		local count = look.addToBasket(ids)
+		Sounds.play(if count > 0 then "confirm" else "error")
+		return count
 	end
 	feedback.wearAll = function(ids: { number }): number
 		local count = look.wearAll(ids)

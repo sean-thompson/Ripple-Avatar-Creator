@@ -22,7 +22,6 @@
 		onSelect: (choice: Choice) -> ()
 ]]
 
-local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
@@ -116,7 +115,7 @@ local GAP = 10
 local ICON = 19
 local ROW = 30
 local MENU_WIDTH = 150
-local MENU_ROWS = 6 -- visible before the list scrolls
+local MENU_ROWS = 12 -- visible before the list scrolls (there's room above)
 local BAR_WIDTH = (#GROUPS + 1) * BUTTON + #GROUPS * GAP
 
 local function Menu(props: {
@@ -201,11 +200,14 @@ function AnimationBar.Bar(props: {
 })
 	local skin = useSkin()
 	local menu, setMenu = React.useState(nil :: string?) -- group key, or "emotes"
-	local barRef = React.useRef(nil :: GuiObject?)
 
 	-- A press anywhere outside the bar (and its open menu) closes the menu.
 	-- Listened for globally rather than with a blocker, so the press still
-	-- does whatever it was aimed at.
+	-- does whatever it was aimed at. Presses on the bar's own buttons and
+	-- menu rows mark `lastBarPress`; the check waits a frame (task.defer) so
+	-- those handlers have run first, and a press on another bar button
+	-- switches menus instead of just closing this one.
+	local lastBarPress = React.useRef(0)
 	React.useEffect(function()
 		if not menu then
 			return nil
@@ -215,24 +217,12 @@ function AnimationBar.Bar(props: {
 			if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
 				return
 			end
-			local bar = barRef.current
-			if not bar then
-				return
-			end
-			-- Input positions exclude the top-bar inset; AbsolutePosition
-			-- includes it when the ScreenGui ignores the inset.
-			local gui = bar:FindFirstAncestorOfClass("ScreenGui")
-			local inset = if gui and gui.IgnoreGuiInset then GuiService:GetGuiInset() else Vector2.zero
-			local point = Vector2.new(input.Position.X, input.Position.Y) + inset
-			for _, area in bar:GetDescendants() do
-				if area:IsA("GuiObject") and area.Visible then
-					local from, size = area.AbsolutePosition, area.AbsoluteSize
-					if point.X >= from.X and point.X <= from.X + size.X and point.Y >= from.Y and point.Y <= from.Y + size.Y then
-						return -- inside the bar or the menu
-					end
+			local pressedAt = os.clock()
+			task.defer(function()
+				if lastBarPress.current < pressedAt - 0.05 then
+					setMenu(nil)
 				end
-			end
-			setMenu(nil)
+			end)
 		end)
 		return function()
 			connection:Disconnect()
@@ -248,6 +238,7 @@ function AnimationBar.Bar(props: {
 	end)
 
 	local function pick(choice: Choice)
+		lastBarPress.current = os.clock()
 		setMenu(nil)
 		props.onSelect(choice)
 	end
@@ -274,6 +265,7 @@ function AnimationBar.Bar(props: {
 			layoutOrder = index,
 			zIndex = 4,
 			onActivated = function()
+				lastBarPress.current = os.clock()
 				if #group.variants > 1 then
 					setMenu(if menu == group.key then nil else group.key)
 				else
@@ -300,6 +292,7 @@ function AnimationBar.Bar(props: {
 		layoutOrder = #GROUPS + 1,
 		zIndex = 4,
 		onActivated = function()
+			lastBarPress.current = os.clock()
 			setMenu(if menu == "emotes" then nil else "emotes")
 		end,
 	})
@@ -315,7 +308,6 @@ function AnimationBar.Bar(props: {
 
 	return e("Frame", {
 		Name = "AnimationBar",
-		ref = barRef,
 		AnchorPoint = props.anchorPoint,
 		Position = props.position,
 		Size = UDim2.fromOffset(skin.px(BAR_WIDTH), skin.px(BUTTON)),

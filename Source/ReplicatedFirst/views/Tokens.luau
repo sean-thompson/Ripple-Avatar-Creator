@@ -300,4 +300,17 @@ Tokens.sound = {
 	},
 }
 
+-- Robux, shown one way everywhere: the symbol, then the amount with
+-- thousands separators ("₹12,499"). Change the symbol here only.
+Tokens.robuxSymbol = "₹"
+
+function Tokens.robux(amount: number): string
+	local digits = tostring(math.floor(amount + 0.5))
+	local grouped = digits:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	if grouped:sub(1, 1) == "," then
+		grouped = grouped:sub(2)
+	end
+	return Tokens.robuxSymbol .. grouped
+end
+
 return Tokens

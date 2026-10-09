@@ -6,7 +6,7 @@
 	The design's small status badges.
 
 	  kind "count"   pill with optional icon + text — the Basket's Robux total
-	                 (orange, icon "toll")
+	                 (orange, text "₹225")
 	  kind "marker"  24px circle with an icon — "Wearing" (orange, "checkroom")
 	                 and "In basket" (white, "shopping_basket")
 

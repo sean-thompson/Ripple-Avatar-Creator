@@ -186,7 +186,7 @@ local function BasketScreen(props: { nav: any, look: any })
 		Summary = sidePanel(skin, "Summary", {
 			summaryLine(skin, "Items", tostring(#look.basket), 1),
 			summaryLine(skin, "Already owned", tostring(owned), 2),
-			summaryLine(skin, "Total", look.basketTotal .. " R$", 3, true),
+			summaryLine(skin, "Total", Tokens.robux(look.basketTotal), 3, true),
 		}, {
 			wideButton("Buy all", "shopping_basket", 10, true, function()
 				hud.openBuy(look.basket)
@@ -241,7 +241,7 @@ local function WearingScreen(props: { nav: any, look: any })
 		Rows = rowList(skin, rows, #look.worn, "You're not wearing anything"),
 		Summary = sidePanel(skin, "Wearing", {
 			summaryLine(skin, "Items", tostring(#look.worn), 1),
-			summaryLine(skin, "Not owned", unowned .. " · " .. cost .. " R$", 2),
+			summaryLine(skin, "Not owned", unowned .. " · " .. Tokens.robux(cost), 2),
 		}, {
 			wideButton("Add unowned to basket", "add_shopping_cart", 10, true, function()
 				for _, id in look.worn do

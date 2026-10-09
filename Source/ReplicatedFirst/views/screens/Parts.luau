@@ -7,7 +7,7 @@
 
 	  Thumb      tinted tile (the design's colour-washed card art) with the
 	             item's thumbnail on it when it has one
-	  PriceTag   "Owned" / "Free" / toll icon + price
+	  PriceTag   "Owned" / "Free" / "₹65"
 	  ItemCard   catalogue card: thumb with wearing/in-basket markers, name, price;
 	             with `menu`, a tap opens the design's card menu over the thumb
 	             (Try · basket · Buy · View) instead of calling onActivated
@@ -145,15 +145,13 @@ function Parts.PriceTag(props: PriceProps)
 	elseif item.price == 0 then
 		label, colour, transparency = "Free", FREE_GREEN, 0
 	else
-		label, colour, transparency = tostring(item.price), Tokens.color.accentText, 0
+		label, colour, transparency = Tokens.robux(item.price), Tokens.color.accentText, 0
 	end
-	local showToll = not item.owned and item.price > 0
 	-- Sized to its content so it sits next to whatever follows it in a row.
 	local textWidth = useTextWidth(label, Tokens.font(900), skin.textPx(size))
-	local tollWidth = if showToll then skin.px(size + 2.5) + skin.px(2) else 0
 	return e("Frame", {
 		Name = "Price",
-		Size = UDim2.fromOffset(tollWidth + textWidth, skin.px(size + 4)),
+		Size = UDim2.fromOffset(textWidth, skin.px(size + 4)),
 		BackgroundTransparency = 1,
 		LayoutOrder = props.layoutOrder or 0,
 	}, {
@@ -163,7 +161,6 @@ function Parts.PriceTag(props: PriceProps)
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			Padding = UDim.new(0, skin.px(2)),
 		}),
-		Toll = if showToll then e(Icon, { name = "toll", size = size + 2.5, color = colour, layoutOrder = 1 }) else nil,
 		Label = e(ShadowText, {
 			text = label,
 			style = { size = size, weight = 900 },

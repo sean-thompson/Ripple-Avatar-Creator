@@ -50,9 +50,8 @@ local AUTO_SPIN = 25 -- degrees per second until the first drag
 local DRAG_SPEED = 0.4 -- degrees per screen pixel
 local PITCH_LIMIT = 80
 local ZOOM_MIN, ZOOM_MAX = 0.55, 1.8
--- Middle-drag pan: how far the view moves per screen pixel, as a share of
--- the camera's distance, and how far from centre it may go (share of size).
-local PAN_SPEED = 0.0018
+-- Middle-drag pan: how far from centre the view may go (share of the
+-- model's size). The pan itself tracks the cursor exactly (see below).
 local PAN_LIMIT = 0.6
 local CARD = Color3.fromHex("#1c1c1c")
 
@@ -147,7 +146,10 @@ local function ModelViewer(props: Props)
 					-- Move the view in the camera's own plane: right and up.
 					local delta = input.Position - lastPan
 					lastPan = input.Position
-					local scale = v.distance * v.zoom * PAN_SPEED
+					-- World units per screen pixel at the model's depth, so the
+					-- model stays under the cursor.
+					local height = math.max(viewport.AbsoluteSize.Y, 1)
+					local scale = 2 * v.distance * v.zoom * math.tan(math.rad(FOV / 2)) / height
 					local look = camera.CFrame
 					local pan = v.pan - look.RightVector * delta.X * scale + look.UpVector * delta.Y * scale
 					local limit = v.size * PAN_LIMIT

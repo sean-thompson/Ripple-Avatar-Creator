@@ -242,7 +242,7 @@ local function CatalogueScreen(props: { nav: any, look: any })
 				end,
 				onBuy = function()
 					setMenuId(nil)
-					hud.openBuy({ item.id })
+					hud.buy({ item.id })
 				end,
 				onView = function()
 					setMenuId(nil)

@@ -5,7 +5,8 @@
 
 	HUD-wide actions any view can reach without prop-drilling, provided by Hud:
 
-	  openBuy(itemIds)         open the buy prompt for one or more items
+	  buy(itemIds)             buy one or more items through Roblox's own
+	                           purchase prompt (owned items are skipped)
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,11 +14,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 
 export type HudActions = {
-	openBuy: (itemIds: { number }) -> (),
+	buy: (itemIds: { number }) -> (),
 }
 
 local HudContext = React.createContext({
-	openBuy = function(_itemIds: { number }) end,
+	buy = function(_itemIds: { number }) end,
 } :: HudActions)
 
 return HudContext

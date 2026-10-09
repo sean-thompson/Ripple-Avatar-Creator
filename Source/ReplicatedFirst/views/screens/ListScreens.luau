@@ -9,7 +9,8 @@
 	(price or Owned, Basket toggle, Take off) with Add unowned to basket, Save as
 	outfit and Take everything off. Rows open the item page.
 
-	Buy all opens the buy prompt; Save as outfit is a stub until Task 12.
+	Buy / Get and Buy all open Roblox's purchase prompt; Save as outfit is a
+	stub until Task 12.
 
 	ListScreens.Basket / ListScreens.Wearing props: nav, look
 ]]
@@ -38,7 +39,7 @@ local ROW_BUTTON = 84 -- design px per row button
 local ROW_TRAILING = 60 + ROW_BUTTON * 3 + 8 * 3
 
 -- Buy (or Get, when free) for an item that isn't owned; nil when it is.
-local function buyButton(item: any, order: number, openBuy: (ids: { number }) -> ())
+local function buyButton(item: any, order: number, buy: (ids: { number }) -> ())
 	if item.owned then
 		return nil
 	end
@@ -51,7 +52,7 @@ local function buyButton(item: any, order: number, openBuy: (ids: { number }) ->
 		active = true,
 		layoutOrder = order,
 		onActivated = function()
-			openBuy({ item.id })
+			buy({ item.id })
 		end,
 	})
 end
@@ -208,7 +209,7 @@ local function BasketScreen(props: { nav: any, look: any })
 			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
-				Buy = buyButton(item, 2, hud.openBuy),
+				Buy = buyButton(item, 2, hud.buy),
 				Try = smallButton(if wearing then "Wearing" else "Try on", 3, wearing, function()
 					look.toggleWear(id)
 				end),
@@ -234,7 +235,7 @@ local function BasketScreen(props: { nav: any, look: any })
 			summaryLine(skin, "Total", Tokens.robux(look.basketTotal), 3, true),
 		}, {
 			wideButton("Buy all", "shopping_basket", 10, true, function()
-				hud.openBuy(look.basket)
+				hud.buy(look.basket)
 			end, nil, #look.basket == owned),
 			wideButton("Try on everything", "checkroom", 11, false, function()
 				look.wearAll(look.basket)
@@ -288,7 +289,7 @@ local function WearingScreen(props: { nav: any, look: any })
 			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
-				Buy = buyButton(item, 2, hud.openBuy),
+				Buy = buyButton(item, 2, hud.buy),
 				Basket = if item.owned
 					then nil
 					else smallButton(if inBasket then "In basket" else "Basket", 3, inBasket, function()

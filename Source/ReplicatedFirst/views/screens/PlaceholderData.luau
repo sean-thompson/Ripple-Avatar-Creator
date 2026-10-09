@@ -9,7 +9,7 @@
 
 	The Catalogue screen now shows real items (CatalogueClient, Task 7);
 	`item(id)` falls back to them, so the screens that look items up by id
-	(item page, basket, wearing, buy prompt) work for both. The mock items
+	(item page, basket, wearing) work for both. The mock items
 	remain for the starting basket/wearing state and the mock outfits/stores.
 ]]
 

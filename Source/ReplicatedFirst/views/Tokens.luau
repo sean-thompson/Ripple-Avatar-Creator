@@ -269,9 +269,6 @@ Tokens.spring = {
 	panelOut = { force = 420, dampening = 44 } :: SpringPreset,
 	-- Screen content arriving after a tab or crumb change.
 	screen = { force = 340, dampening = 30 } :: SpringPreset,
-	-- The buy prompt: a little pop in, quick out.
-	promptIn = { force = 300, dampening = 22 } :: SpringPreset,
-	promptOut = { force = 400, dampening = 40 } :: SpringPreset,
 	-- Side panels sliding in from the edge.
 	slide = { force = 240, dampening = 26 } :: SpringPreset,
 	-- Number roll on badges and counts.
@@ -283,7 +280,6 @@ Tokens.motion = {
 	panelDrop = 24, -- full panel content drops in from above
 	screenSlide = 18, -- screen content slides in from the right
 	sideSlide = 48, -- World options slides in from the right edge
-	promptRise = 30,
 }
 
 -- UI sound volumes (0..1) per slot; `default` for any slot not listed.

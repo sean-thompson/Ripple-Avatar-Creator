@@ -203,7 +203,27 @@ local function WearingScreen(props: { nav: any, look: any })
 	local look = props.look
 	local rows: { [string]: any } = {}
 	local unowned, cost = 0, 0
+	-- Unowned paid items first (dearest first), then free, then owned; the
+	-- order put on breaks ties.
+	local function rank(item): number
+		return if item.owned then 3 elseif item.price > 0 then 1 else 2
+	end
+	local ordered = table.clone(look.worn)
+	local putOn = {}
 	for index, id in look.worn do
+		putOn[id] = index
+	end
+	table.sort(ordered, function(a, b)
+		local itemA, itemB = PlaceholderData.item(a), PlaceholderData.item(b)
+		local rankA, rankB = rank(itemA), rank(itemB)
+		if rankA ~= rankB then
+			return rankA < rankB
+		elseif rankA == 1 and itemA.price ~= itemB.price then
+			return itemA.price > itemB.price
+		end
+		return putOn[a] < putOn[b]
+	end)
+	for index, id in ordered do
 		local item = PlaceholderData.item(id)
 		if not item.owned then
 			unowned += 1

@@ -463,8 +463,26 @@ local function onPlayer(player: Player)
 	local own = fetchOwn(player)
 	if own then
 		bases[player] = baseOf(own)
+		local ownItems = itemsOf(own)
 		if not model.seeded then
-			model:seed(itemsOf(own))
+			model:seed(ownItems)
+		else
+			-- Anything worn that's on the player's own avatar is owned (also
+			-- fixes looks saved before items carried the flag).
+			local ownIds = {}
+			for _, item in ownItems do
+				ownIds[item.kind .. item.targetId] = true
+			end
+			local changed = false
+			for _, item in model.worn do
+				if not item.owned and ownIds[item.kind .. item.targetId] then
+					item.owned = true
+					changed = true
+				end
+			end
+			if changed then
+				model:syncState()
+			end
 		end
 	end
 	-- Undo history doesn't survive a rejoin.

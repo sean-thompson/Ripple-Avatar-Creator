@@ -5,7 +5,8 @@
 
 	A turnable 3D view of a model in a ViewportFrame, framed to fit its
 	bounding sphere. Turns slowly on its own until touched (optional); drag
-	(mouse or touch) to turn it any way, mouse wheel to zoom, hold the middle
+	(mouse or touch) to turn it any way, mouse wheel to zoom (towards the
+	cursor), hold the middle
 	mouse button and drag to move it up / down / sideways. Used by the item
 	page's 3D view and the panel's avatar preview.
 
@@ -33,6 +34,7 @@
 		failedText: string?       shown when build returns nil
 ]]
 
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -137,7 +139,26 @@ local function ModelViewer(props: Props)
 			end),
 			viewport.InputChanged:Connect(function(input: InputObject)
 				if input.UserInputType == Enum.UserInputType.MouseWheel then
+					local before = v.zoom
 					v.zoom = math.clamp(v.zoom * (1 - input.Position.Z * 0.1), ZOOM_MIN, ZOOM_MAX)
+					-- Zoom towards the cursor: shift the view so the point under
+					-- the cursor (at the model's depth) stays under it.
+					local height = math.max(viewport.AbsoluteSize.Y, 1)
+					local perPixel = 2 * v.distance * math.tan(math.rad(FOV / 2)) / height
+					local gui = viewport:FindFirstAncestorOfClass("ScreenGui")
+					-- Input positions exclude the top-bar inset; AbsolutePosition
+					-- includes it when the ScreenGui ignores the inset.
+					local inset = if gui and gui.IgnoreGuiInset then GuiService:GetGuiInset() else Vector2.zero
+					local cursor = Vector2.new(input.Position.X, input.Position.Y) + inset
+					local offset = cursor - (viewport.AbsolutePosition + viewport.AbsoluteSize / 2)
+					local look = camera.CFrame
+					local shift = (look.RightVector * offset.X - look.UpVector * offset.Y) * perPixel * (before - v.zoom)
+					local pan = v.pan + shift
+					local limit = v.size * PAN_LIMIT
+					if pan.Magnitude > limit then
+						pan = pan.Unit * limit
+					end
+					v.pan = pan
 					v.place()
 				end
 			end),

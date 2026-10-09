@@ -114,7 +114,7 @@ local function cardButton(skin, label: string, onActivated: () -> ())
 		Button = e(PillButton, {
 			variant = "pill",
 			size = Tokens.size.ctaHeight,
-			label = label,
+			label = "View " .. label,
 			icon = "chevron_right",
 			iconSize = 20,
 			iconAfter = true,
@@ -127,7 +127,7 @@ local function cardButton(skin, label: string, onActivated: () -> ())
 end
 
 -- Wearing and Basket cards share a layout: icon + title top left, and an
--- orange "N items · ₹X ›" button along the bottom that opens the list. Only
+-- orange "View N items · ₹X ›" button along the bottom that opens the list. Only
 -- the button opens it, so the Wearing card's avatar can be turned freely.
 local function PreviewCard(props: { nav: any, look: any, openList: (root: string) -> () })
 	local skin = useSkin()

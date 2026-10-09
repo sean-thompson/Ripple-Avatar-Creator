@@ -10,6 +10,11 @@
 	While flying you move where the camera faces (pitch included), hold jump
 	to climb, and hover when idle. Touching the ground ends the flight.
 
+	Emotes work mid-air: while flying the Humanoid is kept out of Freefall
+	(Roblox's Animate script only lets emotes play from a standing / running
+	pose, and refuses them while falling), so the emote menu works when you
+	hover. The flip side is the run/walk animation while moving in the air.
+
 	It's the player's own character, so physics stays client-owned and Roblox
 	replicates the movement like any other — nothing is mirrored into a model.
 	Player collisions are unchanged. Turn it off with flight.enabled.
@@ -65,9 +70,15 @@ local function setUpCharacter(character: Model)
 	local function setFlying(on: boolean)
 		flying = on
 		velocity.Enabled = on
+		-- No Freefall while flying, so emotes can play (see header).
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, not on)
 		if on then
 			takeoffAt = os.clock()
 			velocity.VectorVelocity = Vector3.zero
+			humanoid:ChangeState(Enum.HumanoidStateType.Running)
+		elseif humanoid.FloorMaterial == Enum.Material.Air and humanoid.Health > 0 then
+			-- Dropped mid-air: fall (with the fall pose) rather than "run".
+			humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 		end
 	end
 

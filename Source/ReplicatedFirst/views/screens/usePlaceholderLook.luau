@@ -72,6 +72,18 @@ local function usePlaceholderLook(): Look
 	local basket, setBasket = React.useState({ 9, 31, 23 })
 	local _ownedVersion, setOwnedVersion = React.useState(0)
 
+	-- Re-render when a worn item's details (name, price) arrive.
+	React.useEffect(function()
+		local connection = CatalogueClient.changed:Connect(function()
+			setOwnedVersion(function(n: number)
+				return n + 1
+			end)
+		end)
+		return function()
+			connection:Disconnect()
+		end
+	end, {})
+
 	local worn = {}
 	local wornSet = {}
 	for _, entry in avatar.worn or {} do

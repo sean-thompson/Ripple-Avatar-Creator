@@ -142,8 +142,7 @@ local function WorldHud(props: Props)
 					then e(Badge, {
 						kind = "count",
 						tone = "orange",
-						icon = "toll",
-						text = tostring(total),
+						text = Tokens.robux(total),
 						anchorPoint = Vector2.new(1, 0),
 						position = UDim2.fromOffset(skin.px(18), -skin.px(8)),
 						zIndex = 6,

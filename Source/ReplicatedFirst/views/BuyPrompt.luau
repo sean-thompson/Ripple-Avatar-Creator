@@ -150,11 +150,8 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 							SortOrder = Enum.SortOrder.LayoutOrder,
 							Padding = UDim.new(0, skin.px(4)),
 						}),
-						Toll = if total > 0
-							then e(Icon, { name = "toll", size = 24, color = Tokens.color.accentText, layoutOrder = 1 })
-							else nil,
 						Amount = e(ShadowText, {
-							text = if total > 0 then tostring(total) else "Free",
+							text = if total > 0 then Tokens.robux(total) else "Free",
 							style = { size = 22, weight = 900 },
 							color = if total > 0 then Tokens.color.accentText else Color3.fromHex("#9be37a"),
 							shadow = false,

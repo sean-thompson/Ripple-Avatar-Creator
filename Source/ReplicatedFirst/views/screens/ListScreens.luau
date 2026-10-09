@@ -32,12 +32,34 @@ local HudContext = require(views:WaitForChild("HudContext"))
 local e = React.createElement
 
 local SIDE_WIDTH = 250
+local ROW_BUTTON = 84 -- design px per row button
+-- Price + up to three buttons on the right of each row.
+local ROW_TRAILING = 60 + ROW_BUTTON * 3 + 8 * 3
+
+-- Buy (or Get, when free) for an item that isn't owned; nil when it is.
+local function buyButton(item: any, order: number, openBuy: (ids: { number }) -> ())
+	if item.owned then
+		return nil
+	end
+	return e(PillButton, {
+		variant = "pill",
+		size = 32,
+		width = ROW_BUTTON,
+		label = if item.price == 0 then "Get" else "Buy",
+		textStyle = Tokens.type.small,
+		active = true,
+		layoutOrder = order,
+		onActivated = function()
+			openBuy({ item.id })
+		end,
+	})
+end
 
 local function smallButton(label: string, order: number, active: boolean?, onActivated: () -> ())
 	return e(PillButton, {
 		variant = "pill",
 		size = 32,
-		width = 104,
+		width = ROW_BUTTON,
 		label = label,
 		textStyle = Tokens.type.small,
 		active = active,
@@ -66,7 +88,7 @@ local function rowList(skin, rows: { [string]: any }, count: number, emptyText: 
 		PaddingTop = UDim.new(0, skin.px(3)),
 		PaddingBottom = UDim.new(0, skin.px(3)),
 		PaddingLeft = UDim.new(0, skin.px(3)),
-		PaddingRight = UDim.new(0, skin.px(3)),
+		PaddingRight = UDim.new(0, skin.px(8)),
 	})
 	return e("ScrollingFrame", {
 		Size = UDim2.new(1, -skin.px(SIDE_WIDTH + 16), 1, 0),
@@ -76,6 +98,9 @@ local function rowList(skin, rows: { [string]: any }, count: number, emptyText: 
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ScrollBarThickness = skin.px(8),
 		ScrollBarImageColor3 = Tokens.color.accent,
+		-- Rows shrink to make room when the scroll bar shows (plus the padding
+		-- above), so they never run under it.
+		VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
 	}, rows)
 end
 
@@ -162,12 +187,14 @@ local function BasketScreen(props: { nav: any, look: any })
 			colour = Parts.swatch(item.colour),
 			image = Parts.image(item),
 			layoutOrder = index,
+			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
-				Try = smallButton(if wearing then "Wearing" else "Try on", 2, wearing, function()
+				Buy = buyButton(item, 2, hud.openBuy),
+				Try = smallButton(if wearing then "Wearing" else "Try on", 3, wearing, function()
 					look.toggleWear(id)
 				end),
-				Remove = smallButton("Remove", 3, false, function()
+				Remove = smallButton("Remove", 4, false, function()
 					look.toggleBasket(id)
 				end),
 			},
@@ -186,7 +213,7 @@ local function BasketScreen(props: { nav: any, look: any })
 		Summary = sidePanel(skin, "Summary", {
 			summaryLine(skin, "Items", tostring(#look.basket), 1),
 			summaryLine(skin, "Already owned", tostring(owned), 2),
-			summaryLine(skin, "Total", look.basketTotal .. " R$", 3, true),
+			summaryLine(skin, "Total", Tokens.robux(look.basketTotal), 3, true),
 		}, {
 			wideButton("Buy all", "shopping_basket", 10, true, function()
 				hud.openBuy(look.basket)
@@ -200,10 +227,31 @@ end
 
 local function WearingScreen(props: { nav: any, look: any })
 	local skin = useSkin()
+	local hud = React.useContext(HudContext)
 	local look = props.look
 	local rows: { [string]: any } = {}
 	local unowned, cost = 0, 0
+	-- Unowned paid items first (dearest first), then free, then owned; the
+	-- order put on breaks ties.
+	local function rank(item): number
+		return if item.owned then 3 elseif item.price > 0 then 1 else 2
+	end
+	local ordered = table.clone(look.worn)
+	local putOn = {}
 	for index, id in look.worn do
+		putOn[id] = index
+	end
+	table.sort(ordered, function(a, b)
+		local itemA, itemB = PlaceholderData.item(a), PlaceholderData.item(b)
+		local rankA, rankB = rank(itemA), rank(itemB)
+		if rankA ~= rankB then
+			return rankA < rankB
+		elseif rankA == 1 and itemA.price ~= itemB.price then
+			return itemA.price > itemB.price
+		end
+		return putOn[a] < putOn[b]
+	end)
+	for index, id in ordered do
 		local item = PlaceholderData.item(id)
 		if not item.owned then
 			unowned += 1
@@ -216,14 +264,16 @@ local function WearingScreen(props: { nav: any, look: any })
 			colour = Parts.swatch(item.colour),
 			image = Parts.image(item),
 			layoutOrder = index,
+			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
+				Buy = buyButton(item, 2, hud.openBuy),
 				Basket = if item.owned
 					then nil
-					else smallButton(if inBasket then "In basket" else "Basket", 2, inBasket, function()
+					else smallButton(if inBasket then "In basket" else "Basket", 3, inBasket, function()
 						look.toggleBasket(id)
 					end),
-				TakeOff = smallButton("Take off", 3, false, function()
+				TakeOff = smallButton("Take off", 4, false, function()
 					look.toggleWear(id)
 				end),
 			},
@@ -241,7 +291,7 @@ local function WearingScreen(props: { nav: any, look: any })
 		Rows = rowList(skin, rows, #look.worn, "You're not wearing anything"),
 		Summary = sidePanel(skin, "Wearing", {
 			summaryLine(skin, "Items", tostring(#look.worn), 1),
-			summaryLine(skin, "Not owned", unowned .. " · " .. cost .. " R$", 2),
+			summaryLine(skin, "Not owned", unowned .. " · " .. (if cost > 0 then Tokens.robux(cost) else "Free"), 2),
 		}, {
 			wideButton("Add unowned to basket", "add_shopping_cart", 10, true, function()
 				for _, id in look.worn do

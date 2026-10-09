@@ -17,9 +17,10 @@
 	  lookup(id, kind?)  one item by its real id (yields); a nil kind tries an
 	                     asset, then a bundle. Fails for non-avatar items.
 	  remember(worn)     the item for a worn entry ({ targetId, kind,
-	                     typeName, name } from the Avatar state): a stub
-	                     straight away if unseen, filled in from the
+	                     typeName, name, owned? } from the Avatar state): a
+	                     stub straight away if unseen, filled in from the
 	                     catalogue in the background
+	  changed            signal: a remembered item's details arrived
 
 	Item ids: assets keep their asset id; bundles are negated (-bundleId), as
 	asset and bundle ids can collide. `targetId` + `kind` carry the real id.
@@ -94,6 +95,9 @@ for _, category in CatalogueConfig.categories do
 end
 
 local seen: { [number]: Item } = {}
+
+local changedEvent = Instance.new("BindableEvent")
+CatalogueClient.changed = changedEvent.Event
 local cache: { [string]: Entry } = {}
 local blockedUntil = 0
 
@@ -368,10 +372,13 @@ end
 
 -- An item for something the player is wearing, which this client may never
 -- have seen in a search (e.g. from their own avatar). Returns at once.
-function CatalogueClient.remember(worn: { targetId: number, kind: "Asset" | "Bundle", typeName: string, name: string }): Item
+function CatalogueClient.remember(worn: { targetId: number, kind: "Asset" | "Bundle", typeName: string, name: string, owned: boolean? }): Item
 	local id = if worn.kind == "Bundle" then -worn.targetId else worn.targetId
 	local known = seen[id]
 	if known then
+		if worn.owned then
+			known.owned = true
+		end
 		return known
 	end
 	local where = placement[worn.typeName] or { main = "", sub = worn.typeName }
@@ -393,7 +400,7 @@ function CatalogueClient.remember(worn: { targetId: number, kind: "Asset" | "Bun
 		thumbnail = `rbxthumb://type={if worn.kind == "Bundle" then "BundleThumbnail" else "Asset"}&id={worn.targetId}&w={size}&h={size}`,
 		colour = "",
 		colours = {},
-		owned = false,
+		owned = worn.owned == true,
 	}
 	seen[id] = item
 	-- Fill in price, creator and the rest (updates this same object).
@@ -407,6 +414,10 @@ function CatalogueClient.remember(worn: { targetId: number, kind: "Asset" | "Bun
 			details.Id = details.Id or worn.targetId
 			details.ItemType = worn.kind
 			toItem(details)
+			if worn.owned then
+				item.owned = true -- toItem resets it; ownership checks are Task 11
+			end
+			changedEvent:Fire()
 		end
 	end)
 	return item

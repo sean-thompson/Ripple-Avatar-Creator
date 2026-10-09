@@ -5,7 +5,8 @@
 
 	Covers the world when a tab, Basket or Wearing is open:
 	  · tab bar (tapping the open tab closes the panel) and close button
-	  · left column: avatar-preview card with Undo and a "Wearing · N" bar
+	  · left column: avatar-preview card (live 3D copy of your character,
+	    AvatarPreview) with Undo and a "Wearing · N" bar
 	    (opens Wearing), and the Basket card with count + CTA (opens Basket);
 	    each card gets the orange border while its screen is open
 	  · content area: breadcrumbs/back once deeper than a tab (always on the
@@ -39,7 +40,6 @@ local hooks = views:WaitForChild("hooks")
 local screens = views:WaitForChild("screens")
 local Tokens = require(views:WaitForChild("Tokens"))
 local useSkin = require(hooks:WaitForChild("useSkin"))
-local useInteraction = require(hooks:WaitForChild("useInteraction"))
 local useAppear = require(hooks:WaitForChild("useAppear"))
 local useSpringNumber = require(hooks:WaitForChild("useSpringNumber"))
 local PillButton = require(components:WaitForChild("PillButton"))
@@ -49,12 +49,14 @@ local Icon = require(components:WaitForChild("Icon"))
 local ShadowText = require(components:WaitForChild("ShadowText"))
 local Breadcrumbs = require(script.Parent:WaitForChild("Breadcrumbs"))
 local Sounds = require(views:WaitForChild("Sounds"))
-local Press = require(views:WaitForChild("Press"))
 local CatalogueScreen = require(screens:WaitForChild("CatalogueScreen"))
 local ItemScreen = require(screens:WaitForChild("ItemScreen"))
 local StoresScreen = require(screens:WaitForChild("StoresScreen"))
 local OutfitsScreen = require(screens:WaitForChild("OutfitsScreen"))
 local ListScreens = require(screens:WaitForChild("ListScreens"))
+local PlaceholderData = require(screens:WaitForChild("PlaceholderData"))
+local AvatarPreview = require(script.Parent:WaitForChild("AvatarPreview"))
+local AnimationBar = require(script.Parent:WaitForChild("AnimationBar"))
 
 local e = React.createElement
 
@@ -63,153 +65,188 @@ local BASKET_CARD = 112
 local GAP = 16
 
 -- Full-size invisible button so a whole card is tappable under its contents.
-local function cardButton(onActivated: () -> (), onEnter: () -> (), onLeave: () -> ())
-	return e("TextButton", {
-		Name = "Hit",
-		Size = UDim2.fromScale(1, 1),
+-- The image of a worn avatar background, if any (shown behind the preview).
+local function backdropOf(look: any): string?
+	for _, id in look.worn do
+		local item = PlaceholderData.item(id)
+		if item and item.typeName == "AvatarBackground" then
+			return `rbxthumb://type=Asset&id={item.targetId}&w=420&h=420`
+		end
+	end
+	return nil
+end
+
+-- "9 items · ₹260": the count, and the Robux for what isn't owned (if any).
+local function summary(count: number, cost: number): string
+	local items = if count == 1 then "1 item" else `{count} items`
+	return if cost > 0 then `{items} · {Tokens.robux(cost)}` else items
+end
+
+-- A card's title row: icon + name, top left.
+local function cardHeader(skin, icon: string, title: string)
+	return e("Frame", {
+		Name = "Header",
+		Position = UDim2.fromOffset(skin.px(14), skin.px(14)),
+		Size = UDim2.new(1, -skin.px(28), 0, skin.px(22)),
 		BackgroundTransparency = 1,
-		Text = "",
-		AutoButtonColor = false,
-		ZIndex = 0,
-		[React.Event.InputBegan] = Press.began(onActivated),
-		[React.Event.Activated] = Press.activated(onActivated),
-		[React.Event.MouseEnter] = onEnter,
-		[React.Event.MouseLeave] = onLeave,
+		ZIndex = 3,
+	}, {
+		Layout = e("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, skin.px(6)),
+		}),
+		Icon = e(Icon, { name = icon, size = 20, color = Tokens.color.accentText, layoutOrder = 1, zIndex = 3 }),
+		Title = e(ShadowText, { text = title, style = Tokens.type.cardTitle, layoutOrder = 2, zIndex = 3 }),
 	})
 end
 
+-- A card's orange button, centred along the bottom: opens the card's list.
+local function cardButton(skin, label: string, onActivated: () -> ())
+	return e("Frame", {
+		Name = "Open",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -skin.px(12)),
+		Size = UDim2.new(1, -skin.px(24), 0, skin.px(Tokens.size.ctaHeight)),
+		BackgroundTransparency = 1,
+		ZIndex = 3,
+	}, {
+		Button = e(PillButton, {
+			variant = "pill",
+			size = Tokens.size.ctaHeight,
+			label = "View " .. label,
+			icon = "chevron_right",
+			iconSize = 20,
+			iconAfter = true,
+			active = true,
+			zIndex = 3,
+			sound = false, -- openList plays the switch
+			onActivated = onActivated,
+		}),
+	})
+end
+
+-- Wearing and Basket cards share a layout: icon + title top left, and an
+-- orange "View N items · ₹X ›" button along the bottom that opens the list. Only
+-- the button opens it, so the Wearing card's avatar can be turned freely.
 local function PreviewCard(props: { nav: any, look: any, openList: (root: string) -> () })
 	local skin = useSkin()
-	local interaction = useInteraction()
 	local selected = props.nav.root == "Wearing"
 	local undo = Tokens.size.undo
+	local cost = 0
+	for _, id in props.look.worn do
+		local item = PlaceholderData.item(id)
+		if item and not item.owned then
+			cost += item.price
+		end
+	end
 	local wornCount = useSpringNumber(#props.look.worn, Tokens.spring.count)
+	local wornCost = useSpringNumber(cost, Tokens.spring.count)
+	local animation, setAnimation = React.useState(AnimationBar.DEFAULT)
+
+	-- Trying on an emote or animation pack shows it straight away: an emote
+	-- plays, a pack walks (where a pack shows most).
+	local seenWorn = React.useRef(nil :: { [number]: boolean }?)
+	React.useEffect(function()
+		local now: { [number]: boolean } = {}
+		for _, id in props.look.worn do
+			now[id] = true
+		end
+		local before = seenWorn.current
+		seenWorn.current = now
+		if not before then
+			return -- first render: nothing was "just" tried on
+		end
+		for _, id in props.look.worn do
+			if not before[id] then
+				local item = PlaceholderData.item(id)
+				if item and item.typeName == "EmoteAnimation" then
+					setAnimation(AnimationBar.emoteChoice(item.targetId, item.name))
+				elseif item and item.typeName == "Animations" then
+					setAnimation(AnimationBar.choice("move/walk") or AnimationBar.DEFAULT)
+				end
+			end
+		end
+	end, { table.concat(props.look.worn, ",") })
+
+	-- Emotes to preview: the ones being worn, then any in the basket.
+	local emotes = {}
+	local listed = {}
+	for _, list in { props.look.worn, props.look.basket } do
+		for _, id in list do
+			local item = PlaceholderData.item(id)
+			if item and item.typeName == "EmoteAnimation" and item.thumbnail ~= "" and not listed[item.targetId] then
+				listed[item.targetId] = true
+				table.insert(emotes, { id = item.targetId, name = item.name })
+			end
+		end
+	end
 	return e(GlassPanel, {
 		variant = "light",
 		cornerRadius = Tokens.radius.contentPanel,
-		borderColor = if selected or interaction.hovered then Tokens.color.accent else nil,
-		borderTransparency = if selected then 0 elseif interaction.hovered then 1 - 0.8 else nil,
+		borderColor = if selected then Tokens.color.accent else nil,
+		borderTransparency = if selected then 0 else nil,
 		size = UDim2.new(1, 0, 1, -skin.px(BASKET_CARD + 12)),
 	}, {
-		Hit = cardButton(function()
-			props.openList("Wearing")
-		end, interaction.onEnter, interaction.onLeave),
-		Placeholder = e("TextLabel", {
+		-- The preview fills the card, edge to edge, behind everything else.
+		Preview = e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
-			Text = "avatar preview",
-			TextColor3 = Tokens.color.white,
-			TextTransparency = 1 - 0.45,
-			TextSize = skin.textPx(12),
-			FontFace = Tokens.font(700),
+			ZIndex = 1,
+		}, {
+			Avatar = e(AvatarPreview, {
+				backdrop = backdropOf(props.look),
+				cornerRadius = Tokens.radius.contentPanel,
+				animation = animation,
+			}),
 		}),
+		-- What the preview is doing: idle, walk, run… or an emote.
+		Animations = e(AnimationBar.Bar, {
+			selected = animation.key,
+			emotes = emotes,
+			onSelect = setAnimation,
+			anchorPoint = Vector2.new(0.5, 1),
+			position = UDim2.new(0.5, 0, 1, -skin.px(12 + Tokens.size.ctaHeight + 8)),
+		}),
+		Header = cardHeader(skin, "checkroom", "Wearing"),
 		Undo = e(PillButton, {
 			variant = "round",
 			size = undo.size,
 			icon = "undo",
 			iconSize = undo.icon,
 			glowRadius = undo.glow,
-			disabled = not props.look.canUndo,
+			disabled = not props.look.canUndo, -- greyed out with nothing to undo
 			sound = false, -- look.undo plays it
 			onActivated = props.look.undo,
 			anchorPoint = Vector2.new(1, 0),
 			position = UDim2.new(1, -skin.px(10), 0, skin.px(10)),
 			zIndex = 3,
 		}),
-		WearingBar = e(GlassPanel, {
-			variant = "bar",
-			cornerRadius = Tokens.size.wearingBar / 2,
-			anchorPoint = Vector2.new(0.5, 1),
-			position = UDim2.new(0.5, 0, 1, -skin.px(10)),
-			size = UDim2.new(1, -skin.px(20), 0, skin.px(Tokens.size.wearingBar)),
-			zIndex = 2,
-		}, {
-			Padding = e("UIPadding", { PaddingLeft = UDim.new(0, skin.px(14)), PaddingRight = UDim.new(0, skin.px(10)) }),
-			Icon = e(Icon, {
-				name = "checkroom",
-				size = 19,
-				color = Tokens.color.accentText,
-				anchorPoint = Vector2.new(0, 0.5),
-				position = UDim2.fromScale(0, 0.5),
-			}),
-			Label = e("Frame", {
-				AnchorPoint = Vector2.new(0, 0.5),
-				Position = UDim2.new(0, skin.px(25), 0.5, 0),
-				Size = UDim2.new(1, -skin.px(50), 0, skin.textPx(Tokens.type.bodyStrong.size)),
-				BackgroundTransparency = 1,
-			}, {
-				Text = e(ShadowText, { text = "Wearing · " .. wornCount, style = Tokens.type.bodyStrong }),
-			}),
-			Chevron = e(Icon, {
-				name = "chevron_right",
-				size = 20,
-				anchorPoint = Vector2.new(1, 0.5),
-				position = UDim2.fromScale(1, 0.5),
-			}),
-		}),
+		Open = cardButton(skin, summary(wornCount, wornCost), function()
+			props.openList("Wearing")
+		end),
 	})
 end
 
 local function BasketCard(props: { nav: any, look: any, openList: (root: string) -> () })
 	local skin = useSkin()
-	local interaction = useInteraction()
 	local selected = props.nav.root == "Basket"
 	local total = useSpringNumber(props.look.basketTotal, Tokens.spring.count)
 	local count = useSpringNumber(#props.look.basket, Tokens.spring.count)
 	return e(GlassPanel, {
 		variant = "light",
 		cornerRadius = Tokens.radius.basketCard,
-		borderColor = if selected or interaction.hovered then Tokens.color.accent else nil,
-		borderTransparency = if selected then 0 elseif interaction.hovered then 1 - 0.8 else nil,
+		borderColor = if selected then Tokens.color.accent else nil,
+		borderTransparency = if selected then 0 else nil,
 		anchorPoint = Vector2.new(0, 1),
 		position = UDim2.fromScale(0, 1),
 		size = UDim2.new(1, 0, 0, skin.px(BASKET_CARD)),
 	}, {
-		Hit = cardButton(function()
+		Header = cardHeader(skin, "shopping_basket", "Basket"),
+		Open = cardButton(skin, summary(count, total), function()
 			props.openList("Basket")
-		end, interaction.onEnter, interaction.onLeave),
-		Padding = e("UIPadding", {
-			PaddingTop = UDim.new(0, skin.px(12)),
-			PaddingBottom = UDim.new(0, skin.px(12)),
-			PaddingLeft = UDim.new(0, skin.px(14)),
-			PaddingRight = UDim.new(0, skin.px(12)),
-		}),
-		Icon = e(Icon, { name = "shopping_basket", size = 20, color = Tokens.color.accentText }),
-		Title = e("Frame", {
-			Position = UDim2.fromOffset(skin.px(26), 0),
-			Size = UDim2.fromOffset(skin.px(100), skin.px(20)),
-			BackgroundTransparency = 1,
-		}, {
-			Text = e(ShadowText, { text = "Basket", style = Tokens.type.cardTitle }),
-		}),
-		Count = e("TextLabel", {
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.fromScale(1, 0),
-			Size = UDim2.fromOffset(skin.px(100), skin.px(20)),
-			BackgroundTransparency = 1,
-			Text = count .. " items",
-			TextColor3 = Tokens.color.white,
-			TextTransparency = Tokens.alpha.textDim,
-			TextSize = skin.textPx(Tokens.type.small.size),
-			FontFace = Tokens.font(800),
-			TextXAlignment = Enum.TextXAlignment.Right,
-		}),
-		Cta = e(PillButton, {
-			variant = "pill",
-			size = Tokens.size.ctaHeight,
-			label = if total > 0 then "Open basket · " .. total .. " R$" else "Open basket",
-			icon = "chevron_right",
-			iconSize = 20,
-			iconAfter = true,
-			active = true,
-			anchorPoint = Vector2.new(0, 1),
-			position = UDim2.fromScale(0, 1),
-			zIndex = 3,
-			sound = false, -- openList plays the switch
-			onActivated = function()
-				props.openList("Basket")
-			end,
-		}),
+		end),
 	})
 end
 

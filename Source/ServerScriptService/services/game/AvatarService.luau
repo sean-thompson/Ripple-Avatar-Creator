@@ -23,6 +23,12 @@
 	Applies are coalesced per player: changes that land while one is running
 	collapse into a single follow-up apply.
 
+	Emote animations: the client can't open an emote asset to find the
+	animation inside it, so it asks over the "AvatarEmoteAnimations" remote
+	function (Bolt) with up to MAX_EMOTE_LOOKUP emote ids, and gets back a
+	list of { id = emoteId, animation = "rbxassetid://…" } (cached). Used by the panel's avatar
+	preview to play emotes. Read-only; no state changes.
+
 	API (used by AvatarController):
 		resolve(targetId, kind) -> WornItem?   look an item up (cached); nil if
 		                                      it can't be found
@@ -34,7 +40,10 @@ local AssetService = game:GetService("AssetService")
 local AvatarEditorService = game:GetService("AvatarEditorService")
 local InsertService = game:GetService("InsertService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+
+local Bolt = require(ReplicatedStorage.Bolt)
 
 local AvatarModel = require(ServerScriptService.models.user.AvatarModel)
 
@@ -91,6 +100,11 @@ local ANIMATIONS =
 	{ "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation" }
 
 local GEAR_ATTRIBUTE = "RippleGear"
+local MAX_EMOTE_LOOKUP = 16 -- emote ids per request
+-- Per player: at most this many lookups per window (a budget, not a strict
+-- cooldown, since a preview rebuild can ask twice in quick succession).
+local EMOTE_LOOKUP_BUDGET = 20
+local EMOTE_LOOKUP_WINDOW = 10 -- seconds
 
 -- Reverse of RIGID + LAYERED, for reading a player's own avatar.
 local TYPE_OF_ACCESSORY: { [Enum.AccessoryType]: string } = {}
@@ -106,6 +120,28 @@ local bundleOutfits: { [number]: HumanoidDescription | false } = {}
 local gearTemplates: { [number]: Tool | false } = {}
 local bases: { [Player]: HumanoidDescription } = {}
 local applying: { [Player]: { busy: boolean, again: boolean } } = {}
+local emoteAnimations: { [number]: string | false } = {}
+local emoteLookups: { [Player]: { number } } = {} -- request times
+
+-- The animation inside an emote asset (cached; false if it has none).
+local function emoteAnimation(emoteId: number): string?
+	local cached = emoteAnimations[emoteId]
+	if cached ~= nil then
+		return cached or nil
+	end
+	local ok, model = pcall(function()
+		return InsertService:LoadAsset(emoteId)
+	end)
+	local animation = if ok then model:FindFirstChildWhichIsA("Animation", true) else nil
+	local id = if animation then animation.AnimationId else nil
+	if ok then
+		model:Destroy()
+	else
+		warn(`[AvatarService] Couldn't load emote {emoteId}: {model}`)
+	end
+	emoteAnimations[emoteId] = id or false
+	return id
+end
 
 local function typeNameOf(value: any): string
 	if typeof(value) == "EnumItem" then
@@ -190,7 +226,8 @@ local function gearTemplate(assetId: number): Tool?
 	return tool
 end
 
--- The player's own avatar, as a list of wearable items.
+-- The player's own avatar, as a list of wearable items (owned: they're on
+-- the player's Roblox avatar).
 local function itemsOf(description: HumanoidDescription): { WornItem }
 	local items: { WornItem } = {}
 	for _, accessory in description:GetAccessories(true) do
@@ -220,6 +257,9 @@ local function itemsOf(description: HumanoidDescription): { WornItem }
 				end
 			end
 		end
+	end
+	for _, item in items do
+		item.owned = true
 	end
 	-- Names, in one batch.
 	local ids = {}
@@ -459,8 +499,26 @@ local function onPlayer(player: Player)
 	local own = fetchOwn(player)
 	if own then
 		bases[player] = baseOf(own)
+		local ownItems = itemsOf(own)
 		if not model.seeded then
-			model:seed(itemsOf(own))
+			model:seed(ownItems)
+		else
+			-- Anything worn that's on the player's own avatar is owned (also
+			-- fixes looks saved before items carried the flag).
+			local ownIds = {}
+			for _, item in ownItems do
+				ownIds[item.kind .. item.targetId] = true
+			end
+			local changed = false
+			for _, item in model.worn do
+				if not item.owned and ownIds[item.kind .. item.targetId] then
+					item.owned = true
+					changed = true
+				end
+			end
+			if changed then
+				model:syncState()
+			end
 		end
 	end
 	-- Undo history doesn't survive a rejoin.
@@ -477,6 +535,35 @@ local function onPlayer(player: Player)
 end
 
 function AvatarService.init()
+	local lookup = Bolt.RemoteFunction("AvatarEmoteAnimations")
+	lookup.OnServerInvoke = function(player: Player, ids: any)
+		local result: { { id: number, animation: string } } = {}
+		if type(ids) ~= "table" then
+			return result
+		end
+		local now = os.clock()
+		local recent = {}
+		for _, at in emoteLookups[player] or {} do
+			if now - at < EMOTE_LOOKUP_WINDOW then
+				table.insert(recent, at)
+			end
+		end
+		if #recent >= EMOTE_LOOKUP_BUDGET then
+			return result
+		end
+		table.insert(recent, now)
+		emoteLookups[player] = recent
+		for index, id in ids do
+			if type(index) == "number" and index <= MAX_EMOTE_LOOKUP and type(id) == "number" and id > 0 and id % 1 == 0 then
+				local animation = emoteAnimation(id)
+				if animation then
+					table.insert(result, { id = id, animation = animation })
+				end
+			end
+		end
+		return result
+	end
+
 	Players.PlayerAdded:Connect(function(player)
 		task.spawn(onPlayer, player)
 	end)
@@ -486,6 +573,7 @@ function AvatarService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		bases[player] = nil
 		applying[player] = nil
+		emoteLookups[player] = nil
 	end)
 end
 

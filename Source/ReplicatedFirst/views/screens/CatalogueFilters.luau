@@ -387,11 +387,10 @@ function CatalogueFilters.PricePopover(props: PopoverProps & { countLabel: strin
 				SortOrder = Enum.SortOrder.LayoutOrder,
 				Padding = UDim.new(0, skin.px(4)),
 			}),
-			Toll = e(Icon, { name = "toll", size = 20, color = Tokens.color.accentText, layoutOrder = 1 }),
 			Text = e("TextLabel", {
-				Size = UDim2.new(1, -skin.px(24), 1, 0),
+				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
-				Text = `{low} – {if high >= max then "Any" else tostring(high)}`,
+				Text = `{Tokens.robux(low)} – {if high >= max then "Any" else Tokens.robux(high)}`,
 				TextColor3 = Tokens.color.accentText,
 				TextSize = skin.textPx(valueStyle.size),
 				FontFace = Tokens.font(valueStyle.weight),

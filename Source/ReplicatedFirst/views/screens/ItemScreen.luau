@@ -160,7 +160,7 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	description = string.match(description, "^%s*(.-)%s*$") or ""
 	local descriptionHeight = math.floor(skin.textPx(13.5) * 1.15 * 3)
 
-	local buyLabel = if item.owned then "Owned" elseif item.price == 0 then "Get free" else "Buy " .. item.price
+	local buyLabel = if item.owned then "Owned" elseif item.price == 0 then "Get free" else "Buy " .. Tokens.robux(item.price)
 
 	return e("Frame", {
 		Name = "ItemScreen",

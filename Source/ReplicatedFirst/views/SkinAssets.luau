@@ -51,6 +51,15 @@ SkinAssets.icons = {
 	toll = 108231234324649,
 	undo = 138050190849416,
 	visibility = 95037949648164,
+	-- Animation bar (panel preview)
+	accessibility_new = 92809236173438, -- idle
+	directions_walk = 111496783629433,
+	directions_run = 133195607663065,
+	sports_gymnastics = 86267274461026, -- jump
+	paragliding = 97940208976119, -- fall
+	stairs = 78234124652504, -- climb
+	pool = 107183700626092, -- swim
+	emoji_people = 107200103596168, -- emotes
 } :: { [string]: number }
 
 -- UI sounds (views/Sounds plays them). 0 = no sound (silent).

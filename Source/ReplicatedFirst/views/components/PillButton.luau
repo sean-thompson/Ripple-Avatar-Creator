@@ -33,9 +33,10 @@
 		iconSize: number?        design px
 		iconAfter: boolean?      put the icon after the label (e.g. a trailing chevron)
 		label: string?
+		labelMaxWidth: number?   design px; a longer label ends in "…"
 		textStyle: Tokens.TypeStyle?   default Tokens.type.cta
 		active: boolean?         orange face
-		disabled: boolean?
+		disabled: boolean?       greyed out (dimmed face and content) and inert
 		glowRadius: number?      design px; 0 disables
 		badge: React element?    pinned top-right, may overflow
 		sound: (Sounds.Name | false)?  tap sound; default "press", false = silent
@@ -70,6 +71,7 @@ export type Props = {
 	iconSize: number?,
 	iconAfter: boolean?,
 	label: string?,
+	labelMaxWidth: number?,
 	textStyle: Tokens.TypeStyle?,
 	active: boolean?,
 	disabled: boolean?,
@@ -85,6 +87,8 @@ export type Props = {
 }
 
 local PILL = UDim.new(0.5, 0)
+local DISABLED_CONTENT = 0.65 -- icon / label transparency when disabled
+local DISABLED_WASH = 0.5 -- transparency of the dark wash over a disabled face
 
 local function PillButton(props: Props)
 	local skin = useSkin()
@@ -140,10 +144,13 @@ local function PillButton(props: Props)
 			Padding = UDim.new(0, skin.px(6)),
 		}),
 	}
+	-- Disabled: content dimmed (and a dark wash over the face, below).
+	local contentTransparency = if props.disabled then DISABLED_CONTENT else 0
 	if props.icon then
 		contentChildren.Icon = e(Icon, {
 			name = props.icon,
 			size = props.iconSize or Tokens.size.action.icon,
+			transparency = contentTransparency,
 			layoutOrder = if props.iconAfter then 3 else 1,
 			zIndex = z + 2,
 		})
@@ -152,6 +159,9 @@ local function PillButton(props: Props)
 		contentChildren.Label = e(ShadowText, {
 			text = props.label,
 			style = textStyle,
+			transparency = contentTransparency,
+			shadow = not props.disabled,
+			maxWidth = if props.labelMaxWidth then skin.px(props.labelMaxWidth) else nil,
 			layoutOrder = 2,
 			zIndex = z + 2,
 		})
@@ -220,6 +230,15 @@ local function PillButton(props: Props)
 					highlight = Tokens.highlight.blackPill,
 					zIndex = z,
 				}),
+				DisabledWash = if props.disabled
+					then e("Frame", {
+						Size = UDim2.fromScale(1, 1),
+						BackgroundColor3 = Tokens.color.black,
+						BackgroundTransparency = DISABLED_WASH,
+						BorderSizePixel = 0,
+						ZIndex = z + 1,
+					}, { Corner = e("UICorner", { CornerRadius = PILL }) })
+					else nil,
 			}),
 			Content = if props.label then nil else content,
 			Badge = if props.badge

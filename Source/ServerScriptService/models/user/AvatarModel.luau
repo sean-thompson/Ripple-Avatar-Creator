@@ -35,6 +35,7 @@ export type WornItem = {
 	kind: "Asset" | "Bundle",
 	typeName: string,
 	name: string,
+	owned: boolean?, -- known owned (it came from the player's own avatar)
 }
 
 export type AvatarModel = typeof(setmetatable({} :: {
@@ -52,10 +53,18 @@ end
 local function wearOne(list: { WornItem }, item: WornItem): { WornItem }
 	local slot = AvatarConfig.slots[item.typeName]
 	local group = AvatarConfig.groups[item.typeName]
+	-- The slots this item empties: its own, plus any it also replaces.
+	local replaced: { [string]: boolean } = {}
+	if slot then
+		replaced[slot] = true
+		for _, other in (AvatarConfig.alsoReplaces or {})[slot] or {} do
+			replaced[other] = true
+		end
+	end
 	local result = {}
 	for _, other in list do
-		local sameSlot = slot ~= nil and AvatarConfig.slots[other.typeName] == slot
-		if not same(other, item) and not sameSlot then
+		local otherSlot = AvatarConfig.slots[other.typeName]
+		if not same(other, item) and not (otherSlot and replaced[otherSlot]) then
 			table.insert(result, other)
 		end
 	end

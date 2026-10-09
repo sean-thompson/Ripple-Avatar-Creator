@@ -18,6 +18,7 @@
 		color: Color3?          default white
 		transparency: number?   text transparency
 		shadow: boolean?        default true
+		maxWidth: number?       local px; longer text ends in "…"
 		layoutOrder: number?
 		zIndex: number?
 ]]
@@ -40,6 +41,7 @@ export type Props = {
 	color: Color3?,
 	transparency: number?,
 	shadow: boolean?,
+	maxWidth: number?,
 	layoutOrder: number?,
 	zIndex: number?,
 }
@@ -50,6 +52,9 @@ local function ShadowText(props: Props)
 	local textSize = skin.textPx(props.style.size)
 	local font = Tokens.font(props.style.weight)
 	local width = useTextWidth(props.text, font, textSize)
+	if props.maxWidth then
+		width = math.min(width, props.maxWidth)
+	end
 
 	return e("Frame", {
 		Name = "ShadowText",
@@ -72,6 +77,8 @@ local function ShadowText(props: Props)
 				-- Same alignment as the text: if the measured width is off (an
 				-- estimate on first render), centred vs left would drift apart.
 				TextXAlignment = Enum.TextXAlignment.Left,
+				-- Only when capped: measured widths can round a hair short of the text.
+				TextTruncate = if props.maxWidth then Enum.TextTruncate.AtEnd else Enum.TextTruncate.None,
 				ZIndex = z,
 			}),
 		Text = e("TextLabel", {
@@ -83,6 +90,7 @@ local function ShadowText(props: Props)
 			TextSize = textSize,
 			FontFace = font,
 			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = if props.maxWidth then Enum.TextTruncate.AtEnd else Enum.TextTruncate.None,
 			ZIndex = z + 1,
 		}),
 	})

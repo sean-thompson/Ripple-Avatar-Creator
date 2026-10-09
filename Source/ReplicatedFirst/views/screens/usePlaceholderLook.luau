@@ -21,8 +21,15 @@
 	    "Try on everything" goes to AvatarController's WearMany like any
 	    wear-all.
 
+	  · Ownership and buying are real (Task 11): Network.State.Ownership
+	    (session only). Worn and basket items are checked with
+	    PurchaseController.Check (each once a session; checkOwned does the
+	    same for an item page) and known-owned items get `owned = true`.
+	    buy sends PurchaseController.Buy with a request id; the result comes
+	    back as `purchase` (state, reason, keys bought) carrying that id.
+
 	Mock items (the prototype's placeholder data, no thumbnail) can't be
-	worn or put in the basket: the intents skip them and report it.
+	worn, put in the basket or bought: the intents skip them and report it.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -53,13 +60,18 @@ export type Look = {
 	toggleFavourite: (id: number) -> boolean, -- false for mock items
 	toggleBasket: (id: number) -> boolean, -- false for mock items
 	addToBasket: (ids: { number }) -> number, -- how many were sent
-	markOwned: (ids: { number }) -> (),
+	checkOwned: (ids: { number }) -> (), -- ask the server, once a session each
+	buy: (ids: { number }) -> number?, -- the request id; nil if nothing to buy
+	purchase: Network.PurchaseResult, -- the latest purchase's outcome
 	basketTotal: number, -- Robux for unowned basket items
 }
 
 local DEFAULT_AVATAR = { worn = {}, canUndo = false }
 local DEFAULT_FAVOURITES = { items = {} }
 local DEFAULT_BASKET = { items = {} }
+local DEFAULT_OWNERSHIP = { owned = {}, purchase = { id = 0, state = "idle", reason = "", bought = {} } }
+local MAX_CHECK = 50 -- items per ownership check (PurchaseController's limit)
+local MAX_BUY = 20 -- items per purchase prompt (PurchaseController's limit)
 -- How long an optimistic basket change waits for the server to agree.
 local PENDING_SECONDS = 3
 
@@ -85,6 +97,29 @@ local function ref(id: number)
 	return { targetId = item.targetId, kind = item.kind }
 end
 
+-- Keys already sent for an ownership check this session.
+local requested: { [string]: boolean } = {}
+local lastRequestId = 0
+
+-- Ask the server who owns these (skipping mocks and keys already asked).
+local function checkOwned(ids: { number })
+	local refs = {}
+	for _, id in ids do
+		local key = favouriteKey(id)
+		if key and not requested[key] then
+			requested[key] = true
+			table.insert(refs, ref(id))
+			if #refs == MAX_CHECK then
+				Network.Intent.Purchase:FireServer(Network.Actions.Purchase.Check, refs)
+				refs = {}
+			end
+		end
+	end
+	if #refs > 0 then
+		Network.Intent.Purchase:FireServer(Network.Actions.Purchase.Check, refs)
+	end
+end
+
 local function usePlaceholderLook(): Look
 	local avatar = useBoltState(Network.State.Avatar, DEFAULT_AVATAR :: any)
 	local favourites = useBoltState(Network.State.Favourites, DEFAULT_FAVOURITES :: any)
@@ -93,6 +128,18 @@ local function usePlaceholderLook(): Look
 		favouriteSet[key] = true
 	end
 	local basketState = useBoltState(Network.State.Basket, DEFAULT_BASKET :: any)
+	local ownership = useBoltState(Network.State.Ownership, DEFAULT_OWNERSHIP :: any)
+	-- Known-owned items show as owned wherever they appear (items are shared).
+	for _, key in ownership.owned or {} do
+		local kind, targetId = string.match(key, "^(%a+):(%d+)$")
+		local number = tonumber(targetId)
+		if kind and number then
+			local item = PlaceholderData.item(if kind == "Bundle" then -number else number)
+			if item then
+				item.owned = true
+			end
+		end
+	end
 	local _ownedVersion, setOwnedVersion = React.useState(0)
 	-- Optimistic basket changes by item id.
 	local pending: { [number]: Pending }, setPending = React.useState({} :: { [number]: Pending })
@@ -195,6 +242,16 @@ local function usePlaceholderLook(): Look
 		basketSet[id] = true
 	end
 
+	-- Check ownership of what's worn and in the basket (new items only).
+	React.useEffect(function()
+		local ids = table.clone(worn)
+		for _, id in serverBasket do
+			table.insert(ids, id)
+		end
+		checkOwned(ids)
+		return nil
+	end, { avatar, basketState })
+
 	local function isWorn(id: number): boolean
 		return wornSet[id] == true
 	end
@@ -288,28 +345,23 @@ local function usePlaceholderLook(): Look
 			end
 			return #refs
 		end,
-		-- Pretend purchase (Task 3 feel test; Task 11 does it for real): flags the
-		-- items owned and takes them out of the basket.
-		markOwned = function(ids: { number })
-			local refs, sent = {}, {}
+		checkOwned = checkOwned,
+		buy = function(ids: { number }): number?
+			local refs = {}
 			for _, id in ids do
 				local item = PlaceholderData.item(id)
-				if item then
-					item.owned = true
-					if canWear(id) and inBasket(id) and #refs < AvatarConfig.maxWearMany then
-						table.insert(refs, ref(id))
-						table.insert(sent, id)
-					end
+				if item and canWear(id) and not item.owned and #refs < MAX_BUY then
+					table.insert(refs, ref(id))
 				end
 			end
-			if #refs > 0 then
-				expect(sent, false)
-				Network.Intent.Basket:FireServer(Network.Actions.Basket.RemoveMany, refs)
+			if #refs == 0 then
+				return nil
 			end
-			setOwnedVersion(function(n: number)
-				return n + 1
-			end)
+			lastRequestId += 1
+			Network.Intent.Purchase:FireServer(Network.Actions.Purchase.Buy, { id = lastRequestId, items = refs })
+			return lastRequestId
 		end,
+		purchase = ownership.purchase or DEFAULT_OWNERSHIP.purchase,
 		basketTotal = total,
 	}
 end

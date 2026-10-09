@@ -110,13 +110,43 @@ local function Hud()
 	local nav = useNavigation()
 	local rawLook = usePlaceholderLook()
 	local buyIds, setBuyIds = React.useState(nil :: { number }?)
+	-- The purchase we sent and are waiting on (its request id), if any.
+	local buyRequest, setBuyRequest = React.useState(nil :: number?)
 	local world = useWorldOptions()
 	local look = withFeedback(rawLook)
+
+	local function closeBuy()
+		setBuyIds(nil)
+		setBuyRequest(nil)
+	end
+
+	-- Our purchase's outcome: close on success; otherwise the prompt stays
+	-- up with the reason (no toasts).
+	local purchase = rawLook.purchase
+	local buyStatus = nil
+	if buyRequest then
+		buyStatus = if purchase.id == buyRequest
+			then { state = purchase.state, reason = purchase.reason }
+			else { state = "waiting", reason = "" }
+	end
+	React.useEffect(function()
+		if not buyRequest or purchase.id ~= buyRequest or purchase.state == "waiting" then
+			return
+		end
+		if #purchase.bought > 0 then
+			Sounds.play("purchase")
+		elseif purchase.state ~= "done" then
+			Sounds.play(if purchase.state == "cancelled" then "back" else "error")
+		end
+		if purchase.state == "done" and purchase.reason == "" then
+			closeBuy()
+		end
+	end, { purchase })
 
 	useBackInput(function()
 		if buyIds then
 			Sounds.play("back")
-			setBuyIds(nil)
+			closeBuy()
 		elseif #nav.stack > 0 then
 			Sounds.play("back")
 			nav.back()
@@ -160,7 +190,9 @@ local function Hud()
 			openBuy = function(itemIds: { number })
 				local unowned = {}
 				for _, id in itemIds do
-					if not PlaceholderData.item(id).owned then
+					local item = PlaceholderData.item(id)
+					-- Real, unowned items; one Roblox prompt takes up to 20.
+					if item and item.thumbnail ~= "" and not item.owned and #unowned < 20 then
 						table.insert(unowned, id)
 					end
 				end
@@ -168,6 +200,7 @@ local function Hud()
 					Sounds.play("error")
 					return
 				end
+				setBuyRequest(nil)
 				setBuyIds(unowned)
 			end,
 		}
@@ -196,13 +229,16 @@ local function Hud()
 			Panel = e(React.Fragment, nil, panels),
 			Buy = e(BuyPrompt, {
 				itemIds = buyIds,
-				onCancel = function()
-					setBuyIds(nil)
-				end,
+				status = buyStatus,
+				onCancel = closeBuy,
 				onConfirm = function(ids: { number })
-					setBuyIds(nil)
-					rawLook.markOwned(ids)
-					Sounds.play("purchase")
+					local request = rawLook.buy(ids)
+					if request then
+						setBuyRequest(request)
+					else
+						Sounds.play("error") -- everything here is owned now
+						closeBuy()
+					end
 				end,
 			}),
 		}),

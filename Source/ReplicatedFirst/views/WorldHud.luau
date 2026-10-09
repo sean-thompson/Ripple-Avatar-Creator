@@ -11,8 +11,9 @@
 	Hidden while the full panel is open — the design's panel covers it. When it
 	comes back, the bottom buttons rise into place; World options slides in and
 	out from the right; the Basket badge total rolls.
-	Create avatar and Save to Roblox are stubs until Task 11; Reset puts the
-	player's own Roblox avatar back on.
+	Create avatar (save the look as a new Roblox outfit) and Save to Roblox
+	(make it their Roblox avatar) open Roblox's own prompts (AccountPrompts);
+	Reset puts the player's own Roblox avatar back on.
 
 	Props:
 		nav, look
@@ -33,6 +34,7 @@ local useAppear = require(hooks:WaitForChild("useAppear"))
 local useSpringNumber = require(hooks:WaitForChild("useSpringNumber"))
 local useTransition = require(hooks:WaitForChild("useTransition"))
 local PillButton = require(components:WaitForChild("PillButton"))
+local AccountPrompts = require(views:WaitForChild("AccountPrompts"))
 local PillTabs = require(components:WaitForChild("PillTabs"))
 local Badge = require(components:WaitForChild("Badge"))
 local WorldOptionsView = require(views:WaitForChild("WorldOptionsView"))
@@ -149,8 +151,8 @@ local function WorldHud(props: Props)
 					})
 					else nil,
 			}),
-			CreateAvatar = actionButton("person_add", 2),
-			SaveToRoblox = actionButton("cloud_upload", 3),
+			CreateAvatar = actionButton("person_add", 2, AccountPrompts.createOutfit),
+			SaveToRoblox = actionButton("cloud_upload", 3, AccountPrompts.saveAvatar),
 			-- Back to the player's own Roblox avatar (undoable).
 			Reset = actionButton("restart_alt", 4, props.look.reset, false),
 		}),

@@ -107,6 +107,12 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	local show3D, setShow3D = React.useState(false)
 	local has3D = ItemModel.supports(item)
 
+	-- Find out whether the player owns it (once a session per item).
+	React.useEffect(function()
+		props.look.checkOwned({ item.id })
+		return nil
+	end, { item.id })
+
 	-- Work out the item's colour (for the Colour line) if we don't know it.
 	React.useEffect(function()
 		if item.colour ~= "" or item.thumbnail == "" then

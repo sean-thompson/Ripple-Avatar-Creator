@@ -6,14 +6,20 @@
 	Our confirmation step before Roblox's own purchase flow: item tint, title
 	("Buy item" / "Buy N items"), what's being bought, the price (or Free),
 	Cancel / Buy. It never imitates Roblox's purchase UI — the line under the
-	price says Roblox confirms next, and Task 11 hands off to the real prompt
-	from `onConfirm`.
+	price says Roblox confirms next, and `onConfirm` hands off to Roblox's
+	real prompt (PurchaseController).
+
+	While Roblox's prompt is up the Buy button waits. If the purchase is
+	cancelled or fails (or only part of it went through), the dialog stays
+	with the reason in place of the note, Buy becomes Try again and Cancel
+	becomes Close. A full success closes it (Hud).
 
 	Dims the screen behind it and swallows input; tapping the dimmed area
 	cancels. Rises in / drops out with a fade.
 
 	Props:
 		itemIds: { number }?   unowned items to buy; nil = closed
+		status: Status?        nil = not sent yet; else waiting or the outcome
 		onCancel: () -> ()
 		onConfirm: (itemIds: { number }) -> ()
 ]]
@@ -38,11 +44,26 @@ local PlaceholderData = require(views:WaitForChild("screens"):WaitForChild("Plac
 
 local e = React.createElement
 
+export type Status = {
+	state: "waiting" | "done" | "cancelled" | "failed",
+	reason: string,
+}
+
+local NOTE = "You'll confirm the purchase with Roblox next."
+local WAITING_NOTE = "Confirm the purchase in Roblox's window."
+local PROBLEM = Color3.fromHex("#ff9a8a") -- the reason line when it didn't all go through
+
 local WIDTH = 440
 local HEIGHT = 222
 local MARGIN = 12
 
-local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), onConfirm: (ids: { number }) -> () })
+local function Dialog(props: {
+	itemIds: { number },
+	status: Status?,
+	t: any,
+	onCancel: () -> (),
+	onConfirm: (ids: { number }) -> (),
+})
 	local skin = useSkin()
 	local items = {}
 	local total = 0
@@ -60,6 +81,15 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 	local text = if single then "Would you like to buy " .. items[1].name .. "?" else table.concat(names, ", ")
 	local margin = skin.px(MARGIN)
 	local thumb = skin.px(84)
+	local status = props.status
+	local waiting = status ~= nil and status.state == "waiting"
+	local outcome = status ~= nil and not waiting -- an answer came back with a reason
+	local note = if waiting then WAITING_NOTE elseif outcome and status.reason ~= "" then status.reason else NOTE
+	local buyLabel = if waiting
+		then "Waiting for Roblox…"
+		elseif outcome then "Try again"
+		elseif total > 0 then "Buy · " .. total
+		else "Get free"
 
 	return e("TextButton", {
 		Name = "BuyPrompt",
@@ -164,9 +194,10 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 					Position = UDim2.new(0, 0, 1, -skin.px(Tokens.size.ctaHeight + 12)),
 					Size = UDim2.new(1, 0, 0, skin.px(18)),
 					BackgroundTransparency = 1,
-					Text = "You'll confirm the purchase with Roblox next.",
-					TextColor3 = Tokens.color.white,
-					TextTransparency = Tokens.alpha.textDim,
+					Text = note,
+					TextColor3 = if outcome then PROBLEM else Tokens.color.white,
+					TextTransparency = if outcome then 0 else Tokens.alpha.textDim,
+					TextTruncate = Enum.TextTruncate.AtEnd,
 					TextSize = skin.textPx(12.5),
 					FontFace = Tokens.font(700),
 					TextXAlignment = Enum.TextXAlignment.Left,
@@ -181,7 +212,7 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 						variant = "pill",
 						size = Tokens.size.ctaHeight,
 						width = 150,
-						label = "Cancel",
+						label = if outcome then "Close" else "Cancel",
 						sound = "back",
 						onActivated = props.onCancel,
 					}),
@@ -191,8 +222,9 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 						width = 220,
 						icon = "shopping_basket",
 						iconSize = 18,
-						label = if total > 0 then "Buy · " .. total else "Get free",
+						label = buyLabel,
 						active = true,
+						disabled = waiting,
 						sound = false, -- the purchase result plays its own sound
 						anchorPoint = Vector2.new(1, 0),
 						position = UDim2.fromScale(1, 0),
@@ -206,7 +238,12 @@ local function Dialog(props: { itemIds: { number }, t: any, onCancel: () -> (), 
 	})
 end
 
-local function BuyPrompt(props: { itemIds: { number }?, onCancel: () -> (), onConfirm: (ids: { number }) -> () })
+local function BuyPrompt(props: {
+	itemIds: { number }?,
+	status: Status?,
+	onCancel: () -> (),
+	onConfirm: (ids: { number }) -> (),
+})
 	-- Keep the last item list so the dialog still has content while it leaves.
 	local lastIds = React.useRef(nil :: { number }?)
 	if props.itemIds then
@@ -227,6 +264,7 @@ local function BuyPrompt(props: { itemIds: { number }?, onCancel: () -> (), onCo
 		if ids then
 			children["Prompt" .. transition.key] = e(Dialog, {
 				itemIds = ids,
+				status = props.status,
 				t = transition.springProps.t,
 				onCancel = props.onCancel,
 				onConfirm = props.onConfirm,

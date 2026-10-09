@@ -47,6 +47,7 @@ local NetworkConfig = {
 		Bazaar = { "BuyTreasure" },
 		CashMachine = { "Withdraw", "Deposit" },
 		Favourites = { "Toggle" },
+		Purchase = { "Buy", "Finished", "Check" },
 		Shrine = { "Donate" },
 		SlashCommand = {},  -- No actions, just the intent
 		WorldOptions = { "Set", "Reset" },
@@ -93,6 +94,14 @@ local NetworkConfig = {
 			treasure = 0,
 			favourIds = {},
 		},
+		-- What the player owns, as far as we've checked, and their latest
+		-- purchase (session only; OwnershipModel). `owned` holds "Asset:123" /
+		-- "Bundle:45" keys; `purchase.id` echoes the client's request id.
+		Ownership = {
+			ownerId = "",
+			owned = {},
+			purchase = { id = 0, state = "idle", reason = "", bought = {} },
+		},
 		Shrine = {
 			ownerId = "",
 			treasure = 0,
@@ -135,6 +144,7 @@ export type BasketAction = "Add" | "Remove" | "AddMany" | "RemoveMany" | "Clear"
 export type BazaarAction = "BuyTreasure"
 export type CashMachineAction = "Withdraw" | "Deposit"
 export type FavouritesAction = "Toggle"
+export type PurchaseAction = "Buy" | "Finished" | "Check"
 export type ShrineAction = "Donate"
 export type WorldOptionsAction = "Set" | "Reset"
 
@@ -172,6 +182,19 @@ export type CandlesState = {
 export type FavouritesState = {
 	ownerId: string,
 	items: { string }, -- "Asset:123" / "Bundle:45", most recent last
+}
+
+export type PurchaseResult = {
+	id: number, -- the client's request id
+	state: "idle" | "waiting" | "done" | "cancelled" | "failed",
+	reason: string, -- why nothing (or not everything) was bought
+	bought: { string }, -- keys bought by this purchase
+}
+
+export type OwnershipState = {
+	ownerId: string,
+	owned: { string }, -- "Asset:123" / "Bundle:45", known owned
+	purchase: PurchaseResult,
 }
 
 export type FavoursState = {

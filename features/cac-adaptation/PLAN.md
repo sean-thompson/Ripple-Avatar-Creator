@@ -230,7 +230,7 @@
 
 
 ### Task 9: Item page, favourites and More like this
-- **Status:** [TODO]
+- **Status:** [DONE]
 - **Why here:** The first persisted per-user collection after World options; item pages are the destination of View from cards, Wearing, Basket, outfit rows and stores, so they come before those.
 - **Depends on:** 8
 - **Refs:** Scope > Item page; Integration points (persistent user state: favourite items); Out of scope (More like this is same-category rule only)
@@ -241,11 +241,14 @@
 - **Associated UI:** Item page (opened from 5b View; shown inside 5d/5c breadcrumbs).
 - **Replication:** Large preview is **cosmetic**: client-only rig/viewport of the item on a copy of the current look, not a server object. Favourites are logical persisted state.
 - **Sub-tasks:**
-  - [TODO] 9.1 Model: `models/user/FavouritesModel.luau` (User scope) holding favourite item ids (and, later, favourite store ids for Task 18). `/create-model`; note index size limits.
-  - [TODO] 9.2 Network/Controller: `Favourites` controller (ToggleItem), validated against catalogue ids, rate-limited. `/create-controller`.
-  - [TODO] 9.3 Item page screen (`/html-to-react-luau`): preview (reuse Task 6 rig), details, action row, favourite toggle with count, More like this row (same-category rule as a client/server query over cached results).
-  - [TODO] 9.4 Hook up breadcrumbs for deep pushes from any source (catalogue, basket, wearing, outfit rows, stores) via the navigation hook from Task 2.
-  - [TODO] 9.5 Playtest persistence of favourites across rejoin and the More like this row.
+  - [DONE] 9.1 Model: `models/user/FavouritesModel.luau` (User scope) holding favourite item ids (and, later, favourite store ids for Task 18). `/create-model`; note index size limits.
+  - [DONE] 9.2 Network/Controller: `Favourites` controller (ToggleItem), validated against catalogue ids, rate-limited. `/create-controller`.
+  - [DONE] 9.3 Item page screen (`/html-to-react-luau`): preview (reuse Task 6 rig), details, action row, favourite toggle with count, More like this row (same-category rule as a client/server query over cached results).
+  - [DONE] 9.4 Hook up breadcrumbs for deep pushes from any source (catalogue, basket, wearing, outfit rows, stores) via the navigation hook from Task 2.
+  - [DONE] 9.5 Playtest persistence of favourites across rejoin and the More like this row.
+- **Outcome:**
+  > Favourites: `FavouritesModel` (User scope, persisted, "Asset:123" / "Bundle:45" keys, capped at 500, oldest drops) and `FavouritesController` (Toggle; validates via AvatarService's cached catalogue lookup; 0.25s cooldown; favourite / unfavourite analytics). Item page: star button (orange when yours) carrying the catalogue's Roblox-wide favourite count ("★ 2,757,860") instead of a separate meta line, which would overflow the info column; cards show a star badge. More like this is a real catalogue search: same chip, topped up from the category (`useCatalogue` skips an empty category, for mock items). User call: favourites list deferred to Outfits/Stores, which have favourites tabs. Our star is separate from Roblox favourites (AvatarEditorService:PromptSetFavorite exists but prompts every time). Breadcrumbs from every source were already working (root screens stay mounted under pushed pages).
+
 
 ### Task 10: Basket model and Basket screen
 - **Status:** [TODO]

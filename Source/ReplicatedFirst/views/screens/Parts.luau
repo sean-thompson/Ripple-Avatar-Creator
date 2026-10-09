@@ -343,7 +343,7 @@ function Parts.ItemCard(props: ItemCardProps)
 					then e(Badge, { kind = "marker", tone = "orange", icon = "checkroom", layoutOrder = 1, zIndex = 2 })
 					else nil,
 				InBasket = if props.inBasket
-					then e(Badge, { kind = "marker", tone = "white", icon = "shopping_basket", layoutOrder = 2, zIndex = 2 })
+					then e(Badge, { kind = "marker", tone = "orange", icon = "shopping_basket", layoutOrder = 2, zIndex = 2 })
 					else nil,
 				Favourite = if props.favourite
 					then e(Badge, { kind = "marker", tone = "white", icon = "star", layoutOrder = 3, zIndex = 2 })

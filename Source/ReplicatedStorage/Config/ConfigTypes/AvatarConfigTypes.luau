@@ -21,6 +21,8 @@ export type AvatarConfig = {
     tryOnCooldown: number, -- seconds between a player's try-on requests
     undoDepth: number, -- how many changes Undo can step back through
     maxWearMany: number, -- most items in one Wear-all request
+    basketLimit: number, -- most items the basket holds (the oldest drop off)
+    basketBudget: { requests: number, seconds: number }, -- basket changes allowed per window
 }
 
 return nil

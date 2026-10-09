@@ -13,10 +13,16 @@
 	    entries are turned into items with CatalogueClient.remember.
 	  · Favourites are real (Task 9): Network.State.Favourites (persisted),
 	    toggled through FavouritesController.
-	  · The basket is still a local stand-in until Task 10 (Basket model).
+	  · The basket is real (Task 10): Network.State.Basket (persisted),
+	    changed through BasketController. Changes show at once
+	    (optimistic): each is held as pending over the server's list until
+	    the server's state agrees, or for PENDING_SECONDS if it never does
+	    (a dropped or rejected request), after which the server's list wins.
+	    "Try on everything" goes to AvatarController's WearMany like any
+	    wear-all.
 
 	Mock items (the prototype's placeholder data, no thumbnail) can't be
-	worn: toggleWear / wearAll skip them and report it.
+	worn or put in the basket: the intents skip them and report it.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,6 +34,8 @@ local views = script.Parent.Parent
 local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
 local CatalogueClient = require(views:WaitForChild("catalogue"):WaitForChild("CatalogueClient"))
 local useBoltState = require(views:WaitForChild("hooks"):WaitForChild("useBoltState"))
+
+local AvatarConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("AvatarConfig"))
 
 export type Look = {
 	worn: { number }, -- item ids, in the order put on
@@ -43,13 +51,20 @@ export type Look = {
 	reset: () -> (), -- back to the player's own Roblox avatar
 	isFavourite: (id: number) -> boolean,
 	toggleFavourite: (id: number) -> boolean, -- false for mock items
-	toggleBasket: (id: number) -> (),
+	toggleBasket: (id: number) -> boolean, -- false for mock items
+	addToBasket: (ids: { number }) -> number, -- how many were sent
 	markOwned: (ids: { number }) -> (),
 	basketTotal: number, -- Robux for unowned basket items
 }
 
 local DEFAULT_AVATAR = { worn = {}, canUndo = false }
 local DEFAULT_FAVOURITES = { items = {} }
+local DEFAULT_BASKET = { items = {} }
+-- How long an optimistic basket change waits for the server to agree.
+local PENDING_SECONDS = 3
+
+-- An optimistic basket change: in or out, and when it was made.
+type Pending = { add: boolean, at: number }
 
 -- An item's favourites key: "Asset:123" / "Bundle:45" (nil for mock items).
 local function favouriteKey(id: number): string?
@@ -58,16 +73,6 @@ local function favouriteKey(id: number): string?
 		return nil
 	end
 	return item.kind .. ":" .. item.targetId
-end
-
-local function without(list: { number }, id: number): { number }
-	local result = {}
-	for _, other in list do
-		if other ~= id then
-			table.insert(result, other)
-		end
-	end
-	return result
 end
 
 local function canWear(id: number): boolean
@@ -87,11 +92,65 @@ local function usePlaceholderLook(): Look
 	for _, key in favourites.items or {} do
 		favouriteSet[key] = true
 	end
-	-- Prototype starting basket (1-based mock ids).
-	local basket, setBasket = React.useState({ 9, 31, 23 })
+	local basketState = useBoltState(Network.State.Basket, DEFAULT_BASKET :: any)
 	local _ownedVersion, setOwnedVersion = React.useState(0)
+	-- Optimistic basket changes by item id.
+	local pending: { [number]: Pending }, setPending = React.useState({} :: { [number]: Pending })
 
-	-- Re-render when a worn item's details (name, price) arrive.
+	-- The server's basket, as item ids.
+	local serverBasket = {}
+	local serverSet = {}
+	for _, entry in basketState.items or {} do
+		local item = CatalogueClient.remember(entry)
+		table.insert(serverBasket, item.id)
+		serverSet[item.id] = true
+	end
+
+	-- Drop pending changes the server now agrees with, and stale ones.
+	local function settle(current: { [number]: Pending }): { [number]: Pending }
+		local now = os.clock()
+		local result = nil
+		for id, change in current do
+			if (serverSet[id] == true) == change.add or now - change.at > PENDING_SECONDS then
+				result = result or table.clone(current)
+				result[id] = nil
+			end
+		end
+		return result or current
+	end
+	React.useEffect(function()
+		setPending(settle)
+		return nil
+	end, { basketState })
+	-- Give up on the oldest outstanding change once it's stale.
+	React.useEffect(function()
+		local oldest = math.huge
+		for _, change in pending do
+			oldest = math.min(oldest, change.at)
+		end
+		if oldest == math.huge then
+			return nil
+		end
+		local thread = task.delay(math.max(oldest + PENDING_SECONDS - os.clock(), 0) + 0.05, function()
+			setPending(settle)
+		end)
+		return function()
+			task.cancel(thread)
+		end
+	end, { pending })
+
+	local function expect(ids: { number }, add: boolean)
+		setPending(function(current: { [number]: Pending })
+			local result = table.clone(current)
+			local now = os.clock()
+			for _, id in ids do
+				result[id] = { add = add, at = now }
+			end
+			return result
+		end)
+	end
+
+	-- Re-render when a worn or basket item's details (name, price) arrive.
 	React.useEffect(function()
 		local connection = CatalogueClient.changed:Connect(function()
 			setOwnedVersion(function(n: number)
@@ -111,11 +170,36 @@ local function usePlaceholderLook(): Look
 		wornSet[item.id] = true
 	end
 
+	-- What the player sees: the server's basket with pending changes on top
+	-- (pending adds at the end, in the order made).
+	local basket = {}
+	local basketSet = {}
+	for _, id in serverBasket do
+		local change = pending[id]
+		if not change or change.add then
+			table.insert(basket, id)
+			basketSet[id] = true
+		end
+	end
+	local added = {}
+	for id, change in pending do
+		if change.add and not basketSet[id] then
+			table.insert(added, id)
+		end
+	end
+	table.sort(added, function(a, b)
+		return pending[a].at < pending[b].at
+	end)
+	for _, id in added do
+		table.insert(basket, id)
+		basketSet[id] = true
+	end
+
 	local function isWorn(id: number): boolean
 		return wornSet[id] == true
 	end
 	local function inBasket(id: number): boolean
-		return table.find(basket, id) ~= nil
+		return basketSet[id] == true
 	end
 
 	local total = 0
@@ -150,6 +234,10 @@ local function usePlaceholderLook(): Look
 					table.insert(refs, ref(id))
 				end
 			end
+			-- The server takes up to maxWearMany; keep the most recent.
+			while #refs > AvatarConfig.maxWearMany do
+				table.remove(refs, 1)
+			end
 			if #refs > 0 then
 				intent:FireServer(actions.WearMany, refs)
 			end
@@ -175,34 +263,49 @@ local function usePlaceholderLook(): Look
 			Network.Intent.Favourites:FireServer(Network.Actions.Favourites.Toggle, ref(id))
 			return true
 		end,
-		toggleBasket = function(id: number)
-			setBasket(function(current: { number })
-				if table.find(current, id) then
-					return without(current, id)
+		toggleBasket = function(id: number): boolean
+			if not canWear(id) then
+				return false
+			end
+			local basketActions = Network.Actions.Basket
+			local adding = not inBasket(id)
+			expect({ id }, adding)
+			Network.Intent.Basket:FireServer(if adding then basketActions.Add else basketActions.Remove, ref(id))
+			return true
+		end,
+		addToBasket = function(ids: { number }): number
+			local refs, sent = {}, {}
+			for _, id in ids do
+				-- The server takes up to maxWearMany per request.
+				if canWear(id) and not inBasket(id) and #refs < AvatarConfig.maxWearMany then
+					table.insert(refs, ref(id))
+					table.insert(sent, id)
 				end
-				local result = table.clone(current)
-				table.insert(result, id)
-				return result
-			end)
+			end
+			if #refs > 0 then
+				expect(sent, true)
+				Network.Intent.Basket:FireServer(Network.Actions.Basket.AddMany, refs)
+			end
+			return #refs
 		end,
 		-- Pretend purchase (Task 3 feel test; Task 11 does it for real): flags the
-		-- items owned and drops them from the basket.
+		-- items owned and takes them out of the basket.
 		markOwned = function(ids: { number })
+			local refs, sent = {}, {}
 			for _, id in ids do
 				local item = PlaceholderData.item(id)
 				if item then
 					item.owned = true
-				end
-			end
-			setBasket(function(current: { number })
-				local result = {}
-				for _, id in current do
-					if not table.find(ids, id) then
-						table.insert(result, id)
+					if canWear(id) and inBasket(id) and #refs < AvatarConfig.maxWearMany then
+						table.insert(refs, ref(id))
+						table.insert(sent, id)
 					end
 				end
-				return result
-			end)
+			end
+			if #refs > 0 then
+				expect(sent, false)
+				Network.Intent.Basket:FireServer(Network.Actions.Basket.RemoveMany, refs)
+			end
 			setOwnedVersion(function(n: number)
 				return n + 1
 			end)

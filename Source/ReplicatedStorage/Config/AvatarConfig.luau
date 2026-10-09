@@ -61,6 +61,8 @@ local config: AvatarConfig = {
 	tryOnCooldown = 0.2,
 	undoDepth = 20,
 	maxWearMany = 20,
+	basketLimit = 100,
+	basketBudget = { requests = 10, seconds = 2 },
 }
 
 return config

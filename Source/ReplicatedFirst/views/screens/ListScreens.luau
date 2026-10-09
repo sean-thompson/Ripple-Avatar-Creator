@@ -5,9 +5,9 @@
 
 	Basket: one row per item (Try on / Remove), a summary (items, already owned,
 	total) with Buy all, Try on everything, Add what I'm wearing (the unowned
-	worn items not already in it) and Remove all. Wearing: what's on the avatar
+	worn items not already in it) and Remove all (press twice: ConfirmButton). Wearing: what's on the avatar
 	(price or Owned, Basket toggle, Take off) with Buy all (the unowned ones),
-	Add unowned to basket, Save as outfit and Take everything off. Rows open the item page.
+	Add unowned to basket, Save as outfit and Take everything off (press twice). Rows open the item page.
 
 	Buy / Get and Buy all open Roblox's purchase prompt; Save as outfit is a
 	stub until Task 12.
@@ -183,6 +183,51 @@ local function wideButton(
 	})
 end
 
+-- A wide button for something hard to take back (Remove all, Take everything
+-- off): the first press arms it ("Tap again to confirm", orange) for
+-- CONFIRM_SECONDS; a second press within that does it. No dialog.
+local CONFIRM_SECONDS = 3
+
+local function ConfirmButton(props: {
+	label: string,
+	icon: string,
+	layoutOrder: number,
+	disabled: boolean?,
+	onConfirm: () -> (),
+})
+	local armed, setArmed = React.useState(false)
+	React.useEffect(function()
+		if not armed then
+			return nil
+		end
+		local thread = task.delay(CONFIRM_SECONDS, function()
+			setArmed(false)
+		end)
+		return function()
+			task.cancel(thread)
+		end
+	end, { armed })
+	return e(PillButton, {
+		variant = "pill",
+		size = Tokens.size.ctaHeight,
+		label = if armed then "Tap again to confirm" else props.label,
+		icon = props.icon,
+		iconSize = 18,
+		active = armed,
+		sound = if armed then false else nil, -- the action plays its own sound
+		disabled = props.disabled,
+		layoutOrder = props.layoutOrder,
+		onActivated = function()
+			if armed then
+				setArmed(false)
+				props.onConfirm()
+			else
+				setArmed(true)
+			end
+		end,
+	})
+end
+
 local function BasketScreen(props: { nav: any, look: any })
 	local skin = useSkin()
 	local hud = React.useContext(HudContext)
@@ -246,7 +291,13 @@ local function BasketScreen(props: { nav: any, look: any })
 			wideButton("Add what I'm wearing", "add_shopping_cart", 12, false, function()
 				look.addToBasket(wornToAdd)
 			end, false, #wornToAdd == 0),
-			wideButton("Remove all", "remove_shopping_cart", 13, false, look.clearBasket, false, #look.basket == 0),
+			e(ConfirmButton, {
+				label = "Remove all",
+				icon = "remove_shopping_cart",
+				layoutOrder = 13,
+				disabled = #look.basket == 0,
+				onConfirm = look.clearBasket,
+			}),
 		}),
 	})
 end
@@ -332,7 +383,13 @@ local function WearingScreen(props: { nav: any, look: any })
 				look.addToBasket(unownedIds)
 			end, false),
 			wideButton("Save as outfit", "bookmark_add", 11, false),
-			wideButton("Take everything off", "delete_sweep", 12, false, look.takeOffAll, false),
+			e(ConfirmButton, {
+				label = "Take everything off",
+				icon = "delete_sweep",
+				layoutOrder = 12,
+				disabled = #look.worn == 0,
+				onConfirm = look.takeOffAll,
+			}),
 		}),
 	})
 end

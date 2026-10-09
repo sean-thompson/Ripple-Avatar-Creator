@@ -29,6 +29,7 @@ local PlaceholderData = require(script.Parent:WaitForChild("PlaceholderData"))
 local CatalogueClient = require(views:WaitForChild("catalogue"):WaitForChild("CatalogueClient"))
 local ItemColour = require(views:WaitForChild("catalogue"):WaitForChild("ItemColour"))
 local ItemModel = require(views:WaitForChild("catalogue"):WaitForChild("ItemModel"))
+local useCatalogue = require(hooks:WaitForChild("useCatalogue"))
 local ItemViewer3D = require(script.Parent:WaitForChild("ItemViewer3D"))
 local HudContext = require(views:WaitForChild("HudContext"))
 local useTextWidth = require(hooks:WaitForChild("useTextWidth"))
@@ -127,11 +128,22 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	local inBasket = props.look.inBasket(item.id)
 	local preview = skin.px(250)
 
-	-- Same category, same chip first, from items this client has already seen
-	-- (mock items for mock ones). Task 9 makes this a proper query.
+	-- More like this: a catalogue search for the same chip, topped up from
+	-- the rest of the category (both cached). Mock items use mock data.
+	local real = item.thumbnail ~= "" and item.main ~= ""
+	local sameChip = useCatalogue({ category = if real then item.main else "", chip = if real then item.sub else nil })
+	local sameCategory = useCatalogue({ category = if real then item.main else "" })
 	local similar = {}
-	if item.thumbnail ~= "" then
-		similar = CatalogueClient.similar(item, 6)
+	local listed: { [number]: boolean } = { [item.id] = true }
+	if real then
+		for _, results in { sameChip.items, sameCategory.items } do
+			for _, other in results do
+				if #similar < 6 and not listed[other.id] then
+					listed[other.id] = true
+					table.insert(similar, other)
+				end
+			end
+		end
 	else
 		for _, other in PlaceholderData.items do
 			if other.id ~= item.id and other.main == item.main and #similar < 6 then
@@ -139,6 +151,7 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 			end
 		end
 	end
+	local favourite = props.look.isFavourite(item.id)
 	local more: { [string]: any } = {}
 	local count = 0
 	for _, other in similar do
@@ -147,6 +160,7 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 			item = other,
 			wearing = props.look.isWorn(other.id),
 			inBasket = props.look.inBasket(other.id),
+			favourite = props.look.isFavourite(other.id),
 			layoutOrder = count,
 			onActivated = function()
 				props.nav.replaceTop({ kind = "item", id = other.id, label = other.name })
@@ -261,6 +275,25 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 						hud.openBuy({ item.id })
 					end,
 				}),
+				-- Favourite: an orange star when it's one of yours, with the
+				-- catalogue's (Roblox-wide) favourite count beside it.
+				Favourite = if real
+					then e(PillButton, {
+						variant = "pill",
+						size = Tokens.size.ctaHeight,
+						width = 110,
+						icon = "star",
+						iconSize = 20,
+						label = Tokens.grouped(item.favourites),
+						iconColor = if favourite then Tokens.color.accentText else nil,
+						glowRadius = 0,
+						sound = if favourite then "back" else "confirm",
+						layoutOrder = 4,
+						onActivated = function()
+							props.look.toggleFavourite(item.id)
+						end,
+					})
+					else nil,
 			}),
 			Description = if description ~= ""
 				then e("TextLabel", {

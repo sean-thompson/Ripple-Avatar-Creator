@@ -8,7 +8,8 @@
 	  Thumb      tinted tile (the design's colour-washed card art) with the
 	             item's thumbnail on it when it has one
 	  PriceTag   "Owned" / "Free" / "₹65"
-	  ItemCard   catalogue card: thumb with wearing/in-basket markers, name, price;
+	  ItemCard   catalogue card: thumb with wearing / in-basket / favourite
+	             markers, name, price;
 	             with `menu`, a tap opens the design's card menu over the thumb
 	             (Try · basket · Buy · View) instead of calling onActivated
 	  ListRow    Basket/Wearing/Outfit row: thumb, name, sub-line, price, actions
@@ -186,6 +187,7 @@ export type ItemCardProps = {
 	item: PlaceholderData.Item,
 	wearing: boolean,
 	inBasket: boolean,
+	favourite: boolean?, -- a star badge
 	onActivated: (() -> ())?, -- plain tap (cards without a menu)
 	menu: CardMenu?,
 	layoutOrder: number?,
@@ -328,7 +330,7 @@ function Parts.ItemCard(props: ItemCardProps)
 			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1, DominantAxis = Enum.DominantAxis.Width }),
 			Markers = e("Frame", {
 				Position = UDim2.fromOffset(skin.px(6), skin.px(6)),
-				Size = UDim2.fromOffset(skin.px(52), skin.px(24)),
+				Size = UDim2.fromOffset(skin.px(80), skin.px(24)),
 				BackgroundTransparency = 1,
 				ZIndex = 2,
 			}, {
@@ -342,6 +344,9 @@ function Parts.ItemCard(props: ItemCardProps)
 					else nil,
 				InBasket = if props.inBasket
 					then e(Badge, { kind = "marker", tone = "white", icon = "shopping_basket", layoutOrder = 2, zIndex = 2 })
+					else nil,
+				Favourite = if props.favourite
+					then e(Badge, { kind = "marker", tone = "white", icon = "star", layoutOrder = 3, zIndex = 2 })
 					else nil,
 			}),
 			Menu = if props.menu and props.menu.open

@@ -45,6 +45,7 @@ local NetworkConfig = {
 		Avatar = { "TryOn", "TakeOff", "WearMany", "TakeOffAll", "Undo", "Reset" },
 		Bazaar = { "BuyTreasure" },
 		CashMachine = { "Withdraw", "Deposit" },
+		Favourites = { "Toggle" },
 		Shrine = { "Donate" },
 		SlashCommand = {},  -- No actions, just the intent
 		WorldOptions = { "Set", "Reset" },
@@ -67,6 +68,12 @@ local NetworkConfig = {
 			positionY = 0,
 			positionZ = 0,
 			createdTime = 0,
+		},
+		-- The player's favourite catalogue items (persisted; FavouritesModel),
+		-- as "Asset:123" / "Bundle:45" keys, most recent last.
+		Favourites = {
+			ownerId = "",
+			items = {},
 		},
 		Favours = {
 			ownerId = "",
@@ -119,6 +126,7 @@ local Network = NetworkBuilder.build(NetworkConfig, Bolt)
 export type AvatarAction = "TryOn" | "TakeOff" | "WearMany" | "TakeOffAll" | "Undo" | "Reset"
 export type BazaarAction = "BuyTreasure"
 export type CashMachineAction = "Withdraw" | "Deposit"
+export type FavouritesAction = "Toggle"
 export type ShrineAction = "Donate"
 export type WorldOptionsAction = "Set" | "Reset"
 
@@ -146,6 +154,11 @@ export type CandlesState = {
 	positionY: number,
 	positionZ: number,
 	createdTime: number,
+}
+
+export type FavouritesState = {
+	ownerId: string,
+	items: { string }, -- "Asset:123" / "Bundle:45", most recent last
 }
 
 export type FavoursState = {

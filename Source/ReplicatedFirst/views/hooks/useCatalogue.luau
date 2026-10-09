@@ -7,7 +7,8 @@
 	via CatalogueClient. Changes to the typed fields (keyword, creator) wait
 	CatalogueConfig.searchDebounce before searching; everything else (tab,
 	chip, sort, price, sales type, off-sale) searches at once. A slower, older
-	search never overwrites a newer one.
+	search never overwrites a newer one. An empty category means "don't
+	search" (e.g. a mock item's More like this): no items, status "ready".
 
 	Returns:
 		items: { Item }
@@ -70,6 +71,10 @@ local function useCatalogue(input: CatalogueClient.Query)
 		lastTyped.current = typed
 		-- Typing keeps the old results up while the new ones load; any other
 		-- change clears them, so another tab's or filter's items never linger.
+		if query.category == "" then
+			setState({ items = {}, status = "ready", exhausted = true })
+			return nil
+		end
 		setState(function(current)
 			return { items = if typing then current.items else {}, status = "loading", exhausted = false }
 		end)
@@ -99,7 +104,7 @@ local function useCatalogue(input: CatalogueClient.Query)
 	} :: { any })
 
 	local function loadMore()
-		if loading.current ~= nil or state.exhausted or state.status ~= "ready" then
+		if query.category == "" or loading.current ~= nil or state.exhausted or state.status ~= "ready" then
 			return
 		end
 		local mine = generation.current

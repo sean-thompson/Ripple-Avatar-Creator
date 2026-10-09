@@ -225,6 +225,7 @@ local function CatalogueScreen(props: { nav: any, look: any })
 			item = item,
 			wearing = props.look.isWorn(item.id),
 			inBasket = props.look.inBasket(item.id),
+			favourite = props.look.isFavourite(item.id),
 			layoutOrder = count,
 			menu = {
 				open = menuId == item.id,

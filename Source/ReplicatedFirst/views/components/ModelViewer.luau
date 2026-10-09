@@ -5,7 +5,8 @@
 
 	A turnable 3D view of a model in a ViewportFrame, framed to fit its
 	bounding sphere. Turns slowly on its own until touched (optional); drag
-	(mouse or touch) to turn it any way, mouse wheel to zoom. Used by the item
+	(mouse or touch) to turn it any way, mouse wheel to zoom, hold the middle
+	mouse button and drag to move it up / down / sideways. Used by the item
 	page's 3D view and the panel's avatar preview.
 
 	The model comes from `build` (may yield; returns a Model the viewer may
@@ -49,6 +50,10 @@ local AUTO_SPIN = 25 -- degrees per second until the first drag
 local DRAG_SPEED = 0.4 -- degrees per screen pixel
 local PITCH_LIMIT = 80
 local ZOOM_MIN, ZOOM_MAX = 0.55, 1.8
+-- Middle-drag pan: how far the view moves per screen pixel, as a share of
+-- the camera's distance, and how far from centre it may go (share of size).
+local PAN_SPEED = 0.0018
+local PAN_LIMIT = 0.6
 local CARD = Color3.fromHex("#1c1c1c")
 
 export type Props = {
@@ -85,6 +90,8 @@ local function ModelViewer(props: Props)
 		zoom = 1,
 		centre = Vector3.zero,
 		distance = 10,
+		size = 1, -- the model's bounding size (for the pan limit)
+		pan = Vector3.zero, -- middle-drag offset, in world space
 		touched = false,
 		place = function() end,
 	})
@@ -103,12 +110,14 @@ local function ModelViewer(props: Props)
 		v.camera = camera
 		v.place = function()
 			local orbit = CFrame.Angles(0, math.rad(v.yaw), 0) * CFrame.Angles(math.rad(v.pitch), 0, 0)
-			camera.CFrame = CFrame.new(v.centre) * orbit * CFrame.new(0, 0, v.distance * v.zoom)
+			camera.CFrame = CFrame.new(v.centre + v.pan) * orbit * CFrame.new(0, 0, v.distance * v.zoom)
 		end
 		v.place()
 
 		local dragging: InputObject? = nil
 		local lastPosition: Vector3? = nil
+		local panning = false
+		local lastPan: Vector3? = nil
 		local connections = {
 			RunService.RenderStepped:Connect(function(dt: number)
 				if latest.current.autoSpin ~= false and not v.touched and not dragging and v.model then
@@ -121,6 +130,10 @@ local function ModelViewer(props: Props)
 					dragging = input
 					lastPosition = input.Position
 					v.touched = true
+				elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+					panning = true
+					lastPan = input.Position
+					v.touched = true
 				end
 			end),
 			viewport.InputChanged:Connect(function(input: InputObject)
@@ -130,6 +143,21 @@ local function ModelViewer(props: Props)
 				end
 			end),
 			UserInputService.InputChanged:Connect(function(input: InputObject)
+				if panning and lastPan and input.UserInputType == Enum.UserInputType.MouseMovement then
+					-- Move the view in the camera's own plane: right and up.
+					local delta = input.Position - lastPan
+					lastPan = input.Position
+					local scale = v.distance * v.zoom * PAN_SPEED
+					local look = camera.CFrame
+					local pan = v.pan - look.RightVector * delta.X * scale + look.UpVector * delta.Y * scale
+					local limit = v.size * PAN_LIMIT
+					if pan.Magnitude > limit then
+						pan = pan.Unit * limit
+					end
+					v.pan = pan
+					v.place()
+					return
+				end
 				if not dragging or not lastPosition then
 					return
 				end
@@ -147,6 +175,9 @@ local function ModelViewer(props: Props)
 				if dragging and isPress(input) then
 					dragging = nil
 					lastPosition = nil
+				elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+					panning = false
+					lastPan = nil
 				end
 			end),
 		}
@@ -193,12 +224,14 @@ local function ModelViewer(props: Props)
 			v.model = model
 			local boxCFrame, size = model:GetBoundingBox()
 			v.centre = boxCFrame.Position
+			v.size = size.Magnitude
 			-- Far enough back that the whole bounding sphere fits the view.
 			v.distance = (size.Magnitude / 2) / math.sin(math.rad(FOV / 2)) * (latest.current.fill or 1.05)
 			if not latest.current.keepView then
 				v.yaw = latest.current.yaw or 30
 				v.pitch = latest.current.pitch or -12
 				v.zoom = 1
+				v.pan = Vector3.zero
 				v.touched = false
 			end
 			v.place()

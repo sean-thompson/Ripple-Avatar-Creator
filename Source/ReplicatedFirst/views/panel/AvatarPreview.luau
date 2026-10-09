@@ -7,13 +7,15 @@
 	what everyone else sees (it's cloned from the real, server-dressed
 	character), posed at rest and turned to face the camera. It rebuilds
 	whenever the character's appearance changes (try on, take off, respawn),
-	keeping the angle you'd turned it to. Drag to turn, wheel to zoom.
+	keeping the angle you'd turned it to. Drag to turn, wheel to zoom, hold
+	the middle mouse button and drag to move it.
 
 	The real character is never touched: the copy lives only in the viewport.
 	A worn avatar background shows behind it.
 
 	Props:
-		backdrop: string?   avatar background image, if one is worn
+		backdrop: string?      avatar background image, if one is worn
+		cornerRadius: number?  design px, to match the card it fills
 ]]
 
 local Players = game:GetService("Players")
@@ -110,7 +112,7 @@ local function useCharacterVersion(): number
 	return version
 end
 
-local function AvatarPreview(props: { backdrop: string? })
+local function AvatarPreview(props: { backdrop: string?, cornerRadius: number? })
 	local version = useCharacterVersion()
 	return e(ModelViewer, {
 		buildKey = version,
@@ -122,7 +124,7 @@ local function AvatarPreview(props: { backdrop: string? })
 		fill = 0.9,
 		backdrop = props.backdrop,
 		backgroundColor = Color3.fromHex("#141414"),
-		cornerRadius = 18,
+		cornerRadius = props.cornerRadius or 18,
 		loadingText = "",
 	})
 end

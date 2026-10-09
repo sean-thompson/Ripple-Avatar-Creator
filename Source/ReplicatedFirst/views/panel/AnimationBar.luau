@@ -3,15 +3,16 @@
 --[[
 	AnimationBar (panel preview card: what the preview avatar is doing)
 
-	A row of round buttons above the Wearing button — Idle, Walk, Run, Jump,
-	Fall, Climb, Swim, Emotes — choosing the animation the avatar preview
+	A row of round buttons above the Wearing button — Idle, Move, Air, Swim,
+	Emotes — choosing the animation the avatar preview
 	plays (the real character is never touched). Animations come from what
 	the player is wearing (an animation pack, or Roblox's defaults), read
 	from the character's Animate script when they play.
 
-	Idle and Swim have two versions each (idle / look around, swim / tread
-	water): their buttons open a small menu upward. Emotes opens a list of
-	the emotes being worn plus any in the basket.
+	Each button opens a small menu upward: Idle (idle / look around), Move
+	(walk / run), Air (jump / fall / climb), Swim (swim / tread water), and
+	Emotes (the emotes being worn plus any in the basket). Long names end in
+	an ellipsis.
 
 	Props:
 		selected: string                 the current choice's key
@@ -55,11 +56,25 @@ local GROUPS: { Group } = {
 			{ key = "idle/2", label = "Look around", folder = "idle", name = "Animation2" },
 		},
 	},
-	{ key = "walk", icon = "directions_walk", label = "Walk", variants = { { key = "walk", label = "Walk", folder = "walk", name = "WalkAnim" } } },
-	{ key = "run", icon = "directions_run", label = "Run", variants = { { key = "run", label = "Run", folder = "run", name = "RunAnim" } } },
-	{ key = "jump", icon = "sports_gymnastics", label = "Jump", variants = { { key = "jump", label = "Jump", folder = "jump", name = "JumpAnim" } } },
-	{ key = "fall", icon = "paragliding", label = "Fall", variants = { { key = "fall", label = "Fall", folder = "fall", name = "FallAnim" } } },
-	{ key = "climb", icon = "stairs", label = "Climb", variants = { { key = "climb", label = "Climb", folder = "climb", name = "ClimbAnim" } } },
+	{
+		key = "move",
+		icon = "directions_run",
+		label = "Move",
+		variants = {
+			{ key = "move/walk", label = "Walk", folder = "walk", name = "WalkAnim" },
+			{ key = "move/run", label = "Run", folder = "run", name = "RunAnim" },
+		},
+	},
+	{
+		key = "air",
+		icon = "paragliding",
+		label = "Air",
+		variants = {
+			{ key = "air/jump", label = "Jump", folder = "jump", name = "JumpAnim" },
+			{ key = "air/fall", label = "Fall", folder = "fall", name = "FallAnim" },
+			{ key = "air/climb", label = "Climb", folder = "climb", name = "ClimbAnim" },
+		},
+	},
 	{
 		key = "swim",
 		icon = "pool",
@@ -75,14 +90,14 @@ local AnimationBar = {}
 
 AnimationBar.DEFAULT = GROUPS[1].variants[1]
 
--- Eight buttons across the 250px card (less its 12px margins).
-local BUTTON = 25
-local GAP = 3
-local ICON = 15
+-- Five buttons across the 250px card (less its 12px margins).
+local BUTTON = 34
+local GAP = 10
+local ICON = 19
 local ROW = 30
 local MENU_WIDTH = 150
 local MENU_ROWS = 6 -- visible before the list scrolls
-local BAR_WIDTH = 8 * BUTTON + 7 * GAP
+local BAR_WIDTH = (#GROUPS + 1) * BUTTON + #GROUPS * GAP
 
 local function groupOf(key: string): string
 	return string.match(key, "^([^/]+)") or key
@@ -118,6 +133,7 @@ local function Menu(props: {
 			variant = "pill",
 			size = ROW,
 			label = choice.label,
+			labelMaxWidth = MENU_WIDTH - 16 - 20, -- inside the menu's padding and the pill's ends
 			textStyle = Tokens.type.small,
 			active = choice.key == props.selected,
 			glowRadius = 0,

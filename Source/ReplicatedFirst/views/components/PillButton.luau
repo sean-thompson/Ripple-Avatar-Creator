@@ -33,6 +33,7 @@
 		iconSize: number?        design px
 		iconAfter: boolean?      put the icon after the label (e.g. a trailing chevron)
 		label: string?
+		labelMaxWidth: number?   design px; a longer label ends in "…"
 		textStyle: Tokens.TypeStyle?   default Tokens.type.cta
 		active: boolean?         orange face
 		disabled: boolean?       greyed out (dimmed face and content) and inert
@@ -70,6 +71,7 @@ export type Props = {
 	iconSize: number?,
 	iconAfter: boolean?,
 	label: string?,
+	labelMaxWidth: number?,
 	textStyle: Tokens.TypeStyle?,
 	active: boolean?,
 	disabled: boolean?,
@@ -159,6 +161,7 @@ local function PillButton(props: Props)
 			style = textStyle,
 			transparency = contentTransparency,
 			shadow = not props.disabled,
+			maxWidth = if props.labelMaxWidth then skin.px(props.labelMaxWidth) else nil,
 			layoutOrder = 2,
 			zIndex = z + 2,
 		})

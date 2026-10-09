@@ -83,6 +83,10 @@ local function withFeedback(look: any)
 		Sounds.play(if look.inBasket(id) then "back" else "confirm")
 		return look.toggleBasket(id)
 	end
+	feedback.clearBasket = function()
+		Sounds.play("back")
+		look.clearBasket()
+	end
 	feedback.addToBasket = function(ids: { number }): number
 		local count = look.addToBasket(ids)
 		Sounds.play(if count > 0 then "confirm" else "error")

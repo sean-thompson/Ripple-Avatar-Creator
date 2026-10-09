@@ -4,10 +4,10 @@
 	ListScreens (design frames 5f Basket / 5g Wearing, placeholder data)
 
 	Basket: one row per item (Try on / Remove), a summary (items, already owned,
-	total) with Buy all, Try on everything and Add what I'm wearing (the
-	unowned worn items not already in it). Wearing: what's on the avatar
-	(price or Owned, Basket toggle, Take off) with Add unowned to basket, Save as
-	outfit and Take everything off. Rows open the item page.
+	total) with Buy all, Try on everything, Add what I'm wearing (the unowned
+	worn items not already in it) and Remove all. Wearing: what's on the avatar
+	(price or Owned, Basket toggle, Take off) with Buy all (the unowned ones),
+	Add unowned to basket, Save as outfit and Take everything off. Rows open the item page.
 
 	Buy / Get and Buy all open Roblox's purchase prompt; Save as outfit is a
 	stub until Task 12.
@@ -246,6 +246,7 @@ local function BasketScreen(props: { nav: any, look: any })
 			wideButton("Add what I'm wearing", "add_shopping_cart", 12, false, function()
 				look.addToBasket(wornToAdd)
 			end, false, #wornToAdd == 0),
+			wideButton("Remove all", "remove_shopping_cart", 13, false, look.clearBasket, false, #look.basket == 0),
 		}),
 	})
 end
@@ -318,7 +319,10 @@ local function WearingScreen(props: { nav: any, look: any })
 			summaryLine(skin, "Items", tostring(#look.worn), 1),
 			summaryLine(skin, "Not owned", unowned .. " · " .. (if cost > 0 then Tokens.robux(cost) else "Free"), 2),
 		}, {
-			wideButton("Add unowned to basket", "add_shopping_cart", 10, true, function()
+			wideButton("Buy all", "shopping_basket", 9, true, function()
+				hud.buy(look.worn, "wearing")
+			end, nil, unowned == 0, hud.buying("wearing")),
+			wideButton("Add unowned to basket", "add_shopping_cart", 10, false, function()
 				local unownedIds = {}
 				for _, id in look.worn do
 					if not PlaceholderData.item(id).owned then

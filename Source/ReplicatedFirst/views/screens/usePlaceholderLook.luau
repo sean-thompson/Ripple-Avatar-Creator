@@ -60,6 +60,7 @@ export type Look = {
 	toggleFavourite: (id: number) -> boolean, -- false for mock items
 	toggleBasket: (id: number) -> boolean, -- false for mock items
 	addToBasket: (ids: { number }) -> number, -- how many were sent
+	clearBasket: () -> (),
 	checkOwned: (ids: { number }) -> (), -- ask the server, once a session each
 	buy: (ids: { number }) -> number?, -- the request id; nil if nothing to buy
 	purchase: Network.PurchaseResult, -- the latest purchase's outcome
@@ -344,6 +345,12 @@ local function usePlaceholderLook(): Look
 				Network.Intent.Basket:FireServer(Network.Actions.Basket.AddMany, refs)
 			end
 			return #refs
+		end,
+		clearBasket = function()
+			if #basket > 0 then
+				expect(basket, false)
+				Network.Intent.Basket:FireServer(Network.Actions.Basket.Clear)
+			end
 		end,
 		checkOwned = checkOwned,
 		buy = function(ids: { number }): number?

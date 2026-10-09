@@ -11,6 +11,8 @@
 	    everything off / undo / reset are intents to AvatarController. The
 	    character itself changes on the server, so everyone sees it. Worn
 	    entries are turned into items with CatalogueClient.remember.
+	  · Favourites are real (Task 9): Network.State.Favourites (persisted),
+	    toggled through FavouritesController.
 	  · The basket is still a local stand-in until Task 10 (Basket model).
 
 	Mock items (the prototype's placeholder data, no thumbnail) can't be
@@ -39,12 +41,24 @@ export type Look = {
 	takeOffAll: () -> (),
 	undo: () -> (),
 	reset: () -> (), -- back to the player's own Roblox avatar
+	isFavourite: (id: number) -> boolean,
+	toggleFavourite: (id: number) -> boolean, -- false for mock items
 	toggleBasket: (id: number) -> (),
 	markOwned: (ids: { number }) -> (),
 	basketTotal: number, -- Robux for unowned basket items
 }
 
 local DEFAULT_AVATAR = { worn = {}, canUndo = false }
+local DEFAULT_FAVOURITES = { items = {} }
+
+-- An item's favourites key: "Asset:123" / "Bundle:45" (nil for mock items).
+local function favouriteKey(id: number): string?
+	local item = PlaceholderData.item(id)
+	if not item or item.thumbnail == "" then
+		return nil
+	end
+	return item.kind .. ":" .. item.targetId
+end
 
 local function without(list: { number }, id: number): { number }
 	local result = {}
@@ -68,6 +82,11 @@ end
 
 local function usePlaceholderLook(): Look
 	local avatar = useBoltState(Network.State.Avatar, DEFAULT_AVATAR :: any)
+	local favourites = useBoltState(Network.State.Favourites, DEFAULT_FAVOURITES :: any)
+	local favouriteSet = {}
+	for _, key in favourites.items or {} do
+		favouriteSet[key] = true
+	end
 	-- Prototype starting basket (1-based mock ids).
 	local basket, setBasket = React.useState({ 9, 31, 23 })
 	local _ownedVersion, setOwnedVersion = React.useState(0)
@@ -144,6 +163,17 @@ local function usePlaceholderLook(): Look
 		end,
 		reset = function()
 			intent:FireServer(actions.Reset)
+		end,
+		isFavourite = function(id: number): boolean
+			local key = favouriteKey(id)
+			return key ~= nil and favouriteSet[key] == true
+		end,
+		toggleFavourite = function(id: number): boolean
+			if not favouriteKey(id) then
+				return false
+			end
+			Network.Intent.Favourites:FireServer(Network.Actions.Favourites.Toggle, ref(id))
+			return true
 		end,
 		toggleBasket = function(id: number)
 			setBasket(function(current: { number })

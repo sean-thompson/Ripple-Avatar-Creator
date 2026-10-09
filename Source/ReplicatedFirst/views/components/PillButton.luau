@@ -31,6 +31,7 @@
 		width: number?           pill only, design px; nil fills the parent's width
 		icon: string?            Material Symbols name
 		iconSize: number?        design px
+		iconColor: Color3?       default white (e.g. an orange star when favourited)
 		iconAfter: boolean?      put the icon after the label (e.g. a trailing chevron)
 		label: string?
 		labelMaxWidth: number?   design px; a longer label ends in "…"
@@ -69,6 +70,7 @@ export type Props = {
 	width: number?,
 	icon: string?,
 	iconSize: number?,
+	iconColor: Color3?,
 	iconAfter: boolean?,
 	label: string?,
 	labelMaxWidth: number?,
@@ -150,6 +152,7 @@ local function PillButton(props: Props)
 		contentChildren.Icon = e(Icon, {
 			name = props.icon,
 			size = props.iconSize or Tokens.size.action.icon,
+			color = props.iconColor,
 			transparency = contentTransparency,
 			layoutOrder = if props.iconAfter then 3 else 1,
 			zIndex = z + 2,

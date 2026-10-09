@@ -12,7 +12,9 @@
 	Each button opens a small menu upward: Idle (idle / look around), Move
 	(walk / run), Air (jump / fall / climb), Swim (swim / tread water), and
 	Emotes (the emotes being worn plus any in the basket). Long names end in
-	an ellipsis.
+	an ellipsis. A button only lights up while its menu is open (the current
+	animation isn't highlighted, so nothing competes with the View button);
+	a press anywhere outside the bar closes an open menu.
 
 	Props:
 		selected: string                 the current choice's key
@@ -20,7 +22,9 @@
 		onSelect: (choice: Choice) -> ()
 ]]
 
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 
@@ -90,6 +94,22 @@ local AnimationBar = {}
 
 AnimationBar.DEFAULT = GROUPS[1].variants[1]
 
+-- A character animation by key ("move/walk"), or nil if there's no such one.
+function AnimationBar.choice(key: string): Choice?
+	for _, group in GROUPS do
+		for _, variant in group.variants do
+			if variant.key == key then
+				return variant
+			end
+		end
+	end
+	return nil
+end
+
+function AnimationBar.emoteChoice(emoteId: number, name: string): Choice
+	return { key = "emote/" .. emoteId, label = name, emoteId = emoteId }
+end
+
 -- Five buttons across the 250px card (less its 12px margins).
 local BUTTON = 34
 local GAP = 10
@@ -98,10 +118,6 @@ local ROW = 30
 local MENU_WIDTH = 150
 local MENU_ROWS = 6 -- visible before the list scrolls
 local BAR_WIDTH = (#GROUPS + 1) * BUTTON + #GROUPS * GAP
-
-local function groupOf(key: string): string
-	return string.match(key, "^([^/]+)") or key
-end
 
 local function Menu(props: {
 	choices: { Choice },
@@ -185,7 +201,43 @@ function AnimationBar.Bar(props: {
 })
 	local skin = useSkin()
 	local menu, setMenu = React.useState(nil :: string?) -- group key, or "emotes"
-	local selectedGroup = groupOf(props.selected)
+	local barRef = React.useRef(nil :: GuiObject?)
+
+	-- A press anywhere outside the bar (and its open menu) closes the menu.
+	-- Listened for globally rather than with a blocker, so the press still
+	-- does whatever it was aimed at.
+	React.useEffect(function()
+		if not menu then
+			return nil
+		end
+		local connection = UserInputService.InputBegan:Connect(function(input: InputObject)
+			local kind = input.UserInputType
+			if kind ~= Enum.UserInputType.MouseButton1 and kind ~= Enum.UserInputType.Touch then
+				return
+			end
+			local bar = barRef.current
+			if not bar then
+				return
+			end
+			-- Input positions exclude the top-bar inset; AbsolutePosition
+			-- includes it when the ScreenGui ignores the inset.
+			local gui = bar:FindFirstAncestorOfClass("ScreenGui")
+			local inset = if gui and gui.IgnoreGuiInset then GuiService:GetGuiInset() else Vector2.zero
+			local point = Vector2.new(input.Position.X, input.Position.Y) + inset
+			for _, area in bar:GetDescendants() do
+				if area:IsA("GuiObject") and area.Visible then
+					local from, size = area.AbsolutePosition, area.AbsoluteSize
+					if point.X >= from.X and point.X <= from.X + size.X and point.Y >= from.Y and point.Y <= from.Y + size.Y then
+						return -- inside the bar or the menu
+					end
+				end
+			end
+			setMenu(nil)
+		end)
+		return function()
+			connection:Disconnect()
+		end
+	end, { menu })
 
 	useBackInput(function()
 		if menu then
@@ -216,7 +268,7 @@ function AnimationBar.Bar(props: {
 			size = BUTTON,
 			icon = group.icon,
 			iconSize = ICON,
-			active = selectedGroup == group.key or menu == group.key,
+			active = menu == group.key,
 			glowRadius = 0,
 			sound = "tab",
 			layoutOrder = index,
@@ -235,14 +287,14 @@ function AnimationBar.Bar(props: {
 	end
 	local emoteChoices: { Choice } = {}
 	for _, emote in props.emotes do
-		table.insert(emoteChoices, { key = "emote/" .. emote.id, label = emote.name, emoteId = emote.id })
+		table.insert(emoteChoices, AnimationBar.emoteChoice(emote.id, emote.name))
 	end
 	buttons.emotes = e(PillButton, {
 		variant = "round",
 		size = BUTTON,
 		icon = "emoji_people",
 		iconSize = ICON,
-		active = selectedGroup == "emote" or menu == "emotes",
+		active = menu == "emotes",
 		glowRadius = 0,
 		sound = "tab",
 		layoutOrder = #GROUPS + 1,
@@ -263,6 +315,7 @@ function AnimationBar.Bar(props: {
 
 	return e("Frame", {
 		Name = "AnimationBar",
+		ref = barRef,
 		AnchorPoint = props.anchorPoint,
 		Position = props.position,
 		Size = UDim2.fromOffset(skin.px(BAR_WIDTH), skin.px(BUTTON)),

@@ -101,7 +101,10 @@ local ANIMATIONS =
 
 local GEAR_ATTRIBUTE = "RippleGear"
 local MAX_EMOTE_LOOKUP = 16 -- emote ids per request
-local EMOTE_LOOKUP_COOLDOWN = 0.5 -- seconds between a player's requests
+-- Per player: at most this many lookups per window (a budget, not a strict
+-- cooldown, since a preview rebuild can ask twice in quick succession).
+local EMOTE_LOOKUP_BUDGET = 20
+local EMOTE_LOOKUP_WINDOW = 10 -- seconds
 
 -- Reverse of RIGID + LAYERED, for reading a player's own avatar.
 local TYPE_OF_ACCESSORY: { [Enum.AccessoryType]: string } = {}
@@ -118,7 +121,7 @@ local gearTemplates: { [number]: Tool | false } = {}
 local bases: { [Player]: HumanoidDescription } = {}
 local applying: { [Player]: { busy: boolean, again: boolean } } = {}
 local emoteAnimations: { [number]: string | false } = {}
-local lastEmoteLookup: { [Player]: number } = {}
+local emoteLookups: { [Player]: { number } } = {} -- request times
 
 -- The animation inside an emote asset (cached; false if it has none).
 local function emoteAnimation(emoteId: number): string?
@@ -535,11 +538,21 @@ function AvatarService.init()
 	local lookup = Bolt.RemoteFunction("AvatarEmoteAnimations")
 	lookup.OnServerInvoke = function(player: Player, ids: any)
 		local result: { { id: number, animation: string } } = {}
-		local now = os.clock()
-		if type(ids) ~= "table" or now - (lastEmoteLookup[player] or 0) < EMOTE_LOOKUP_COOLDOWN then
+		if type(ids) ~= "table" then
 			return result
 		end
-		lastEmoteLookup[player] = now
+		local now = os.clock()
+		local recent = {}
+		for _, at in emoteLookups[player] or {} do
+			if now - at < EMOTE_LOOKUP_WINDOW then
+				table.insert(recent, at)
+			end
+		end
+		if #recent >= EMOTE_LOOKUP_BUDGET then
+			return result
+		end
+		table.insert(recent, now)
+		emoteLookups[player] = recent
 		for index, id in ids do
 			if type(index) == "number" and index <= MAX_EMOTE_LOOKUP and type(id) == "number" and id > 0 and id % 1 == 0 then
 				local animation = emoteAnimation(id)
@@ -560,7 +573,7 @@ function AvatarService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		bases[player] = nil
 		applying[player] = nil
-		lastEmoteLookup[player] = nil
+		emoteLookups[player] = nil
 	end)
 end
 

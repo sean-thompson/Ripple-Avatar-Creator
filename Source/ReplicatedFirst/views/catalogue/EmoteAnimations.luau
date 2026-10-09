@@ -19,15 +19,24 @@ local EmoteAnimations = {}
 
 local lookup = Bolt.RemoteFunction("AvatarEmoteAnimations")
 local cache: { [number]: string } = {}
+local inFlight: { [number]: boolean } = {}
 
 function EmoteAnimations.get(emoteId: number): string?
+	-- Someone's already asking for this one: wait for their answer rather
+	-- than sending a second request.
+	local waited = 0
+	while inFlight[emoteId] and waited < 10 do
+		waited += task.wait()
+	end
 	local cached = cache[emoteId]
 	if cached then
 		return cached
 	end
+	inFlight[emoteId] = true
 	local ok, result = pcall(function()
 		return lookup:InvokeServer({ emoteId })
 	end)
+	inFlight[emoteId] = nil
 	local animation: string? = nil
 	if ok and type(result) == "table" then
 		for _, entry in result do

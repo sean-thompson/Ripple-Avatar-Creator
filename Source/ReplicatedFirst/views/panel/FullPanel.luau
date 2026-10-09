@@ -145,6 +145,31 @@ local function PreviewCard(props: { nav: any, look: any, openList: (root: string
 	local wornCost = useSpringNumber(cost, Tokens.spring.count)
 	local animation, setAnimation = React.useState(AnimationBar.DEFAULT)
 
+	-- Trying on an emote or animation pack shows it straight away: an emote
+	-- plays, a pack walks (where a pack shows most).
+	local seenWorn = React.useRef(nil :: { [number]: boolean }?)
+	React.useEffect(function()
+		local now: { [number]: boolean } = {}
+		for _, id in props.look.worn do
+			now[id] = true
+		end
+		local before = seenWorn.current
+		seenWorn.current = now
+		if not before then
+			return -- first render: nothing was "just" tried on
+		end
+		for _, id in props.look.worn do
+			if not before[id] then
+				local item = PlaceholderData.item(id)
+				if item and item.typeName == "EmoteAnimation" then
+					setAnimation(AnimationBar.emoteChoice(item.targetId, item.name))
+				elseif item and item.typeName == "Animations" then
+					setAnimation(AnimationBar.choice("move/walk") or AnimationBar.DEFAULT)
+				end
+			end
+		end
+	end, { table.concat(props.look.worn, ",") })
+
 	-- Emotes to preview: the ones being worn, then any in the basket.
 	local emotes = {}
 	local listed = {}

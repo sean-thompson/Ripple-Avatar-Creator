@@ -7,8 +7,7 @@
 	the item's id (selectable, to copy) and catalogue description (up to three lines),
 	and a "More like this" row (same category for now — the slot the phase 3
 	recommendation engine fills). Try on and Basket toggle the placeholder
-	look so badges and counts react; Buy opens the buy prompt (the Roblox
-	hand-off is Task 11).
+	look so badges and counts react; Buy opens Roblox's purchase prompt.
 
 	Props: nav, look, itemId
 ]]
@@ -106,6 +105,12 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 	local _colourVersion, setColourVersion = React.useState(0)
 	local show3D, setShow3D = React.useState(false)
 	local has3D = ItemModel.supports(item)
+
+	-- Find out whether the player owns it (once a session per item).
+	React.useEffect(function()
+		props.look.checkOwned({ item.id })
+		return nil
+	end, { item.id })
 
 	-- Work out the item's colour (for the Colour line) if we don't know it.
 	React.useEffect(function()
@@ -270,9 +275,10 @@ local function ItemScreen(props: { nav: any, look: any, itemId: number })
 					width = 120,
 					label = buyLabel,
 					disabled = item.owned,
+					loading = hud.buying("item:" .. item.id),
 					layoutOrder = 3,
 					onActivated = function()
-						hud.openBuy({ item.id })
+						hud.buy({ item.id })
 					end,
 				}),
 				-- Favourite: an orange star when it's one of yours, with the

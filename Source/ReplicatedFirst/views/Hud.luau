@@ -8,10 +8,12 @@
 	    stays mounted through its exit animation, showing the screen it had
 	  · the placeholder look (worn / basket) until the server models land,
 	    wrapped so every change confirms itself with a sound
-	  · the buy prompt, reachable anywhere through HudContext
+	  · buying, reachable anywhere through HudContext: straight to Roblox's
+	    own purchase prompt (no confirmation of ours in front of it), with a
+	    sound when it ends
 	  · tapping your own avatar in the world opens Wearing (useTapAvatar)
-	  · back input (mouse back button, Backspace): closes the buy prompt, then
-	    pops a breadcrumb, then closes the panel
+	  · back input (mouse back button, Backspace): pops a breadcrumb, then
+	    closes the panel
 	  · World options (saved + live draft, useWorldOptions) and the renderer
 	    that applies them to this client's world
 
@@ -41,10 +43,12 @@ local PlaceholderData = require(views:WaitForChild("screens"):WaitForChild("Plac
 local usePlaceholderLook = require(views:WaitForChild("screens"):WaitForChild("usePlaceholderLook"))
 local WorldHud = require(views:WaitForChild("WorldHud"))
 local FullPanel = require(views:WaitForChild("panel"):WaitForChild("FullPanel"))
-local BuyPrompt = require(views:WaitForChild("BuyPrompt"))
 local WorldRenderer = require(views:WaitForChild("WorldRenderer"))
 
 local e = React.createElement
+
+-- Seconds a Buy button may spin waiting for the purchase's outcome.
+local BUY_SPINNER_TIMEOUT = 60
 
 local TABS = {
 	{ id = "Catalogue", label = "Catalogue", icon = "apparel" },
@@ -79,6 +83,10 @@ local function withFeedback(look: any)
 		Sounds.play(if look.inBasket(id) then "back" else "confirm")
 		return look.toggleBasket(id)
 	end
+	feedback.clearBasket = function()
+		Sounds.play("back")
+		look.clearBasket()
+	end
 	feedback.addToBasket = function(ids: { number }): number
 		local count = look.addToBasket(ids)
 		Sounds.play(if count > 0 then "confirm" else "error")
@@ -109,15 +117,44 @@ end
 local function Hud()
 	local nav = useNavigation()
 	local rawLook = usePlaceholderLook()
-	local buyIds, setBuyIds = React.useState(nil :: { number }?)
+	-- The latest purchase we sent (its request id), to sound its outcome,
+	-- and the button that sent it (spinning until the outcome arrives).
+	local buyRequest, setBuyRequest = React.useState(nil :: number?)
+	local buyingKey, setBuyingKey = React.useState(nil :: string?)
 	local world = useWorldOptions()
 	local look = withFeedback(rawLook)
+	local latestLook = React.useRef(rawLook)
+	latestLook.current = rawLook
+
+	-- Roblox's prompt shows what happened; we just sound it.
+	local purchase = rawLook.purchase
+	React.useEffect(function()
+		if not buyRequest or purchase.id ~= buyRequest or purchase.state == "waiting" then
+			return
+		end
+		if #purchase.bought > 0 then
+			Sounds.play("purchase")
+		elseif purchase.state == "failed" then
+			Sounds.play("error")
+		end
+		setBuyRequest(nil)
+		setBuyingKey(nil)
+	end, { purchase })
+	-- Don't spin forever if no outcome ever comes back.
+	React.useEffect(function()
+		if not buyingKey then
+			return nil
+		end
+		local thread = task.delay(BUY_SPINNER_TIMEOUT, function()
+			setBuyingKey(nil)
+		end)
+		return function()
+			task.cancel(thread)
+		end
+	end, { buyingKey })
 
 	useBackInput(function()
-		if buyIds then
-			Sounds.play("back")
-			setBuyIds(nil)
-		elseif #nav.stack > 0 then
+		if #nav.stack > 0 then
 			Sounds.play("back")
 			nav.back()
 		elseif nav.isOpen then
@@ -157,21 +194,27 @@ local function Hud()
 
 	local actions = React.useMemo(function()
 		return {
-			openBuy = function(itemIds: { number })
+			buy = function(itemIds: { number }, key: string?)
 				local unowned = {}
 				for _, id in itemIds do
-					if not PlaceholderData.item(id).owned then
+					local item = PlaceholderData.item(id)
+					if item and item.thumbnail ~= "" and not item.owned then
 						table.insert(unowned, id)
 					end
 				end
-				if #unowned == 0 then
-					Sounds.play("error")
-					return
+				local request = if #unowned > 0 then latestLook.current.buy(unowned) else nil
+				if request then
+					setBuyRequest(request)
+					setBuyingKey(key or (if #itemIds == 1 then "item:" .. itemIds[1] else "items"))
+				else
+					Sounds.play("error") -- nothing here left to buy
 				end
-				setBuyIds(unowned)
+			end,
+			buying = function(key: string): boolean
+				return buyingKey == key
 			end,
 		}
-	end, {})
+	end, { buyingKey })
 
 	local panels: { [string]: any } = {}
 	for _, transition in panelTransitions do
@@ -194,17 +237,6 @@ local function Hud()
 			Renderer = e(WorldRenderer, { options = world.options, config = world.config }),
 			World = if nav.isOpen then nil else e(WorldHud, { nav = nav, look = look, tabs = TABS, world = world }),
 			Panel = e(React.Fragment, nil, panels),
-			Buy = e(BuyPrompt, {
-				itemIds = buyIds,
-				onCancel = function()
-					setBuyIds(nil)
-				end,
-				onConfirm = function(ids: { number })
-					setBuyIds(nil)
-					rawLook.markOwned(ids)
-					Sounds.play("purchase")
-				end,
-			}),
 		}),
 	})
 end

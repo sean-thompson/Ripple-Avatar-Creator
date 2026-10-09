@@ -241,8 +241,8 @@ local function CatalogueScreen(props: { nav: any, look: any })
 					props.look.toggleBasket(item.id)
 				end,
 				onBuy = function()
-					setMenuId(nil)
-					hud.openBuy({ item.id })
+					-- The menu stays open so its Buy button can spin.
+					hud.buy({ item.id })
 				end,
 				onView = function()
 					setMenuId(nil)

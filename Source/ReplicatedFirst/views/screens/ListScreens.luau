@@ -4,17 +4,19 @@
 	ListScreens (design frames 5f Basket / 5g Wearing, placeholder data)
 
 	Basket: one row per item (Try on / Remove), a summary (items, already owned,
-	total) with Buy all, Try on everything and Add what I'm wearing (the
-	unowned worn items not already in it). Wearing: what's on the avatar
-	(price or Owned, Basket toggle, Take off) with Add unowned to basket, Save as
-	outfit and Take everything off. Rows open the item page.
+	total) with Buy all, Try on everything, Add what I'm wearing (the unowned
+	worn items not already in it) and Remove all (press twice: ConfirmButton). Wearing: what's on the avatar
+	(price or Owned, Basket toggle, Take off) with Buy all (the unowned ones),
+	Add unowned to basket, Save as outfit and Take everything off (press twice). Rows open the item page.
 
-	Buy all opens the buy prompt; Save as outfit is a stub until Task 12.
+	Buy / Get and Buy all open Roblox's purchase prompt; Save as outfit is a
+	stub until Task 12.
 
 	ListScreens.Basket / ListScreens.Wearing props: nav, look
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage:WaitForChild("Packages"):WaitForChild("React"))
 
@@ -38,7 +40,7 @@ local ROW_BUTTON = 84 -- design px per row button
 local ROW_TRAILING = 60 + ROW_BUTTON * 3 + 8 * 3
 
 -- Buy (or Get, when free) for an item that isn't owned; nil when it is.
-local function buyButton(item: any, order: number, openBuy: (ids: { number }) -> ())
+local function buyButton(item: any, order: number, hud: any)
 	if item.owned then
 		return nil
 	end
@@ -49,9 +51,10 @@ local function buyButton(item: any, order: number, openBuy: (ids: { number }) ->
 		label = if item.price == 0 then "Get" else "Buy",
 		textStyle = Tokens.type.small,
 		active = true,
+		loading = hud.buying("item:" .. item.id),
 		layoutOrder = order,
 		onActivated = function()
-			openBuy({ item.id })
+			hud.buy({ item.id })
 		end,
 	})
 end
@@ -163,7 +166,8 @@ local function wideButton(
 	active: boolean?,
 	onActivated: (() -> ())?,
 	sound: any?,
-	disabled: boolean?
+	disabled: boolean?,
+	loading: boolean?
 )
 	return e(PillButton, {
 		variant = "pill",
@@ -174,8 +178,89 @@ local function wideButton(
 		active = active,
 		sound = sound,
 		disabled = disabled,
+		loading = loading,
 		layoutOrder = order,
 		onActivated = onActivated,
+	})
+end
+
+-- A wide button for something hard to take back (Remove all, Take everything
+-- off): the first press arms it ("Tap again to confirm", orange) for
+-- CONFIRM_SECONDS, wiggling side to side every so often to draw the eye; a
+-- second press within that does it. No dialog.
+local CONFIRM_SECONDS = 3
+local WIGGLE_AT = { 0.35, 1.15, 1.95 } -- seconds after arming
+local WIGGLE_SECONDS = 0.35
+local WIGGLE_PX = 5 -- design px, either side
+local WIGGLE_SWINGS = 3 -- full left-right swings per wiggle
+
+-- Sideways offset (0..1 of WIGGLE_PX) `elapsed` seconds after arming.
+local function wiggle(elapsed: number): number
+	for _, start in WIGGLE_AT do
+		local t = elapsed - start
+		if t >= 0 and t < WIGGLE_SECONDS then
+			local fade = 1 - t / WIGGLE_SECONDS
+			return math.sin(t / WIGGLE_SECONDS * WIGGLE_SWINGS * 2 * math.pi) * fade
+		end
+	end
+	return 0
+end
+
+local function ConfirmButton(props: {
+	label: string,
+	icon: string,
+	layoutOrder: number,
+	disabled: boolean?,
+	onConfirm: () -> (),
+})
+	local skin = useSkin()
+	local armed, setArmed = React.useState(false)
+	local shake, setShake = React.useBinding(0)
+	React.useEffect(function()
+		if not armed then
+			setShake(0)
+			return nil
+		end
+		local started = os.clock()
+		local connection = RunService.RenderStepped:Connect(function()
+			setShake(wiggle(os.clock() - started))
+		end)
+		local thread = task.delay(CONFIRM_SECONDS, function()
+			setArmed(false)
+		end)
+		return function()
+			connection:Disconnect()
+			task.cancel(thread)
+		end
+	end, { armed })
+	-- The wrapper holds the layout slot; the button moves inside it (a
+	-- UIListLayout would ignore the button's own Position).
+	return e("Frame", {
+		Size = UDim2.new(1, 0, 0, skin.px(Tokens.size.ctaHeight)),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.layoutOrder,
+	}, {
+		Button = e(PillButton, {
+			variant = "pill",
+			size = Tokens.size.ctaHeight,
+			label = if armed then "Tap again to confirm" else props.label,
+			icon = props.icon,
+			iconSize = 18,
+			active = armed,
+			sound = if armed then false else nil, -- the action plays its own sound
+			disabled = props.disabled,
+			position = shake:map(function(amount: number)
+				return UDim2.fromOffset(amount * skin.px(WIGGLE_PX), 0)
+			end) :: any,
+			onActivated = function()
+				if armed then
+					setArmed(false)
+					props.onConfirm()
+				else
+					setArmed(true)
+				end
+			end,
+		}),
 	})
 end
 
@@ -208,7 +293,7 @@ local function BasketScreen(props: { nav: any, look: any })
 			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
-				Buy = buyButton(item, 2, hud.openBuy),
+				Buy = buyButton(item, 2, hud),
 				Try = smallButton(if wearing then "Wearing" else "Try on", 3, wearing, function()
 					look.toggleWear(id)
 				end),
@@ -234,14 +319,21 @@ local function BasketScreen(props: { nav: any, look: any })
 			summaryLine(skin, "Total", Tokens.robux(look.basketTotal), 3, true),
 		}, {
 			wideButton("Buy all", "shopping_basket", 10, true, function()
-				hud.openBuy(look.basket)
-			end, nil, #look.basket == owned),
+				hud.buy(look.basket, "basket")
+			end, nil, #look.basket == owned, hud.buying("basket")),
 			wideButton("Try on everything", "checkroom", 11, false, function()
 				look.wearAll(look.basket)
 			end, false, #look.basket == 0),
 			wideButton("Add what I'm wearing", "add_shopping_cart", 12, false, function()
 				look.addToBasket(wornToAdd)
 			end, false, #wornToAdd == 0),
+			e(ConfirmButton, {
+				label = "Remove all",
+				icon = "remove_shopping_cart",
+				layoutOrder = 13,
+				disabled = #look.basket == 0,
+				onConfirm = look.clearBasket,
+			}),
 		}),
 	})
 end
@@ -288,7 +380,7 @@ local function WearingScreen(props: { nav: any, look: any })
 			trailingWidth = ROW_TRAILING,
 			trailing = {
 				Price = e(Parts.PriceTag, { item = item, size = 14, layoutOrder = 1 }),
-				Buy = buyButton(item, 2, hud.openBuy),
+				Buy = buyButton(item, 2, hud),
 				Basket = if item.owned
 					then nil
 					else smallButton(if inBasket then "In basket" else "Basket", 3, inBasket, function()
@@ -314,7 +406,10 @@ local function WearingScreen(props: { nav: any, look: any })
 			summaryLine(skin, "Items", tostring(#look.worn), 1),
 			summaryLine(skin, "Not owned", unowned .. " · " .. (if cost > 0 then Tokens.robux(cost) else "Free"), 2),
 		}, {
-			wideButton("Add unowned to basket", "add_shopping_cart", 10, true, function()
+			wideButton("Buy all", "shopping_basket", 9, true, function()
+				hud.buy(look.worn, "wearing")
+			end, nil, unowned == 0, hud.buying("wearing")),
+			wideButton("Add unowned to basket", "add_shopping_cart", 10, false, function()
 				local unownedIds = {}
 				for _, id in look.worn do
 					if not PlaceholderData.item(id).owned then
@@ -324,7 +419,13 @@ local function WearingScreen(props: { nav: any, look: any })
 				look.addToBasket(unownedIds)
 			end, false),
 			wideButton("Save as outfit", "bookmark_add", 11, false),
-			wideButton("Take everything off", "delete_sweep", 12, false, look.takeOffAll, false),
+			e(ConfirmButton, {
+				label = "Take everything off",
+				icon = "delete_sweep",
+				layoutOrder = 12,
+				disabled = #look.worn == 0,
+				onConfirm = look.takeOffAll,
+			}),
 		}),
 	})
 end

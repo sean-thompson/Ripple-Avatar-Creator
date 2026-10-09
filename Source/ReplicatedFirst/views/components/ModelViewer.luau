@@ -85,6 +85,7 @@ local function ModelViewer(props: Props)
 	-- Shared between the input/camera effect and the build effect.
 	local view = React.useRef({
 		camera = nil :: Camera?,
+		worldModel = nil :: WorldModel?,
 		model = nil :: Model?,
 		yaw = props.yaw or 30,
 		pitch = props.pitch or -12,
@@ -105,6 +106,11 @@ local function ModelViewer(props: Props)
 		end
 		local v = view.current
 		local camera = Instance.new("Camera")
+		-- Models live in a WorldModel, so the view can raycast against them
+		-- (zooming to the point under the cursor) and play animations.
+		local worldModel = Instance.new("WorldModel")
+		worldModel.Parent = viewport
+		v.worldModel = worldModel
 		camera.FieldOfView = FOV
 		camera.Parent = viewport
 		viewport.CurrentCamera = camera
@@ -141,19 +147,33 @@ local function ModelViewer(props: Props)
 				if input.UserInputType == Enum.UserInputType.MouseWheel then
 					local before = v.zoom
 					v.zoom = math.clamp(v.zoom * (1 - input.Position.Z * 0.1), ZOOM_MIN, ZOOM_MAX)
-					-- Zoom towards the cursor: shift the view so the point under
-					-- the cursor (at the model's depth) stays under it.
-					local height = math.max(viewport.AbsoluteSize.Y, 1)
-					local perPixel = 2 * v.distance * math.tan(math.rad(FOV / 2)) / height
+					local k = v.zoom / before
+					-- Zoom towards the cursor: find the point under it (on the
+					-- model if the ray hits, else at the pivot's depth) and scale
+					-- the camera towards that point, so it stays put on screen.
 					local gui = viewport:FindFirstAncestorOfClass("ScreenGui")
-					-- Input positions exclude the top-bar inset; AbsolutePosition
-					-- includes it when the ScreenGui ignores the inset.
-					local inset = if gui and gui.IgnoreGuiInset then GuiService:GetGuiInset() else Vector2.zero
-					local cursor = Vector2.new(input.Position.X, input.Position.Y) + inset
-					local offset = cursor - (viewport.AbsolutePosition + viewport.AbsoluteSize / 2)
+					-- Mouse location includes the top-bar inset; so does
+					-- AbsolutePosition only when the ScreenGui ignores the inset.
+					local inset = if gui and gui.IgnoreGuiInset then Vector2.zero else GuiService:GetGuiInset()
+					local cursor = UserInputService:GetMouseLocation()
+					local centreOnScreen = viewport.AbsolutePosition + inset + viewport.AbsoluteSize / 2
+					local offset = cursor - centreOnScreen
+					local halfHeight = math.max(viewport.AbsoluteSize.Y, 1) / 2
+					local tanHalf = math.tan(math.rad(FOV / 2))
 					local look = camera.CFrame
-					local shift = (look.RightVector * offset.X - look.UpVector * offset.Y) * perPixel * (before - v.zoom)
-					local pan = v.pan + shift
+					local direction = look:VectorToWorldSpace(
+						Vector3.new(offset.X / halfHeight * tanHalf, -offset.Y / halfHeight * tanHalf, -1)
+					).Unit
+					local pivot = v.centre + v.pan
+					local target: Vector3
+					local hit = worldModel:Raycast(look.Position, direction * v.distance * 4)
+					if hit then
+						target = hit.Position
+					else
+						local depth = v.distance * before
+						target = look.Position + direction * (depth / math.max(direction:Dot(look.LookVector), 0.01))
+					end
+					local pan = target + (pivot - target) * k - v.centre
 					local limit = v.size * PAN_LIMIT
 					if pan.Magnitude > limit then
 						pan = pan.Unit * limit
@@ -209,6 +229,7 @@ local function ModelViewer(props: Props)
 				connection:Disconnect()
 			end
 			camera:Destroy()
+			worldModel:Destroy()
 			if v.model then
 				v.model:Destroy()
 				v.model = nil
@@ -243,7 +264,7 @@ local function ModelViewer(props: Props)
 				setStatus("failed")
 				return
 			end
-			model.Parent = viewport
+			model.Parent = v.worldModel or viewport
 			v.model = model
 			local boxCFrame, size = model:GetBoundingBox()
 			v.centre = boxCFrame.Position

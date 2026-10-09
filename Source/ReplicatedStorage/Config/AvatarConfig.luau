@@ -41,6 +41,9 @@ local config: AvatarConfig = {
 		EyebrowAccessory = "Eyebrows",
 		EyelashAccessory = "Eyelashes",
 	},
+	alsoReplaces = {
+		Body = { "Head" }, -- a full body brings its own head
+	},
 	groups = {
 		Hat = "Accessories",
 		FaceAccessory = "Accessories",

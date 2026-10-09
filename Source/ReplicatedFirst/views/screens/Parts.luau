@@ -382,6 +382,7 @@ export type ListRowProps = {
 	colour: Color3,
 	image: string?,
 	trailing: any?, -- elements on the right (price, buttons)
+	trailingWidth: number?, -- design px for them (default 250)
 	leading: any?, -- element before the thumb (e.g. a checkbox)
 	onActivated: (() -> ())?,
 	layoutOrder: number?,
@@ -393,7 +394,7 @@ function Parts.ListRow(props: ListRowProps)
 	local height = skin.px(64)
 	local thumb = skin.px(48)
 	local leadingWidth = if props.leading then skin.px(34) else 0
-	local trailingWidth = skin.px(250)
+	local trailingWidth = skin.px(props.trailingWidth or 250)
 
 	return e("TextButton", {
 		Name = "ListRow",

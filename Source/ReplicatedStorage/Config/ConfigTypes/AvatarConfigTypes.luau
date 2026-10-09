@@ -12,6 +12,9 @@
 export type AvatarConfig = {
     -- One at a time: wearing an item replaces whatever is in its slot.
     slots: { [string]: string }, -- typeName -> slot name
+    -- Wearing into one slot also empties these others (a full body comes
+    -- with its own head, so it replaces a worn head too).
+    alsoReplaces: { [string]: { string } }, -- slot name -> other slot names
     -- Several at once, up to the group's limit (the oldest goes first).
     groups: { [string]: string }, -- typeName -> group name
     groupLimits: { [string]: number }, -- group name -> how many

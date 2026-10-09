@@ -26,6 +26,13 @@ export type FlightConfig = {
     doubleJumpWindow: number, -- seconds between jump presses to toggle flight
 }
 
+export type SprintConfig = {
+    enabled: boolean,
+    walkSpeed: number, -- studs/s normally
+    runSpeed: number, -- studs/s while Shift is held
+    flightMultiplier: number, -- flight speed × this while Shift is held
+}
+
 export type WorldOptionsConfig = {
     timeMin: number,
     timeMax: number,
@@ -45,6 +52,7 @@ export type WorldOptionsConfig = {
     patternStrengthStep: number,
     defaults: WorldOptionsDefaults,
     flight: FlightConfig,
+    sprint: SprintConfig,
 }
 
 return nil

@@ -19,7 +19,8 @@
 
 	It's the player's own character, so physics stays client-owned and Roblox
 	replicates the movement like any other — nothing is mirrored into a model.
-	Player collisions are unchanged. Turn it off with flight.enabled.
+	Player collisions are unchanged. Holding Shift flies faster (SprintView,
+	sprint.flightMultiplier). Turn it off with flight.enabled.
 
 	Mechanics: a LinearVelocity on the HumanoidRootPart drives the character;
 	Humanoid.Jump (set by Roblox's controls while jump is held, on every
@@ -127,12 +128,16 @@ local function setUpCharacter(character: Model)
 		local flatLook = Vector3.new(look.X, 0, look.Z)
 		local forward = if flatLook.Magnitude > 0 then math.max(0, move:Dot(flatLook.Unit)) else 0
 
-		local vertical = if climbing then flight.climbSpeed else look.Y * forward * flight.speed
+		-- Holding Shift (SprintView) flies faster.
+		local sprintConfig = WorldOptionsConfig.sprint
+		local speed = flight.speed
+			* (if sprintConfig and character:GetAttribute("Sprinting") then sprintConfig.flightMultiplier else 1)
+		local vertical = if climbing then flight.climbSpeed else look.Y * forward * speed
 		local launching = os.clock() - takeoffAt < TAKEOFF_GRACE
 		if launching then
 			vertical = math.max(vertical, flight.climbSpeed * 0.6)
 		end
-		velocity.VectorVelocity = move * flight.speed + Vector3.new(0, vertical, 0)
+		velocity.VectorVelocity = move * speed + Vector3.new(0, vertical, 0)
 
 		-- Emote-friendly hover: on while the emote menu is open and you're
 		-- still; off as soon as you move or climb (see header).

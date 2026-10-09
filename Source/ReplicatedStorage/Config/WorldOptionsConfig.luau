@@ -50,6 +50,12 @@ local config: WorldOptionsConfig = {
 		climbSpeed = 24,
 		doubleJumpWindow = 0.5,
 	},
+	sprint = {
+		enabled = true,
+		walkSpeed = 16, -- Roblox's default
+		runSpeed = 28,
+		flightMultiplier = 1.75,
+	},
 }
 
 return config

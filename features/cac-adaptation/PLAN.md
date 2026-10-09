@@ -251,7 +251,7 @@
 
 
 ### Task 10: Basket model and Basket screen
-- **Status:** [TODO]
+- **Status:** [DONE]
 - **Why here:** Basket persistence and the screen are the first half of the "Basket and buying" layer; buying (Task 11) needs a real basket to buy from.
 - **Depends on:** 9
 - **Refs:** Scope > Basket; Scope > HUD (Basket button badge); Integration points (persistent: basket)
@@ -263,14 +263,15 @@
 - **Associated UI:** 5f Basket; basket button and card in 5a and the panel.
 - **Replication:** logical persisted state (**cosmetic / not position-critical**): model plus client view, per the template pattern.
 - **Sub-tasks:**
-  - [PARTIAL] 10.1 Config: `basketLimit` (100) and `basketBudget` (10 changes per 2 s) added to `AvatarConfig` rather than a new config.
-  - [PARTIAL] 10.2 Model: `models/user/BasketModel.luau` (User scope); entries are the worn-item record, prices aren't saved.
-  - [PARTIAL] 10.3 Network/Controller: `BasketController` (Add, Remove, AddMany, RemoveMany, Clear), items checked with `AvatarService.resolve`. "Try on everything" uses Avatar `WearMany` (slot rules already there), and "pull in what you're wearing" is a client-side `AddMany` of the unowned worn items, so no TryAll / AddWorn actions.
-  - [PARTIAL] 10.4 `usePlaceholderLook` reads `Network.State.Basket`; toggle / add / pretend-buy send Basket intents.
-  - [PARTIAL] 10.5 Basket screen: Add what I'm wearing button; Buy all / Try on everything / Add disabled when they'd do nothing.
-  - [PARTIAL] 10.6 Prices come from `CatalogueClient.remember` (filled in the background); "already owned" finalised in Task 11.
-  - [PARTIAL] 10.7 Analytics: `basket_add`, `basket_remove` events.
-  - [TODO] 10.8 Playtest: add from every entry point, rejoin persistence, basket badge sums.
+  - [DONE] 10.1 Config: `basketLimit` (100) and `basketBudget` (10 changes per 2 s) added to `AvatarConfig` rather than a new config.
+  - [DONE] 10.2 Model: `models/user/BasketModel.luau` (User scope); entries are the worn-item record, prices aren't saved.
+  - [DONE] 10.3 Network/Controller: `BasketController` (Add, Remove, AddMany, RemoveMany, Clear), items checked with `AvatarService.resolve`. "Try on everything" uses Avatar `WearMany` (slot rules already there), and "pull in what you're wearing" is a client-side `AddMany` of the unowned worn items, so no TryAll / AddWorn actions.
+  - [DONE] 10.4 `usePlaceholderLook` reads `Network.State.Basket`; toggle / add / pretend-buy send Basket intents.
+  - [DONE] 10.5 Basket screen: Add what I'm wearing button; Buy all / Try on everything / Add disabled when they'd do nothing.
+  - [DONE] 10.6 Prices come from `CatalogueClient.remember` (filled in the background); "already owned" finalised in Task 11.
+  - [DONE] 10.7 Analytics: `basket_add`, `basket_remove` events.
+  - [DONE] 10.8 Playtest: add from every entry point, rejoin persistence, basket badge sums.
+- **Outcome:** Basket is a persisted `BasketModel` (worn-item records, no saved prices, capped at `AvatarConfig.basketLimit` 100) changed through `BasketController` (Add, Remove, AddMany, RemoveMany, Clear; items checked with `AvatarService.resolve`; a budget of 10 changes per 2 s rather than a cooldown, so quick taps aren't swallowed). No TryAll / AddWorn actions: Try on everything reuses Avatar `WearMany`, and Add what I'm wearing is a client `AddMany`. The client updates optimistically: changes are held as pending over the server's list until the server agrees, or for 3 s, after which the server's list wins. The starter mock basket is gone. Verified: card-menu add/remove, rejoin persistence, rapid toggling staying in sync; the 3 s fallback path wasn't exercised (Studio latency is ~0).
 
 ### Task 11: Buying through Roblox prompts, ownership awareness, Save to Roblox, Create avatar
 - **Status:** [TODO]

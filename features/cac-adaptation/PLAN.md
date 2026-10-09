@@ -205,7 +205,7 @@
 
 
 ### Task 6: Avatar preview, Wearing screen and tap-avatar-to-open-Wearing
-- **Status:** [TODO]
+- **Status:** [DONE]
 - **Why here:** Gives the try-on state its UI (preview, Wearing list) so every try-on from the catalogue has a visible result in the panel.
 - **Depends on:** 5
 - **Refs:** Scope > Full panel (live avatar preview, Wearing bar); Scope > Wearing; Scope > HUD (tap avatar opens Wearing); Replication strategy (Avatar preview)
@@ -217,11 +217,17 @@
 - **Associated UI:** 5g Wearing; panel left column in 5b/5f/5g; 5a ("Tap your avatar in the world").
 - **Replication:** **Cosmetic / not position-critical.** The panel preview is a client-only cosmetic copy of the current look (clone/rig rendered in a ViewportFrame; evaluate cloning the character vs building a rig from the description). It is derived from the real character in server Workspace; the server never knows about it. The preview is not stored in any model.
 - **Sub-tasks:**
-  - [TODO] 6.1 Avatar preview component (`/html-to-react-luau` for the frame, `/create-view` for the rig logic): client-only rig in a ViewportFrame, rotates/spring-settles, updates on Avatar state changes. Studio-free.
-  - [TODO] 6.2 Wearing screen (`/html-to-react-luau`, frame 5g): rows with owned/price, Take off, Add to basket, Save as outfit (stub until Task 12), Take everything off, empty state.
-  - [TODO] 6.3 Tap-own-avatar hook in `views/hooks/` (input raycast against the local character, mouse and touch) calling `HudApp`'s open-Wearing callback, so no new cross-script bridge pattern is introduced.
-  - [TODO] 6.4 Item data the screens need (name, price, owned) come from a small client lookup keyed by asset id; use the Task 7 item shape.
-  - [TODO] 6.5 Playtest on touch: tapping the avatar while the camera moves and while the panel is open.
+  - [DONE] 6.1 Avatar preview component (`/html-to-react-luau` for the frame, `/create-view` for the rig logic): client-only rig in a ViewportFrame, rotates/spring-settles, updates on Avatar state changes. Studio-free.
+  - [DONE] 6.2 Wearing screen (`/html-to-react-luau`, frame 5g): rows with owned/price, Take off, Add to basket, Save as outfit (stub until Task 12), Take everything off, empty state.
+  - [DONE] 6.3 Tap-own-avatar hook in `views/hooks/` (input raycast against the local character, mouse and touch) calling `HudApp`'s open-Wearing callback, so no new cross-script bridge pattern is introduced.
+  - [DONE] 6.4 Item data the screens need (name, price, owned) come from a small client lookup keyed by asset id; use the Task 7 item shape.
+  - [TODO] 6.5 Playtest on touch: tapping the avatar while the camera moves and while the panel is open. *Desktop verified; touch not tested (tap logic: short, still taps only).*
+- **Outcome:**
+  > The preview is a client-only clone of the player's real, server-dressed character (`panel/AvatarPreview.luau`), posed at rest via `ItemModel.restPose`, facing the camera, rebuilt when the character's descendants settle (try-on, respawn); it fills the Wearing card edge to edge. `components/ModelViewer.luau` is the shared turnable viewport (item page 3D view too): models live in a WorldModel so they can animate and be raycast; drag to turn, wheel zooms towards the point under the cursor (raycast, then scale the camera towards it), middle-drag pans exactly with the cursor. Only the cards' orange "View N items · ₹X" buttons open Wearing / Basket, so turning the avatar never switches screens. Tap your own character in the world opens Wearing (`hooks/useTapAvatar`).
+  > Animation bar (`panel/AnimationBar.luau`): Idle / Move / Air / Swim / Emotes, each a menu upward; animations come from the live Animate script (worn packs show), emotes from a server lookup (`AvatarEmoteAnimations` Bolt remote function: the server opens the emote asset to find its animation; budget 20 per 10s, client shares in-flight requests). Trying on an emote plays it at once; a pack switches to Walk. Only an open menu's button is highlighted; a press outside closes it, another bar button switches menus.
+  > Review extras: Wearing ordered unowned paid → free → owned; own-avatar items marked owned (migrated on join); Buy / Get per row in Wearing and Basket; a full body also clears the Head slot (`AvatarConfig.alsoReplaces`); Robux shown as "₹12,499" everywhere (`Tokens.robux`); disabled buttons dimmed (Undo greys out); Roblox's emote menu opens with "." (not B); emotes work while flying (emote-friendly hover only when the emote menu is open and you're still; falling otherwise); hold Shift to run (28) and fly 1.75x faster, shift-lock moved to Ctrl; computers only (user call).
+  > **Lessons:** an emote's catalogue id isn't loadable as an animation (zero-length track); `createBinding` in render resets each render (use `useBinding`); measured text widths round a hair short, so only truncate capped labels; a strict server cooldown swallowed the second of two quick, legitimate requests (use a budget + client in-flight sharing); Roblox's Animate refuses emotes in Freefall, and Running mid-air flails when moving.
+
 
 ### Task 9: Item page, favourites and More like this
 - **Status:** [TODO]

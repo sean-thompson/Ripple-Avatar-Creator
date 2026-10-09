@@ -96,9 +96,14 @@ local function ModelViewer(props: Props)
 		centre = Vector3.zero,
 		distance = 10,
 		size = 1, -- the model's bounding size (for the pan limit)
-		pan = Vector3.zero, -- middle-drag offset, in world space
+		-- Middle-drag / zoom offset, in the camera's own axes (right, up,
+		-- back), so turning always spins the model about its own centre.
+		pan = Vector3.zero,
 		touched = false,
 		place = function() end,
+		orbit = function(): CFrame
+			return CFrame.identity
+		end,
 	})
 
 	-- Camera and input: once.
@@ -118,9 +123,11 @@ local function ModelViewer(props: Props)
 		camera.Parent = viewport
 		viewport.CurrentCamera = camera
 		v.camera = camera
+		v.orbit = function(): CFrame
+			return CFrame.Angles(0, math.rad(v.yaw), 0) * CFrame.Angles(math.rad(v.pitch), 0, 0)
+		end
 		v.place = function()
-			local orbit = CFrame.Angles(0, math.rad(v.yaw), 0) * CFrame.Angles(math.rad(v.pitch), 0, 0)
-			camera.CFrame = CFrame.new(v.centre + v.pan) * orbit * CFrame.new(0, 0, v.distance * v.zoom)
+			camera.CFrame = CFrame.new(v.centre) * v.orbit() * CFrame.new(v.pan) * CFrame.new(0, 0, v.distance * v.zoom)
 		end
 		v.place()
 
@@ -167,7 +174,8 @@ local function ModelViewer(props: Props)
 					local direction = look:VectorToWorldSpace(
 						Vector3.new(offset.X / halfHeight * tanHalf, -offset.Y / halfHeight * tanHalf, -1)
 					).Unit
-					local pivot = v.centre + v.pan
+					local orbit = v.orbit()
+					local pivot = v.centre + orbit:VectorToWorldSpace(v.pan)
 					local target: Vector3
 					local hit = worldModel:Raycast(look.Position, direction * v.distance * 4)
 					if hit then
@@ -176,7 +184,7 @@ local function ModelViewer(props: Props)
 						local depth = v.distance * before
 						target = look.Position + direction * (depth / math.max(direction:Dot(look.LookVector), 0.01))
 					end
-					local pan = target + (pivot - target) * k - v.centre
+					local pan = orbit:VectorToObjectSpace(target + (pivot - target) * k - v.centre)
 					local limit = v.size * PAN_LIMIT
 					if pan.Magnitude > limit then
 						pan = pan.Unit * limit
@@ -194,8 +202,7 @@ local function ModelViewer(props: Props)
 					-- model stays under the cursor.
 					local height = math.max(viewport.AbsoluteSize.Y, 1)
 					local scale = 2 * v.distance * v.zoom * math.tan(math.rad(FOV / 2)) / height
-					local look = camera.CFrame
-					local pan = v.pan - look.RightVector * delta.X * scale + look.UpVector * delta.Y * scale
+					local pan = v.pan + Vector3.new(-delta.X * scale, delta.Y * scale, 0)
 					local limit = v.size * PAN_LIMIT
 					if pan.Magnitude > limit then
 						pan = pan.Unit * limit
@@ -271,6 +278,12 @@ local function ModelViewer(props: Props)
 			v.model = model
 			local boxCFrame, size = model:GetBoundingBox()
 			v.centre = boxCFrame.Position
+			-- A character turns about its root, not the middle of its box
+			-- (a cape, wings or a held sword would pull that off to one side).
+			local root = model:FindFirstChild("HumanoidRootPart")
+			if root and root:IsA("BasePart") then
+				v.centre = Vector3.new(root.Position.X, v.centre.Y, root.Position.Z)
+			end
 			v.size = size.Magnitude
 			-- Far enough back that the whole bounding sphere fits the view.
 			v.distance = (size.Magnitude / 2) / math.sin(math.rad(FOV / 2)) * (latest.current.fill or 1.05)
